@@ -14,6 +14,8 @@ namespace Repil.IR
 
 %token INTEGER STRING
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
+%token GLOBAL_SYMBOL LOCAL_SYMBOL
+%token TYPE DOUBLE I8 I16 I32 I64
 
 %start module
 %%
@@ -40,8 +42,51 @@ module_part
     {
         module.TargetTriple = (string)$4;
     }
+    | LOCAL_SYMBOL '=' TYPE literal_structure
+    {
+        module.IdentifiedStructures[(Symbol)$1] = (StructureType)$4;
+    }
     ;
     
+literal_structure
+    : '{' type_list '}'
+    {
+        var s = new LiteralStructureType ();
+        $$ = s;
+    }
+    ;
+    
+type_list
+    : type
+    {
+        $$ = NewList ((Type)$1);
+    }
+    | type_list ',' type
+    {
+        $$ = ListAdd ($1, (Type)$3);
+    }
+    ;
+    
+type
+    : literal_structure
+    | DOUBLE { $$ = FloatType.Double; }
+    | I8 { $$ = IntegerType.I8; }
+    | I16 { $$ = IntegerType.I8; }
+    | I32 { $$ = IntegerType.I8; }
+    | I64 { $$ = IntegerType.I8; }
+    | type '(' type_list ')'
+    {
+        $$ = new FunctionType ();
+    }
+    | type '*'
+    {
+        $$ = new PointerType ();
+    }
+    | LOCAL_SYMBOL
+    {
+        $$ = new NamedType ();
+    }
+    ;
     
 %%
 

@@ -15,11 +15,25 @@ namespace Repil.IR
             { Symbol.Intern ("target"), Token.TARGET },
             { Symbol.Intern ("datalayout"), Token.DATALAYOUT },
             { Symbol.Intern ("triple"), Token.TRIPLE },
+            { Symbol.Intern ("type"), Token.TYPE },
+            { Symbol.Intern ("double"), Token.DOUBLE },
+            { Symbol.Intern ("i8"), Token.I8 },
+            { Symbol.Intern ("i16"), Token.I16 },
+            { Symbol.Intern ("i32"), Token.I32 },
+            { Symbol.Intern ("i64"), Token.I64 },
         };
 
         public Lexer (string llvm)
         {
             this.code = llvm;
+        }
+
+        public string Surrounding {
+            get {
+                var min = Math.Max (0, p - 10);
+                var max = Math.Min (code.Length - 1, p + 10);
+                return code.Substring (min, max - min);
+            }
         }
 
         public bool advance ()
@@ -43,7 +57,16 @@ namespace Repil.IR
 
             switch (s[p]) {
                 case '=':
-                    tok = '=';
+                case ',':
+                case '+':
+                case '-':
+                case '*':
+                case '/':
+                case '{':
+                case '}':
+                case '(':
+                case ')':
+                    tok = s[p];
                     val = null;
                     p++;
                     break;
@@ -62,9 +85,20 @@ namespace Repil.IR
                         }
                     }
                     break;
+                case '@':
+                case '%' when p + 1 < n && (char.IsLetter (s[p + 1]) || s[p + 1] == '_' || s[p + 1] == '.' || s[p + 1] == '-'): {
+                        var ep = p + 1;
+                        while (ep < n && (char.IsLetterOrDigit (s[ep]) || s[ep] == '_' || s[ep] == '.' || s[ep] == '-'))
+                            ep++;
+                        var sym = Symbol.Intern (s, p, ep - p);
+                        tok = s[p] == '@' ? Token.GLOBAL_SYMBOL : Token.LOCAL_SYMBOL;
+                        val = sym;
+                        p = ep;
+                    }
+                    break;
                 case var ch when char.IsLetter (ch) && char.IsLower (ch): {
                         var ep = p + 1;
-                        while (ep < n && (char.IsLetter (s[ep]) || s[ep] == '_'))
+                        while (ep < n && (char.IsLetterOrDigit (s[ep]) || s[ep] == '_'))
                             ep++;
                         var sym = Symbol.Intern (s, p, ep - p);
                         val = sym;

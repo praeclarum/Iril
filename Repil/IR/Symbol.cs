@@ -90,4 +90,8 @@ namespace Repil.IR
             }
         }
     }
+
+    public class SymbolTable<T> : Dictionary<Symbol, T>
+    {
+    }
 }

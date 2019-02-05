@@ -21,6 +21,8 @@ namespace Tests
             var mod = Module.Parse (code);
             Assert.NotNull (mod);
             Assert.Greater (mod.SourceFilename.Length, 2);
+            Assert.Greater (mod.TargetTriple.Length, 2);
+            Assert.Greater (mod.TargetDatalayout.Length, 2);
         }
 
         [Test]

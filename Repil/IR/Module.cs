@@ -21,12 +21,20 @@ namespace Repil.IR
         /// </summary>
         public string TargetTriple = "";
 
+        public SymbolTable<StructureType> IdentifiedStructures = new SymbolTable<StructureType> ();
+
         public static Module Parse (string llvm)
         {
             var module = new Module ();
             var parser = new Parser (module);
             var lex = new Lexer (llvm);
-            parser.yyparse (lex, null);
+            try {
+                parser.yyparse (lex, null);
+            }
+            catch (Repil.IR.yyParser.yyException ex) {
+                Console.WriteLine (lex);
+                throw;
+            }
             return module;
         }
     }
