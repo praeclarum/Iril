@@ -8,7 +8,7 @@ using System.Collections.Generic;
 
 #pragma warning disable 219,414
 
-namespace Repil
+namespace Repil.IR
 {
 	public partial class Parser
 	{		
@@ -28,6 +28,8 @@ namespace Repil
 
   /* An EOF token */
   public int eof_token;
+  
+  public int yacc_verbose_flag;
 
   /** (syntax) error message.
       Can be overwritten to control message format.

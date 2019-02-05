@@ -25,6 +25,8 @@
 .
 .  /* An EOF token */
 .  public int eof_token;
+.  
+.  public int yacc_verbose_flag;
 .
 .  /** (syntax) error message.
 .      Can be overwritten to control message format.
