@@ -1,0 +1,36 @@
+%{
+using System.Text;
+using System.IO;
+using System;
+using System.Collections.Generic;
+
+#pragma warning disable 219,414
+
+namespace Repil.IR
+{
+	public partial class Parser
+	{		
+%}
+
+%token IDENTIFIER NUMBER STRING TRUE FALSE
+%token GBP EURO YEN RUPEE
+%token LE_OP GE_OP EQ_OP NE_OP AND_OP OR_OP
+%token IF THEN ELSE
+%token LET IN
+%token RANGE
+%token IMPORT
+%token PLUSEQUALS_OP
+%token MOD
+%token XML
+
+%start module
+%%
+
+module
+	: XML
+	;
+
+%%
+
+}
+
