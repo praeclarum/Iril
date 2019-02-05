@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <Folder Include="IR\" />
+    <Folder Include="Types\" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Mono.Cecil" Version="0.10.3" />

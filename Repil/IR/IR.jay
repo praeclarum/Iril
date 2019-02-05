@@ -4,18 +4,22 @@ using System.IO;
 using System;
 using System.Collections.Generic;
 
+using Repil.Types;
+
 #pragma warning disable 219,414
 
 namespace Repil.IR
 {
 	public partial class Parser
-	{		
+	{
 %}
 
 %token INTEGER STRING
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
 %token GLOBAL_SYMBOL LOCAL_SYMBOL
-%token TYPE DOUBLE I8 I16 I32 I64
+%token TYPE HALF FLOAT DOUBLE I8 I16 I32 I64
+%token DEFINE UNNAMED_ADDR LOCAL_UNNAMED_ADDR
+%token ATTRIBUTE_GROUP_REF
 
 %start module
 %%
@@ -46,6 +50,7 @@ module_part
     {
         module.IdentifiedStructures[(Symbol)$1] = (StructureType)$4;
     }
+    | function_definition
     ;
     
 literal_structure
@@ -59,16 +64,18 @@ literal_structure
 type_list
     : type
     {
-        $$ = NewList ((Type)$1);
+        $$ = NewList ((LType)$1);
     }
     | type_list ',' type
     {
-        $$ = ListAdd ($1, (Type)$3);
+        $$ = ListAdd ($1, (LType)$3);
     }
     ;
     
 type
     : literal_structure
+    | HALF { $$ = FloatType.Half; }
+    | FLOAT { $$ = FloatType.Float; }
     | DOUBLE { $$ = FloatType.Double; }
     | I8 { $$ = IntegerType.I8; }
     | I16 { $$ = IntegerType.I8; }
@@ -80,12 +87,41 @@ type
     }
     | type '*'
     {
-        $$ = new PointerType ();
+        $$ = new PointerType ((LType)$1, 0);
     }
     | LOCAL_SYMBOL
     {
-        $$ = new NamedType ();
+        $$ = new NamedType ((Symbol)$1);
     }
+    ;
+    
+function_definition
+    : DEFINE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs
+    {
+    }
+    ;
+    
+parameter_list
+    : parameter
+    | parameter_list parameter
+    ;
+    
+parameter
+    : type
+    ;
+    
+function_addr
+    : UNNAMED_ADDR
+    | LOCAL_UNNAMED_ADDR
+    ;
+    
+attribute_group_refs
+    : attribute_group_ref
+    | attribute_group_refs attribute_group_ref
+    ;
+    
+attribute_group_ref
+    : ATTRIBUTE_GROUP_REF
     ;
     
 %%

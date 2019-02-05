@@ -1,7 +1,7 @@
 ﻿using System;
-namespace Repil.IR
+namespace Repil.Types
 {
-    public class FunctionType : Type
+    public class FunctionType : LType
     {
         public FunctionType ()
         {

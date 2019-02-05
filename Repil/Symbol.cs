@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Collections;
 using System.Linq;
-namespace Repil.IR
+
+namespace Repil
 {
     public class Symbol
     {

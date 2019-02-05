@@ -16,11 +16,16 @@ namespace Repil.IR
             { Symbol.Intern ("datalayout"), Token.DATALAYOUT },
             { Symbol.Intern ("triple"), Token.TRIPLE },
             { Symbol.Intern ("type"), Token.TYPE },
+            { Symbol.Intern ("half"), Token.HALF },
+            { Symbol.Intern ("float"), Token.FLOAT },
             { Symbol.Intern ("double"), Token.DOUBLE },
             { Symbol.Intern ("i8"), Token.I8 },
             { Symbol.Intern ("i16"), Token.I16 },
             { Symbol.Intern ("i32"), Token.I32 },
             { Symbol.Intern ("i64"), Token.I64 },
+            { Symbol.Intern ("define"), Token.DEFINE },
+            { Symbol.Intern ("unnamed_addr"), Token.UNNAMED_ADDR },
+            { Symbol.Intern ("local_unnamed_addr"), Token.LOCAL_UNNAMED_ADDR },
         };
 
         public Lexer (string llvm)
@@ -92,6 +97,16 @@ namespace Repil.IR
                             ep++;
                         var sym = Symbol.Intern (s, p, ep - p);
                         tok = s[p] == '@' ? Token.GLOBAL_SYMBOL : Token.LOCAL_SYMBOL;
+                        val = sym;
+                        p = ep;
+                    }
+                    break;
+                case '#' when p + 1 < n && (char.IsDigit (s[p + 1])): {
+                        var ep = p + 1;
+                        while (ep < n && (char.IsDigit (s[ep])))
+                            ep++;
+                        var sym = Symbol.Intern (s, p, ep - p);
+                        tok = Token.ATTRIBUTE_GROUP_REF;
                         val = sym;
                         p = ep;
                     }

@@ -1,5 +1,6 @@
 ﻿using System;
-namespace Repil.IR
+
+namespace Repil.Types
 {
     public class AggregateType
     {

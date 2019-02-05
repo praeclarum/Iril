@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace Repil.IR
+namespace Repil.Types
 {
-    public abstract class StructureType : Type
+    public abstract class StructureType : LType
     {
     }
 
