@@ -57,7 +57,10 @@ namespace Repil.IR
 //t class YYRules : MarshalByRefObject {
 //t  public static readonly string [] yyRule = {
 //t    "$accept : module",
-//t    "module : XML",
+//t    "module : module_parts",
+//t    "module_parts : module_part",
+//t    "module_parts : module_parts module_part",
+//t    "module_part : SOURCE_FILENAME '=' STRING",
 //t  };
 //t public static string getRule (int index) {
 //t    return yyRule [index];
@@ -68,6 +71,7 @@ namespace Repil.IR
     null,null,null,null,null,null,null,null,null,null,null,null,null,null,
     null,null,null,null,null,null,null,null,null,null,null,null,null,null,
     null,null,null,null,null,null,null,null,null,null,null,null,null,null,
+    null,null,null,null,null,null,null,"'='",null,null,null,null,null,
     null,null,null,null,null,null,null,null,null,null,null,null,null,null,
     null,null,null,null,null,null,null,null,null,null,null,null,null,null,
     null,null,null,null,null,null,null,null,null,null,null,null,null,null,
@@ -81,11 +85,8 @@ namespace Repil.IR
     null,null,null,null,null,null,null,null,null,null,null,null,null,null,
     null,null,null,null,null,null,null,null,null,null,null,null,null,null,
     null,null,null,null,null,null,null,null,null,null,null,null,null,null,
-    null,null,null,null,null,null,null,null,null,null,null,null,null,null,
-    null,null,null,null,null,null,null,"IDENTIFIER","NUMBER","STRING",
-    "TRUE","FALSE","GBP","EURO","YEN","RUPEE","LE_OP","GE_OP","EQ_OP",
-    "NE_OP","AND_OP","OR_OP","IF","THEN","ELSE","LET","IN","RANGE",
-    "IMPORT","PLUSEQUALS_OP","MOD","XML",
+    null,null,null,null,null,null,null,null,"INTEGER","STRING",
+    "SOURCE_FILENAME",
   };
 
   /** index-checked interface to yyNames[].
@@ -271,9 +272,27 @@ namespace Repil.IR
         yyVal = yyV > yyTop ? null : yyVals[yyV]; // yyVal = yyDefault(yyV > yyTop ? null : yyVals[yyV]);
         switch (yyN) {
 case 1:
-#line 33 "Repil/IR/IR.jay"
+#line 25 "Repil/IR/IR.jay"
   {
-        yyVal = new Module ();
+        yyVal = new Module ((List<ModulePart>)yyVals[0+yyTop]);
+    }
+  break;
+case 2:
+#line 32 "Repil/IR/IR.jay"
+  {
+        yyVal = NewList ((ModulePart)yyVals[0+yyTop]);
+    }
+  break;
+case 3:
+#line 36 "Repil/IR/IR.jay"
+  {
+        yyVal = ListAdd (yyVals[-1+yyTop], (ModulePart)yyVals[0+yyTop]);
+    }
+  break;
+case 4:
+#line 43 "Repil/IR/IR.jay"
+  {
+        yyVal = new SourceFilename ((string)yyVals[0+yyTop]);
     }
   break;
 #line default
@@ -313,30 +332,34 @@ case 1:
 */
 #line default
    static readonly short [] yyLhs  = {              -1,
-    0,
+    0,    1,    1,    2,
   };
    static readonly short [] yyLen = {           2,
-    1,
+    1,    1,    2,    3,
   };
    static readonly short [] yyDefRed = {            0,
-    1,    0,
+    0,    0,    0,    2,    0,    3,    4,
   };
   protected static readonly short [] yyDgoto  = {             2,
+    3,    4,
   };
-  protected static readonly short [] yySindex = {         -281,
-    0,    0,
+  protected static readonly short [] yySindex = {         -259,
+  -60,    0, -259,    0, -256,    0,    0,
   };
   protected static readonly short [] yyRindex = {            0,
-    0,    0,
+    0,    0,    3,    0,    0,    0,    0,
   };
   protected static readonly short [] yyGindex = {            0,
+    0,    1,
   };
   protected static readonly short [] yyTable = {             1,
+    5,    7,    1,    6,
   };
-  protected static readonly short [] yyCheck = {           281,
+  protected static readonly short [] yyCheck = {           259,
+   61,  258,    0,    3,
   };
 
-#line 37 "Repil/IR/IR.jay"
+#line 48 "Repil/IR/IR.jay"
 
 }
 
@@ -417,31 +440,9 @@ namespace yydebug {
 }
 // %token constants
  class Token {
-  public const int IDENTIFIER = 257;
-  public const int NUMBER = 258;
-  public const int STRING = 259;
-  public const int TRUE = 260;
-  public const int FALSE = 261;
-  public const int GBP = 262;
-  public const int EURO = 263;
-  public const int YEN = 264;
-  public const int RUPEE = 265;
-  public const int LE_OP = 266;
-  public const int GE_OP = 267;
-  public const int EQ_OP = 268;
-  public const int NE_OP = 269;
-  public const int AND_OP = 270;
-  public const int OR_OP = 271;
-  public const int IF = 272;
-  public const int THEN = 273;
-  public const int ELSE = 274;
-  public const int LET = 275;
-  public const int IN = 276;
-  public const int RANGE = 277;
-  public const int IMPORT = 278;
-  public const int PLUSEQUALS_OP = 279;
-  public const int MOD = 280;
-  public const int XML = 281;
+  public const int INTEGER = 257;
+  public const int STRING = 258;
+  public const int SOURCE_FILENAME = 259;
   public const int yyErrorCode = 256;
  }
  namespace yyParser {
