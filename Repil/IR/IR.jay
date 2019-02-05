@@ -13,33 +13,32 @@ namespace Repil.IR
 %}
 
 %token INTEGER STRING
-%token SOURCE_FILENAME
+%token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
 
 %start module
 %%
 
 module
 	: module_parts
-    {
-        $$ = new Module ((List<ModulePart>)$1);
-    }
 	;
 	
 module_parts
     : module_part
-    {
-        $$ = NewList ((ModulePart)$1);
-    }
     | module_parts module_part
-    {
-        $$ = ListAdd ($1, (ModulePart)$2);
-    }
     ;
     
 module_part
     : SOURCE_FILENAME '=' STRING
     {
-        $$ = new SourceFilename ((string)$3);
+        module.SourceFilename = (string)$3;
+    }
+    | TARGET DATALAYOUT '=' STRING
+    {
+        module.TargetDatalayout = (string)$4;
+    }
+    | TARGET TRIPLE '=' STRING
+    {
+        module.TargetTriple = (string)$4;
     }
     ;
     

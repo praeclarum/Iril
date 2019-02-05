@@ -11,7 +11,10 @@ namespace Repil.IR
         object val;
 
         static readonly Dictionary<Symbol, int> keywords = new Dictionary<Symbol, int> () {
-            { Symbol.Intern ("source_filename"), Token.SOURCE_FILENAME }
+            { Symbol.Intern ("source_filename"), Token.SOURCE_FILENAME },
+            { Symbol.Intern ("target"), Token.TARGET },
+            { Symbol.Intern ("datalayout"), Token.DATALAYOUT },
+            { Symbol.Intern ("triple"), Token.TRIPLE },
         };
 
         public Lexer (string llvm)

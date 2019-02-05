@@ -20,7 +20,7 @@ namespace Tests
 
             var mod = Module.Parse (code);
             Assert.NotNull (mod);
-            Assert.Greater (mod.Parts.Length, 0);
+            Assert.Greater (mod.SourceFilename.Length, 2);
         }
 
         [Test]

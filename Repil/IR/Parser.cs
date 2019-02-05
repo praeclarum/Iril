@@ -51,7 +51,7 @@ namespace Repil.IR
     */
 //t  internal yydebug.yyDebug debug;
 
-  protected const int yyFinal = 2;
+  protected const int yyFinal = 3;
 //t // Put this array into a separate class so it is only initialized if debugging is actually used
 //t // Use MarshalByRefObject to disable inlining
 //t class YYRules : MarshalByRefObject {
@@ -61,6 +61,8 @@ namespace Repil.IR
 //t    "module_parts : module_part",
 //t    "module_parts : module_parts module_part",
 //t    "module_part : SOURCE_FILENAME '=' STRING",
+//t    "module_part : TARGET DATALAYOUT '=' STRING",
+//t    "module_part : TARGET TRIPLE '=' STRING",
 //t  };
 //t public static string getRule (int index) {
 //t    return yyRule [index];
@@ -86,7 +88,7 @@ namespace Repil.IR
     null,null,null,null,null,null,null,null,null,null,null,null,null,null,
     null,null,null,null,null,null,null,null,null,null,null,null,null,null,
     null,null,null,null,null,null,null,null,"INTEGER","STRING",
-    "SOURCE_FILENAME",
+    "SOURCE_FILENAME","TARGET","DATALAYOUT","TRIPLE",
   };
 
   /** index-checked interface to yyNames[].
@@ -271,28 +273,22 @@ namespace Repil.IR
 //t          debug.reduce(yyState, yyStates[yyV-1], yyN, YYRules.getRule (yyN), yyLen[yyN]);
         yyVal = yyV > yyTop ? null : yyVals[yyV]; // yyVal = yyDefault(yyV > yyTop ? null : yyVals[yyV]);
         switch (yyN) {
-case 1:
-#line 25 "Repil/IR/IR.jay"
-  {
-        yyVal = new Module ((List<ModulePart>)yyVals[0+yyTop]);
-    }
-  break;
-case 2:
-#line 32 "Repil/IR/IR.jay"
-  {
-        yyVal = NewList ((ModulePart)yyVals[0+yyTop]);
-    }
-  break;
-case 3:
-#line 36 "Repil/IR/IR.jay"
-  {
-        yyVal = ListAdd (yyVals[-1+yyTop], (ModulePart)yyVals[0+yyTop]);
-    }
-  break;
 case 4:
-#line 43 "Repil/IR/IR.jay"
+#line 34 "Repil/IR/IR.jay"
   {
-        yyVal = new SourceFilename ((string)yyVals[0+yyTop]);
+        module.SourceFilename = (string)yyVals[0+yyTop];
+    }
+  break;
+case 5:
+#line 38 "Repil/IR/IR.jay"
+  {
+        module.TargetDatalayout = (string)yyVals[0+yyTop];
+    }
+  break;
+case 6:
+#line 42 "Repil/IR/IR.jay"
+  {
+        module.TargetTriple = (string)yyVals[0+yyTop];
     }
   break;
 #line default
@@ -332,34 +328,39 @@ case 4:
 */
 #line default
    static readonly short [] yyLhs  = {              -1,
-    0,    1,    1,    2,
+    0,    1,    1,    2,    2,    2,
   };
    static readonly short [] yyLen = {           2,
-    1,    1,    2,    3,
+    1,    1,    2,    3,    4,    4,
   };
    static readonly short [] yyDefRed = {            0,
-    0,    0,    0,    2,    0,    3,    4,
+    0,    0,    0,    0,    2,    0,    0,    0,    3,    4,
+    0,    0,    5,    6,
   };
-  protected static readonly short [] yyDgoto  = {             2,
-    3,    4,
+  protected static readonly short [] yyDgoto  = {             3,
+    4,    5,
   };
   protected static readonly short [] yySindex = {         -259,
-  -60,    0, -259,    0, -256,    0,    0,
+  -59, -258,    0, -259,    0, -253,  -55,  -54,    0,    0,
+ -250, -249,    0,    0,
   };
   protected static readonly short [] yyRindex = {            0,
-    0,    0,    3,    0,    0,    0,    0,
+    0,    0,    0,   10,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,
   };
   protected static readonly short [] yyGindex = {            0,
-    0,    1,
+    0,    7,
   };
   protected static readonly short [] yyTable = {             1,
-    5,    7,    1,    6,
+    2,    6,    7,    8,   10,   11,   12,   13,   14,    1,
+    9,
   };
   protected static readonly short [] yyCheck = {           259,
-   61,  258,    0,    3,
+  260,   61,  261,  262,  258,   61,   61,  258,  258,    0,
+    4,
   };
 
-#line 48 "Repil/IR/IR.jay"
+#line 47 "Repil/IR/IR.jay"
 
 }
 
@@ -443,6 +444,9 @@ namespace yydebug {
   public const int INTEGER = 257;
   public const int STRING = 258;
   public const int SOURCE_FILENAME = 259;
+  public const int TARGET = 260;
+  public const int DATALAYOUT = 261;
+  public const int TRIPLE = 262;
   public const int yyErrorCode = 256;
  }
  namespace yyParser {

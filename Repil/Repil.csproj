@@ -12,5 +12,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Class1.cs" />
+    <Compile Remove="IR\SourceFileName.cs" />
   </ItemGroup>
 </Project>

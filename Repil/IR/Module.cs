@@ -6,23 +6,40 @@ namespace Repil.IR
 {
     public class Module
     {
-        public readonly ModulePart[] Parts;
+        /// <summary>
+        /// The original module identifier
+        /// </summary>
+        public string SourceFilename = "";
 
-        public Module (IEnumerable<ModulePart> parts)
-        {
-            Parts = parts.ToArray ();
-        }
+        /// <summary>
+        /// How data is to be laid out in memory
+        /// </summary>
+        public string TargetDatalayout = "";
+
+        /// <summary>
+        /// A series of identifiers delimited by the minus sign character
+        /// </summary>
+        public string TargetTriple = "";
 
         public static Module Parse (string llvm)
         {
-            var parser = new Parser ();
+            var module = new Module ();
+            var parser = new Parser (module);
             var lex = new Lexer (llvm);
-            return (Module)parser.yyparse (lex, null);
+            parser.yyparse (lex, null);
+            return module;
         }
     }
 
     public partial class Parser
     {
+        Module module;
+
+        public Parser (Module module)
+        {
+            this.module = module;
+        }
+
         static List<T> NewList<T>(T firstItem)
         {
             return new List<T> (1) { firstItem };
