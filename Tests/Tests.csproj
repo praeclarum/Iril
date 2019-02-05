@@ -12,4 +12,17 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.7.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Inputs\" />
+    <Folder Include="Inputs\SuiteSparse\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="Inputs\**\*.ll" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Inputs\**\*.ll" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Repil\Repil.csproj" />
+  </ItemGroup>
 </Project>

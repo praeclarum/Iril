@@ -270,6 +270,13 @@ namespace Repil.IR
 //t          debug.reduce(yyState, yyStates[yyV-1], yyN, YYRules.getRule (yyN), yyLen[yyN]);
         yyVal = yyV > yyTop ? null : yyVals[yyV]; // yyVal = yyDefault(yyV > yyTop ? null : yyVals[yyV]);
         switch (yyN) {
+case 1:
+#line 33 "Repil/IR/IR.jay"
+  {
+        yyVal = new Module ();
+    }
+  break;
+#line default
         }
         yyTop -= yyLen[yyN];
         yyState = yyStates[yyTop];
@@ -329,7 +336,7 @@ namespace Repil.IR
   protected static readonly short [] yyCheck = {           281,
   };
 
-#line 34 "Repil/IR/IR.jay"
+#line 37 "Repil/IR/IR.jay"
 
 }
 

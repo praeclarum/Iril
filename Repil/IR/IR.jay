@@ -28,6 +28,9 @@ namespace Repil.IR
 
 module
 	: XML
+    {
+        $$ = new Module ();
+    }
 	;
 
 %%
