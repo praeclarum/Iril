@@ -3,11 +3,8 @@ using Repil.Types;
 
 namespace Repil.IR
 {
-    public class Instruction
+    public abstract class Instruction
     {
-        public Instruction ()
-        {
-        }
     }
 
     public class IcmpInstruction : Instruction

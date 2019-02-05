@@ -14,14 +14,26 @@ namespace Repil.IR
 	{
 %}
 
-%token INTEGER STRING NULL
+%token INTEGER STRING TRUE FALSE NULL LABEL
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
 %token GLOBAL_SYMBOL LOCAL_SYMBOL
-%token TYPE HALF FLOAT DOUBLE I8 I16 I32 I64
+%token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64
 %token DEFINE UNNAMED_ADDR LOCAL_UNNAMED_ADDR
 %token ATTRIBUTE_GROUP_REF
-%token RET
+%token RET BR SWITCH INDIRECTBR INVOKE RESUME CATCHSWITCH CATCHRET CLEANUPRET UNREACHABLE
+%token FNEG
+%token ADD FADD SUB FSUB MUL FMUL UDIV SDIV FDIV UREM SREM FREM
+%token SHL LSHR ASHR
+%token AND OR XOR
+%token EXTRACTELEMENT INSERTELEMENT SHUFFLEVECTOR
+%token EXTRACTVALUE INSERTVALUE
+%token ALLOCA LOAD STORE FENCE CMPXCHG ATOMICRMW GETELEMENTPTR
+%token TRUNC ZEXT SEXT FPTRUNC FPEXT
+%token FPTOUI FPTOSI UITOFP SITOFP PTRTOINT INTTOPTR BITCAST ADDRSPACECAST
 %token ICMP EQ NE UGT UGE ULT ULE SGT SGE SLT SLE
+%token FCMP OEQ OGT OGE OLT OLE ONE ORD UEQ UNE UNO
+%token PHI SELECT CALL VA_ARG
+%token LANDINGPAD CATCHPAD CLEANUPPAD
 
 %start module
 %%
@@ -139,10 +151,12 @@ instruction
     
 terminal_instruction
     : RET
+    | BR I1 value ',' label_value ',' label_value
+    | BR label_value
     ;
     
 assign_instruction
-    : LOCAL_SYMBOL '=' ICMP icmp_condition type operand ',' operand
+    : LOCAL_SYMBOL '=' ICMP icmp_condition type value ',' value
     {
         $$ = new IcmpInstruction ((LocalSymbol)$1, (IcmpCondition)$4, (LType)$5, (Value)$6, (Value)$8);
     }
@@ -161,15 +175,22 @@ icmp_condition
     | SLE { $$ = IcmpCondition.SignedLessThanOrEqual; }
     ;
     
-operand
-    : value
-    ;
-    
 value
-    : NULL         { $$ = NullConstant.Null; }
+    : constant 
     | LOCAL_SYMBOL { $$ = new LocalValue ((LocalSymbol)$1); }
     ;
+
+constant
+    : NULL         { $$ = NullConstant.Null; }
+    ;
     
+label_value
+    : LABEL LOCAL_SYMBOL
+    {
+        $$ = $2;
+    }
+    ;
+            
 %%
 
 }

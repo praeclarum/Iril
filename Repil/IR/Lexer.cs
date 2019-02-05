@@ -20,6 +20,7 @@ namespace Repil.IR
             { Symbol.Intern ("half"), Token.HALF },
             { Symbol.Intern ("float"), Token.FLOAT },
             { Symbol.Intern ("double"), Token.DOUBLE },
+            { Symbol.Intern ("i1"), Token.I1 },
             { Symbol.Intern ("i8"), Token.I8 },
             { Symbol.Intern ("i16"), Token.I16 },
             { Symbol.Intern ("i32"), Token.I32 },
@@ -39,6 +40,8 @@ namespace Repil.IR
             { Symbol.Intern ("slt"), Token.SLT },
             { Symbol.Intern ("sle"), Token.SLE },
             { Symbol.Intern ("null"), Token.NULL },
+            { Symbol.Intern ("br"), Token.BR },
+            { Symbol.Intern ("label"), Token.LABEL },
         };
 
         public Lexer (string llvm)

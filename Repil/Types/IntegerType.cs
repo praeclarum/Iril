@@ -4,6 +4,7 @@ namespace Repil.Types
 {
     public class IntegerType : SingleValueType
     {
+        public static readonly IntegerType I1 = new IntegerType (1);
         public static readonly IntegerType I8 = new IntegerType (8);
         public static readonly IntegerType I16 = new IntegerType (16);
         public static readonly IntegerType I32 = new IntegerType (32);
