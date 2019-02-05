@@ -2,10 +2,7 @@
 
 namespace Repil.Types
 {
-    public class AggregateType
+    public abstract class AggregateType : LType
     {
-        public AggregateType ()
-        {
-        }
     }
 }

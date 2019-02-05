@@ -1,8 +1,9 @@
 %{
-using System.Text;
-using System.IO;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Numerics;
+using System.Text;
 
 using Repil.Types;
 
@@ -14,7 +15,7 @@ namespace Repil.IR
 	{
 %}
 
-%token INTEGER STRING TRUE FALSE NULL LABEL
+%token INTEGER FLOAT STRING TRUE FALSE NULL LABEL X
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
 %token GLOBAL_SYMBOL LOCAL_SYMBOL
 %token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64
@@ -28,7 +29,7 @@ namespace Repil.IR
 %token EXTRACTELEMENT INSERTELEMENT SHUFFLEVECTOR
 %token EXTRACTVALUE INSERTVALUE
 %token ALLOCA LOAD STORE FENCE CMPXCHG ATOMICRMW GETELEMENTPTR
-%token TRUNC ZEXT SEXT FPTRUNC FPEXT
+%token TRUNC ZEXT SEXT FPTRUNC FPEXT TO
 %token FPTOUI FPTOSI UITOFP SITOFP PTRTOINT INTTOPTR BITCAST ADDRSPACECAST
 %token ICMP EQ NE UGT UGE ULT ULE SGT SGE SLT SLE
 %token FCMP OEQ OGT OGE OLT OLE ONE ORD UEQ UNE UNO
@@ -107,6 +108,10 @@ type
     {
         $$ = new NamedType ((Symbol)$1);
     }
+    | '<' INTEGER X type '>'
+    {
+        $$ = new VectorType ((int)(BigInteger)$2, (LType)$4);
+    }
     ;
     
 function_definition
@@ -152,13 +157,23 @@ instruction
 terminal_instruction
     : RET
     | BR I1 value ',' label_value ',' label_value
+    {
+        $$ = new ConditionalBrInstruction ((Value)$3, (LabelValue)$5, (LabelValue)$7);
+    }
     | BR label_value
+    {
+        $$ = new UnconditionalBrInstruction ((LabelValue)$2);
+    }
     ;
     
 assign_instruction
     : LOCAL_SYMBOL '=' ICMP icmp_condition type value ',' value
     {
         $$ = new IcmpInstruction ((LocalSymbol)$1, (IcmpCondition)$4, (LType)$5, (Value)$6, (Value)$8);
+    }
+    | LOCAL_SYMBOL '=' BITCAST type value TO type
+    {
+        $$ = new BitcastInstruction ((LocalSymbol)$1, (LType)$4, (Value)$5, (LType)$7);
     }
     ;
     
@@ -187,7 +202,7 @@ constant
 label_value
     : LABEL LOCAL_SYMBOL
     {
-        $$ = $2;
+        $$ = new LabelValue ((LocalSymbol)$2);
     }
     ;
             

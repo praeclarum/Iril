@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System;
+using System.Numerics;
 
 namespace Repil.IR
 {
@@ -20,6 +21,7 @@ namespace Repil.IR
             { Symbol.Intern ("half"), Token.HALF },
             { Symbol.Intern ("float"), Token.FLOAT },
             { Symbol.Intern ("double"), Token.DOUBLE },
+            { Symbol.Intern ("x"), Token.X },
             { Symbol.Intern ("i1"), Token.I1 },
             { Symbol.Intern ("i8"), Token.I8 },
             { Symbol.Intern ("i16"), Token.I16 },
@@ -42,6 +44,8 @@ namespace Repil.IR
             { Symbol.Intern ("null"), Token.NULL },
             { Symbol.Intern ("br"), Token.BR },
             { Symbol.Intern ("label"), Token.LABEL },
+            { Symbol.Intern ("bitcast"), Token.BITCAST },
+            { Symbol.Intern ("to"), Token.TO },
         };
 
         public Lexer (string llvm)
@@ -97,6 +101,8 @@ namespace Repil.IR
                 case '}':
                 case '(':
                 case ')':
+                case '<':
+                case '>':
                     tok = s[p];
                     val = null;
                     p++;
@@ -155,6 +161,16 @@ namespace Repil.IR
                         else {
                             throw new InvalidOperationException ($"Unknown keyword '{sym}'");
                         }
+                    }
+                    break;
+                case var ch when char.IsDigit (ch): {
+                        var ep = p + 1;
+                        //var isfloat = false;
+                        while (ep < n && (char.IsDigit (s[ep]) || s[ep] == '.' || s[ep] == 'e' || s[ep] == '-'))
+                            ep++;
+                        val = BigInteger.Parse (s.Substring (p, ep - p));
+                        p = ep;
+                        tok = Token.INTEGER;
                     }
                     break;
                 default:

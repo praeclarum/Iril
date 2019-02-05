@@ -4,14 +4,14 @@ namespace Repil.Types
 {
     public class PointerType : LType
     {
-        public readonly LType TargetType;
+        public readonly LType ElementType;
         public readonly int AddressSpace;
 
         public static readonly PointerType PI8 = new PointerType (IntegerType.I8, 0);
 
-        public PointerType (LType target, int addressSpace)
+        public PointerType (LType elementType, int addressSpace)
         {
-            TargetType = target;
+            ElementType = elementType;
             AddressSpace = addressSpace;
         }
     }
