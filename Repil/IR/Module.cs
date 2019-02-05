@@ -37,7 +37,7 @@ namespace Repil.IR
                 parser.yyparse (lex, null);
             }
             catch (Exception ex) {
-                var m = $"{ex.Message} :\n{lex.Surrounding}";
+                var m = $"{ex.Message}\n{lex.Surrounding}";
                 throw new Exception (m, ex);
             }
             return module;

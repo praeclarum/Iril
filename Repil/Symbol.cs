@@ -12,7 +12,7 @@ namespace Repil
 
         public override string ToString () => Text;
 
-        Symbol (uint hash, string text)
+        protected Symbol (uint hash, string text)
         {
             Hash = hash;
             Text = text;
@@ -80,7 +80,13 @@ namespace Repil
                             return e.Symbol;
                         }
                     }
-                    var symbol = new Symbol (hash, code.Substring (index, length));
+                    var text = code.Substring (index, length);
+                    var symbol =
+                        text[0] == '@'
+                        ? new GlobalSymbol (hash, text)
+                        : (text[0] == '%'
+                           ? new LocalSymbol (hash, text)
+                           : new Symbol (hash, text));
                     e = new Entry {
                         Next = bucket.Head,
                         Symbol = symbol,
@@ -94,5 +100,19 @@ namespace Repil
 
     public class SymbolTable<T> : Dictionary<Symbol, T>
     {
+    }
+
+    public class GlobalSymbol : Symbol
+    {
+        public GlobalSymbol (uint hash, string text) : base (hash, text)
+        {
+        }
+    }
+
+    public class LocalSymbol : Symbol
+    {
+        public LocalSymbol (uint hash, string text) : base (hash, text)
+        {
+        }
     }
 }

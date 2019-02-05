@@ -41,11 +41,11 @@ namespace Repil.IR
                 var min = lastP;
                 while (min >= 0 && s[min] != '\n')
                     min--;
-                var max = lastP;
+                var max = lastP + 1;
                 while (max < n && s[max] != '\n')
                     max++;
                 var line = s.Substring (min + 1, max - min - 1);
-                var arrow = new String ('~', lastP - min) + "^";
+                var arrow = new String ('~', lastP - min - 1) + "^";
                 return line + "\n" + arrow;
             }
         }
@@ -55,8 +55,6 @@ namespace Repil.IR
             var s = code;
             var n = s.Length;
 
-            lastP = p;
-
             while (p < n && (char.IsWhiteSpace (s[p]) || s[p] == ';')) {
                 if (s[p] == ';') {
                     while (p < n && (s[p] != '\n'))
@@ -64,6 +62,8 @@ namespace Repil.IR
                 }
                 p++;
             }
+
+            lastP = p;
 
             if (p >= n) {
                 tok = -1;
@@ -101,23 +101,28 @@ namespace Repil.IR
                         }
                     }
                     break;
-                case '@':
-                case '%' when p + 1 < n && (char.IsLetter (s[p + 1]) || s[p + 1] == '_' || s[p + 1] == '.' || s[p + 1] == '-'): {
-                        var ep = p + 1;
-                        while (ep < n && (char.IsLetterOrDigit (s[ep]) || s[ep] == '_' || s[ep] == '.' || s[ep] == '-'))
-                            ep++;
-                        var sym = Symbol.Intern (s, p, ep - p);
-                        tok = s[p] == '@' ? Token.GLOBAL_SYMBOL : Token.LOCAL_SYMBOL;
-                        val = sym;
-                        p = ep;
-                    }
-                    break;
-                case '#' when p + 1 < n && (char.IsDigit (s[p + 1])): {
+                case '@' when p + 1 < n && char.IsDigit (s[p + 1]):
+                case '%' when p + 1 < n && char.IsDigit (s[p + 1]):
+                case '#' when p + 1 < n && char.IsDigit (s[p + 1]): {
                         var ep = p + 1;
                         while (ep < n && (char.IsDigit (s[ep])))
                             ep++;
                         var sym = Symbol.Intern (s, p, ep - p);
-                        tok = Token.ATTRIBUTE_GROUP_REF;
+                        tok = s[p] == '@' ? Token.GLOBAL_SYMBOL :
+                            (s[p] == '%' ? Token.LOCAL_SYMBOL : Token.ATTRIBUTE_GROUP_REF);
+                        val = sym;
+                        p = ep;
+                    }
+                    break;
+                case '@' when p + 1 < n && IsNamedStart (s[p + 1]):
+                case '%' when p + 1 < n && IsNamedStart (s[p + 1]):
+                case '#' when p + 1 < n && IsNamedStart (s[p + 1]): {
+                        var ep = p + 1;
+                        while (ep < n && (char.IsLetterOrDigit (s[ep]) || s[ep] == '_' || s[ep] == '.' || s[ep] == '-'))
+                            ep++;
+                        var sym = Symbol.Intern (s, p, ep - p);
+                        tok = s[p] == '@' ? Token.GLOBAL_SYMBOL :
+                            (s[p] == '%' ? Token.LOCAL_SYMBOL : Token.ATTRIBUTE_GROUP_REF);
                         val = sym;
                         p = ep;
                     }
@@ -128,20 +133,25 @@ namespace Repil.IR
                             ep++;
                         var sym = Symbol.Intern (s, p, ep - p);
                         val = sym;
+                        p = ep;
                         if (keywords.TryGetValue (sym, out var t)) {
                             tok = t;
                         }
                         else {
-                            throw new NotSupportedException (sym.ToString ());
+                            throw new InvalidOperationException ($"Unknown keyword '{sym}'");
                         }
-                        p = ep;
                     }
                     break;
                 default:
-                    throw new NotSupportedException (s[p].ToString ());
+                    throw new InvalidOperationException ($"Unexpected '{s[p++]}'");
             }
 
             return true;
+        }
+
+        bool IsNamedStart (char c)
+        {
+            return char.IsLetterOrDigit (c) || c == '_' || c == '.' || c == '-';
         }
 
         public int token () => tok;

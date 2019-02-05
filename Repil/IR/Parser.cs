@@ -81,7 +81,7 @@ namespace Repil.IR
 //t    "type : type '(' type_list ')'",
 //t    "type : type '*'",
 //t    "type : LOCAL_SYMBOL",
-//t    "function_definition : DEFINE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs",
+//t    "function_definition : DEFINE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs '{' instructions '}'",
 //t    "parameter_list : parameter",
 //t    "parameter_list : parameter_list parameter",
 //t    "parameter : type",
@@ -90,6 +90,12 @@ namespace Repil.IR
 //t    "attribute_group_refs : attribute_group_ref",
 //t    "attribute_group_refs : attribute_group_refs attribute_group_ref",
 //t    "attribute_group_ref : ATTRIBUTE_GROUP_REF",
+//t    "instructions : instruction",
+//t    "instructions : instructions instruction",
+//t    "instruction : terminal_instruction",
+//t    "instruction : assign_instruction",
+//t    "terminal_instruction : RET",
+//t    "assign_instruction : LOCAL_SYMBOL '=' PHI",
 //t  };
 //t public static string getRule (int index) {
 //t    return yyRule [index];
@@ -118,6 +124,7 @@ namespace Repil.IR
     "SOURCE_FILENAME","TARGET","DATALAYOUT","TRIPLE","GLOBAL_SYMBOL",
     "LOCAL_SYMBOL","TYPE","HALF","FLOAT","DOUBLE","I8","I16","I32","I64",
     "DEFINE","UNNAMED_ADDR","LOCAL_UNNAMED_ADDR","ATTRIBUTE_GROUP_REF",
+    "RET","PHI",
   };
 
   /** index-checked interface to yyNames[].
@@ -303,25 +310,25 @@ namespace Repil.IR
         yyVal = yyV > yyTop ? null : yyVals[yyV]; // yyVal = yyDefault(yyV > yyTop ? null : yyVals[yyV]);
         switch (yyN) {
 case 4:
-#line 40 "Repil/IR/IR.jay"
+#line 42 "Repil/IR/IR.jay"
   {
         module.SourceFilename = (string)yyVals[0+yyTop];
     }
   break;
 case 5:
-#line 44 "Repil/IR/IR.jay"
+#line 46 "Repil/IR/IR.jay"
   {
         module.TargetDatalayout = (string)yyVals[0+yyTop];
     }
   break;
 case 6:
-#line 48 "Repil/IR/IR.jay"
+#line 50 "Repil/IR/IR.jay"
   {
         module.TargetTriple = (string)yyVals[0+yyTop];
     }
   break;
 case 7:
-#line 52 "Repil/IR/IR.jay"
+#line 54 "Repil/IR/IR.jay"
   {
         module.IdentifiedStructures[(Symbol)yyVals[-3+yyTop]] = (StructureType)yyVals[0+yyTop];
     }
@@ -330,66 +337,67 @@ case 9:
   case_9();
   break;
 case 10:
-#line 68 "Repil/IR/IR.jay"
+#line 70 "Repil/IR/IR.jay"
   {
         yyVal = NewList ((LType)yyVals[0+yyTop]);
     }
   break;
 case 11:
-#line 72 "Repil/IR/IR.jay"
+#line 74 "Repil/IR/IR.jay"
   {
         yyVal = ListAdd (yyVals[-2+yyTop], (LType)yyVals[0+yyTop]);
     }
   break;
 case 13:
-#line 77 "Repil/IR/IR.jay"
+#line 79 "Repil/IR/IR.jay"
   { yyVal = FloatType.Half; }
   break;
 case 14:
-#line 78 "Repil/IR/IR.jay"
+#line 80 "Repil/IR/IR.jay"
   { yyVal = FloatType.Float; }
   break;
 case 15:
-#line 79 "Repil/IR/IR.jay"
+#line 81 "Repil/IR/IR.jay"
   { yyVal = FloatType.Double; }
   break;
 case 16:
-#line 80 "Repil/IR/IR.jay"
-  { yyVal = IntegerType.I8; }
-  break;
-case 17:
-#line 81 "Repil/IR/IR.jay"
-  { yyVal = IntegerType.I8; }
-  break;
-case 18:
 #line 82 "Repil/IR/IR.jay"
   { yyVal = IntegerType.I8; }
   break;
-case 19:
+case 17:
 #line 83 "Repil/IR/IR.jay"
   { yyVal = IntegerType.I8; }
   break;
+case 18:
+#line 84 "Repil/IR/IR.jay"
+  { yyVal = IntegerType.I8; }
+  break;
+case 19:
+#line 85 "Repil/IR/IR.jay"
+  { yyVal = IntegerType.I8; }
+  break;
 case 20:
-#line 87 "Repil/IR/IR.jay"
+#line 89 "Repil/IR/IR.jay"
   {
         yyVal = new FunctionType ();
     }
   break;
 case 21:
-#line 91 "Repil/IR/IR.jay"
+#line 93 "Repil/IR/IR.jay"
   {
         yyVal = new PointerType ((LType)yyVals[-1+yyTop], 0);
     }
   break;
 case 22:
-#line 95 "Repil/IR/IR.jay"
+#line 97 "Repil/IR/IR.jay"
   {
         yyVal = new NamedType ((Symbol)yyVals[0+yyTop]);
     }
   break;
 case 23:
-#line 101 "Repil/IR/IR.jay"
+#line 104 "Repil/IR/IR.jay"
   {
+        var f = new FunctionDefinition ((GlobalSymbol)yyVals[-8+yyTop], (LType)yyVals[-9+yyTop], (List<Parameter>)yyVals[-6+yyTop], (List<Instruction>)yyVals[-1+yyTop]);
     }
   break;
 #line default
@@ -428,7 +436,7 @@ case 23:
  All more than 3 lines long rules are wrapped into a method
 */
 void case_9()
-#line 58 "Repil/IR/IR.jay"
+#line 60 "Repil/IR/IR.jay"
 {
         var s = new LiteralStructureType ();
         yyVal = s;
@@ -438,14 +446,14 @@ void case_9()
    static readonly short [] yyLhs  = {              -1,
     0,    1,    1,    2,    2,    2,    2,    2,    3,    5,
     5,    6,    6,    6,    6,    6,    6,    6,    6,    6,
-    6,    6,    4,    7,    7,   10,    8,    8,    9,    9,
-   11,
+    6,    6,    4,    7,    7,   11,    8,    8,    9,    9,
+   12,   10,   10,   13,   13,   14,   15,
   };
    static readonly short [] yyLen = {           2,
     1,    1,    2,    3,    4,    4,    4,    1,    3,    1,
     3,    1,    1,    1,    1,    1,    1,    1,    1,    4,
-    2,    1,    8,    1,    2,    1,    1,    1,    1,    2,
-    1,
+    2,    1,   11,    1,    2,    1,    1,    1,    1,    2,
+    1,    1,    2,    1,    1,    1,    3,
   };
    static readonly short [] yyDefRed = {            0,
     0,    0,    0,    0,    0,    0,    2,    8,    0,    0,
@@ -453,94 +461,89 @@ void case_9()
     0,   12,    0,    3,    4,    0,    0,    0,    0,    0,
     0,    0,   21,    5,    6,    7,    9,    0,    0,    0,
     0,    0,    0,   24,   20,    0,   25,   27,   28,    0,
-   31,    0,   29,   30,
+   31,    0,   29,    0,   30,    0,   36,    0,   32,   34,
+   35,    0,   23,   33,   37,
   };
   protected static readonly short [] yyDgoto  = {             5,
-    6,    7,   22,    8,   29,   30,   43,   50,   52,   44,
-   53,
+    6,    7,   22,    8,   29,   30,   43,   50,   52,   58,
+   44,   53,   59,   60,   61,
   };
-  protected static readonly short [] yySindex = {         -246,
-  -50, -238,  -46, -121,    0, -246,    0,    0, -241,  -40,
-  -33, -236,    0,    0,    0,    0,    0,    0,    0,    0,
- -121,    0,  -30,    0,    0, -228, -227,  -91,  -39,  -20,
-   -7, -121,    0,    0,    0,    0,    0, -121, -121,  -25,
-  -20,  -20,  -41,    0,    0, -249,    0,    0,    0, -242,
-    0, -242,    0,    0,
+  protected static readonly short [] yySindex = {         -245,
+  -45, -235,  -43, -119,    0, -245,    0,    0, -236,  -37,
+  -29, -232,    0,    0,    0,    0,    0,    0,    0,    0,
+ -119,    0,  -39,    0,    0, -229, -224,  -88,  -38,  -19,
+   -4, -119,    0,    0,    0,    0,    0, -119, -119,  -24,
+  -19,  -19,  -41,    0,    0, -244,    0,    0,    0, -239,
+    0, -121,    0, -252,    0,  -23,    0, -120,    0,    0,
+    0, -238,    0,    0,    0,
   };
   protected static readonly short [] yyRindex = {            0,
-    0,    0,    0,    0,    0,   35,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,   39,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,  -38,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,  -33,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-  -37,  -32,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    1,    0,    0,
+  -31,  -32,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,
   };
   protected static readonly short [] yyGindex = {            0,
-    0,   30,    9,    0,    6,    4,    0,    0,    0,   -4,
-  -12,
+    0,   37,   16,    0,   13,    3,    0,    0,    0,    0,
+    4,   -3,  -10,    0,    0,
   };
   protected static readonly short [] yyTable = {            46,
-   23,   21,   10,   11,   38,   10,   11,   23,   26,   32,
-    9,   33,    1,    2,   12,   45,   25,    3,   38,   32,
-   26,   33,   10,   11,   48,   49,    4,   27,   28,   34,
-   35,   21,   39,   51,    1,   24,   36,   40,   47,   54,
-    0,   41,   42,    0,    0,    0,   42,    0,    0,    0,
+   32,   54,   33,   21,   63,   38,   23,   10,   26,   11,
+   10,   56,   11,    1,    2,    9,   45,   12,    3,   38,
+   32,   25,   33,   26,   57,   10,   11,    4,   34,   48,
+   49,   27,   28,   35,   21,   39,   51,   62,    1,   65,
+   41,   42,   24,   36,   40,   42,   47,   64,   55,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,   21,    0,    0,    0,   37,   10,   11,    0,    0,
-   26,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,   13,    0,   14,   15,   16,   17,   18,   19,
-   20,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,   21,    0,    0,    0,    0,   37,    0,    0,    0,
+   26,   10,    0,   11,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,   56,   13,    0,   14,   15,   16,   17,
+   18,   19,   20,    0,   51,    0,   57,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,   13,    0,   14,   15,   16,   17,   18,   19,
-   20,   26,   31,   26,   26,   26,   26,   26,   26,   26,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,   23,
-   23,    0,    0,    0,   23,    0,    0,    0,    0,    0,
-    0,    0,    0,   23,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,   13,   31,   14,   15,   16,   17,   18,   19,
+   20,   26,    0,   26,   26,   26,   26,   26,   26,   26,
   };
   protected static readonly short [] yyCheck = {            41,
-    0,  123,   41,   41,   44,   44,   44,    4,   41,   40,
-   61,   42,  259,  260,   61,   41,  258,  264,   44,   40,
-   61,   42,  261,  262,  274,  275,  273,   61,  265,  258,
-  258,  123,   40,  276,    0,    6,   28,   32,   43,   52,
-   -1,   38,   39,   -1,   -1,   -1,   43,   -1,   -1,   -1,
+   40,  123,   42,  123,  125,   44,    4,   41,   41,   41,
+   44,  264,   44,  259,  260,   61,   41,   61,  264,   44,
+   40,  258,   42,   61,  277,  261,  262,  273,  258,  274,
+  275,   61,  265,  258,  123,   40,  276,   61,    0,  278,
+   38,   39,    6,   28,   32,   43,   43,   58,   52,   -1,
    -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
    -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
    -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,  123,   -1,   -1,   -1,  125,  125,  125,   -1,   -1,
-  123,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,  264,   -1,  266,  267,  268,  269,  270,  271,
-  272,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,  123,   -1,   -1,   -1,   -1,  125,   -1,   -1,   -1,
+  123,  125,   -1,  125,   -1,   -1,   -1,   -1,   -1,   -1,
    -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
    -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
    -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
    -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,  264,  264,   -1,  266,  267,  268,  269,
+  270,  271,  272,   -1,  276,   -1,  277,   -1,   -1,   -1,
    -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
    -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,  264,   -1,  266,  267,  268,  269,  270,  271,
-  272,  264,  263,  266,  267,  268,  269,  270,  271,  272,
    -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  259,
-  260,   -1,   -1,   -1,  264,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,  273,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,  264,  263,  266,  267,  268,  269,  270,  271,
+  272,  264,   -1,  266,  267,  268,  269,  270,  271,  272,
   };
 
-#line 128 "Repil/IR/IR.jay"
+#line 149 "Repil/IR/IR.jay"
 
 }
 
@@ -641,6 +644,8 @@ namespace yydebug {
   public const int UNNAMED_ADDR = 274;
   public const int LOCAL_UNNAMED_ADDR = 275;
   public const int ATTRIBUTE_GROUP_REF = 276;
+  public const int RET = 277;
+  public const int PHI = 278;
   public const int yyErrorCode = 256;
  }
  namespace yyParser {

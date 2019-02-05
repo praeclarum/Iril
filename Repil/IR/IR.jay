@@ -20,6 +20,8 @@ namespace Repil.IR
 %token TYPE HALF FLOAT DOUBLE I8 I16 I32 I64
 %token DEFINE UNNAMED_ADDR LOCAL_UNNAMED_ADDR
 %token ATTRIBUTE_GROUP_REF
+%token RET
+%token PHI
 
 %start module
 %%
@@ -96,8 +98,9 @@ type
     ;
     
 function_definition
-    : DEFINE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs
+    : DEFINE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs '{' instructions '}'
     {
+        var f = new FunctionDefinition ((GlobalSymbol)$3, (LType)$2, (List<Parameter>)$5, (List<Instruction>)$10);
     }
     ;
     
@@ -122,6 +125,24 @@ attribute_group_refs
     
 attribute_group_ref
     : ATTRIBUTE_GROUP_REF
+    ;
+    
+instructions
+    : instruction
+    | instructions instruction
+    ;
+    
+instruction
+    : terminal_instruction
+    | assign_instruction
+    ;
+    
+terminal_instruction
+    : RET
+    ;
+    
+assign_instruction
+    : LOCAL_SYMBOL '=' PHI
     ;
     
 %%
