@@ -92,16 +92,6 @@ namespace Repil.IR
 //t    "attribute_group_refs : attribute_group_ref",
 //t    "attribute_group_refs : attribute_group_refs attribute_group_ref",
 //t    "attribute_group_ref : ATTRIBUTE_GROUP_REF",
-//t    "instructions : instruction",
-//t    "instructions : instructions instruction",
-//t    "instruction : terminal_instruction",
-//t    "instruction : assign_instruction",
-//t    "instruction : STORE typed_value ',' typed_value ',' ALIGN INTEGER ',' tbaa",
-//t    "terminal_instruction : RET",
-//t    "terminal_instruction : BR I1 value ',' label_value ',' label_value",
-//t    "terminal_instruction : BR label_value",
-//t    "assign_instruction : LOCAL_SYMBOL '=' ICMP icmp_condition type value ',' value",
-//t    "assign_instruction : LOCAL_SYMBOL '=' BITCAST typed_value TO type",
 //t    "icmp_condition : EQ",
 //t    "icmp_condition : NE",
 //t    "icmp_condition : UGT",
@@ -116,6 +106,7 @@ namespace Repil.IR
 //t    "value : LOCAL_SYMBOL",
 //t    "constant : NULL",
 //t    "constant : FLOAT_LITERAL",
+//t    "constant : INTEGER",
 //t    "constant : '<' typed_constants '>'",
 //t    "label_value : LABEL LOCAL_SYMBOL",
 //t    "typed_value : type value",
@@ -123,6 +114,20 @@ namespace Repil.IR
 //t    "typed_constants : typed_constant",
 //t    "typed_constants : typed_constants ',' typed_constant",
 //t    "tbaa : META_SYMBOL META_SYMBOL",
+//t    "element_index : type INTEGER",
+//t    "element_indices : element_index",
+//t    "element_indices : element_indices ',' element_index",
+//t    "instructions : instruction",
+//t    "instructions : instructions instruction",
+//t    "instruction : terminal_instruction",
+//t    "instruction : assign_instruction",
+//t    "instruction : STORE typed_value ',' typed_value ',' ALIGN INTEGER ',' tbaa",
+//t    "terminal_instruction : RET",
+//t    "terminal_instruction : BR I1 value ',' label_value ',' label_value",
+//t    "terminal_instruction : BR label_value",
+//t    "assign_instruction : LOCAL_SYMBOL '=' ICMP icmp_condition type value ',' value",
+//t    "assign_instruction : LOCAL_SYMBOL '=' BITCAST typed_value TO type",
+//t    "assign_instruction : LOCAL_SYMBOL '=' GETELEMENTPTR INBOUNDS type ',' typed_value ',' element_indices",
 //t  };
 //t public static string getRule (int index) {
 //t    return yyRule [index];
@@ -158,11 +163,12 @@ namespace Repil.IR
     "SREM","FREM","SHL","LSHR","ASHR","AND","OR","XOR","EXTRACTELEMENT",
     "INSERTELEMENT","SHUFFLEVECTOR","EXTRACTVALUE","INSERTVALUE","ALLOCA",
     "LOAD","STORE","FENCE","CMPXCHG","ATOMICRMW","GETELEMENTPTR","ALIGN",
-    "TRUNC","ZEXT","SEXT","FPTRUNC","FPEXT","TO","FPTOUI","FPTOSI",
-    "UITOFP","SITOFP","PTRTOINT","INTTOPTR","BITCAST","ADDRSPACECAST",
-    "ICMP","EQ","NE","UGT","UGE","ULT","ULE","SGT","SGE","SLT","SLE",
-    "FCMP","OEQ","OGT","OGE","OLT","OLE","ONE","ORD","UEQ","UNE","UNO",
-    "PHI","SELECT","CALL","VA_ARG","LANDINGPAD","CATCHPAD","CLEANUPPAD",
+    "INBOUNDS","INRANGE","TRUNC","ZEXT","SEXT","FPTRUNC","FPEXT","TO",
+    "FPTOUI","FPTOSI","UITOFP","SITOFP","PTRTOINT","INTTOPTR","BITCAST",
+    "ADDRSPACECAST","ICMP","EQ","NE","UGT","UGE","ULT","ULE","SGT","SGE",
+    "SLT","SLE","FCMP","OEQ","OGT","OGE","OLT","OLE","ONE","ORD","UEQ",
+    "UNE","UNO","PHI","SELECT","CALL","VA_ARG","LANDINGPAD","CATCHPAD",
+    "CLEANUPPAD",
   };
 
   /** index-checked interface to yyNames[].
@@ -444,116 +450,144 @@ case 24:
         var f = new FunctionDefinition ((GlobalSymbol)yyVals[-8+yyTop], (LType)yyVals[-9+yyTop], (List<Parameter>)yyVals[-6+yyTop], (List<Instruction>)yyVals[-1+yyTop]);
     }
   break;
-case 39:
-#line 163 "Repil/IR/IR.jay"
-  {
-        yyVal = new ConditionalBrInstruction ((Value)yyVals[-4+yyTop], (LabelValue)yyVals[-2+yyTop], (LabelValue)yyVals[0+yyTop]);
-    }
-  break;
-case 40:
-#line 167 "Repil/IR/IR.jay"
-  {
-        yyVal = new UnconditionalBrInstruction ((LabelValue)yyVals[0+yyTop]);
-    }
-  break;
-case 41:
-#line 174 "Repil/IR/IR.jay"
-  {
-        yyVal = new IcmpInstruction ((LocalSymbol)yyVals[-7+yyTop], (IcmpCondition)yyVals[-4+yyTop], (LType)yyVals[-3+yyTop], (Value)yyVals[-2+yyTop], (Value)yyVals[0+yyTop]);
-    }
-  break;
-case 42:
-#line 178 "Repil/IR/IR.jay"
-  {
-        yyVal = new BitcastInstruction ((LocalSymbol)yyVals[-5+yyTop], (TypedValue)yyVals[-2+yyTop], (LType)yyVals[0+yyTop]);
-    }
-  break;
-case 43:
-#line 182 "Repil/IR/IR.jay"
+case 33:
+#line 148 "Repil/IR/IR.jay"
   { yyVal = IcmpCondition.Equal; }
   break;
-case 44:
-#line 183 "Repil/IR/IR.jay"
+case 34:
+#line 149 "Repil/IR/IR.jay"
   { yyVal = IcmpCondition.NotEqual; }
   break;
-case 45:
-#line 184 "Repil/IR/IR.jay"
+case 35:
+#line 150 "Repil/IR/IR.jay"
   { yyVal = IcmpCondition.UnsignedGreaterThan; }
   break;
-case 46:
-#line 185 "Repil/IR/IR.jay"
+case 36:
+#line 151 "Repil/IR/IR.jay"
   { yyVal = IcmpCondition.UnsignedGreaterThanOrEqual; }
   break;
-case 47:
-#line 186 "Repil/IR/IR.jay"
+case 37:
+#line 152 "Repil/IR/IR.jay"
   { yyVal = IcmpCondition.UnsignedLessThan; }
   break;
-case 48:
-#line 187 "Repil/IR/IR.jay"
+case 38:
+#line 153 "Repil/IR/IR.jay"
   { yyVal = IcmpCondition.UnsignedLessThanOrEqual; }
   break;
-case 49:
-#line 188 "Repil/IR/IR.jay"
+case 39:
+#line 154 "Repil/IR/IR.jay"
   { yyVal = IcmpCondition.SignedGreaterThan; }
   break;
-case 50:
-#line 189 "Repil/IR/IR.jay"
+case 40:
+#line 155 "Repil/IR/IR.jay"
   { yyVal = IcmpCondition.SignedGreaterThanOrEqual; }
   break;
-case 51:
-#line 190 "Repil/IR/IR.jay"
+case 41:
+#line 156 "Repil/IR/IR.jay"
   { yyVal = IcmpCondition.SignedLessThan; }
   break;
-case 52:
-#line 191 "Repil/IR/IR.jay"
+case 42:
+#line 157 "Repil/IR/IR.jay"
   { yyVal = IcmpCondition.SignedLessThanOrEqual; }
   break;
-case 54:
-#line 196 "Repil/IR/IR.jay"
+case 44:
+#line 162 "Repil/IR/IR.jay"
   { yyVal = new LocalValue ((LocalSymbol)yyVals[0+yyTop]); }
   break;
-case 55:
-#line 200 "Repil/IR/IR.jay"
+case 45:
+#line 166 "Repil/IR/IR.jay"
   { yyVal = NullConstant.Null; }
   break;
-case 56:
-#line 201 "Repil/IR/IR.jay"
+case 46:
+#line 167 "Repil/IR/IR.jay"
   { yyVal = new FloatConstant ((double)yyVals[0+yyTop]); }
   break;
-case 57:
-#line 205 "Repil/IR/IR.jay"
+case 47:
+#line 168 "Repil/IR/IR.jay"
+  { yyVal = new IntegerConstant ((BigInteger)yyVals[0+yyTop]); }
+  break;
+case 48:
+#line 172 "Repil/IR/IR.jay"
   {
         yyVal = new VectorConstant ((List<TypedConstant>)yyVals[-1+yyTop]);
     }
   break;
-case 58:
-#line 212 "Repil/IR/IR.jay"
+case 49:
+#line 179 "Repil/IR/IR.jay"
   {
         yyVal = new LabelValue ((LocalSymbol)yyVals[0+yyTop]);
     }
   break;
-case 59:
-#line 219 "Repil/IR/IR.jay"
+case 50:
+#line 186 "Repil/IR/IR.jay"
   {
         yyVal = new TypedValue ((LType)yyVals[-1+yyTop], (Value)yyVals[0+yyTop]);
     }
   break;
-case 60:
-#line 226 "Repil/IR/IR.jay"
+case 51:
+#line 193 "Repil/IR/IR.jay"
   {
         yyVal = new TypedConstant ((LType)yyVals[-1+yyTop], (Constant)yyVals[0+yyTop]);
     }
   break;
-case 61:
-#line 233 "Repil/IR/IR.jay"
+case 52:
+#line 200 "Repil/IR/IR.jay"
   {
         yyVal = NewList ((TypedConstant)yyVals[0+yyTop]);
     }
   break;
-case 62:
-#line 237 "Repil/IR/IR.jay"
+case 53:
+#line 204 "Repil/IR/IR.jay"
   {
         yyVal = ListAdd (yyVals[-2+yyTop], (TypedConstant)yyVals[0+yyTop]);
+    }
+  break;
+case 55:
+#line 215 "Repil/IR/IR.jay"
+  {
+        yyVal = (int)(BigInteger)yyVals[0+yyTop];
+    }
+  break;
+case 56:
+#line 222 "Repil/IR/IR.jay"
+  {
+        yyVal = NewList ((int)yyVals[0+yyTop]);
+    }
+  break;
+case 57:
+#line 226 "Repil/IR/IR.jay"
+  {
+        yyVal = ListAdd (yyVals[-2+yyTop], (int)yyVals[0+yyTop]);
+    }
+  break;
+case 64:
+#line 245 "Repil/IR/IR.jay"
+  {
+        yyVal = new ConditionalBrInstruction ((Value)yyVals[-4+yyTop], (LabelValue)yyVals[-2+yyTop], (LabelValue)yyVals[0+yyTop]);
+    }
+  break;
+case 65:
+#line 249 "Repil/IR/IR.jay"
+  {
+        yyVal = new UnconditionalBrInstruction ((LabelValue)yyVals[0+yyTop]);
+    }
+  break;
+case 66:
+#line 256 "Repil/IR/IR.jay"
+  {
+        yyVal = new IcmpInstruction ((LocalSymbol)yyVals[-7+yyTop], (IcmpCondition)yyVals[-4+yyTop], (LType)yyVals[-3+yyTop], (Value)yyVals[-2+yyTop], (Value)yyVals[0+yyTop]);
+    }
+  break;
+case 67:
+#line 260 "Repil/IR/IR.jay"
+  {
+        yyVal = new BitcastInstruction ((LocalSymbol)yyVals[-5+yyTop], (TypedValue)yyVals[-2+yyTop], (LType)yyVals[0+yyTop]);
+    }
+  break;
+case 68:
+#line 264 "Repil/IR/IR.jay"
+  {
+        yyVal = new GetElementPointerInstruction ((LocalSymbol)yyVals[-8+yyTop], (LType)yyVals[-4+yyTop], (TypedValue)yyVals[-2+yyTop], (List<int>)yyVals[0+yyTop]);
     }
   break;
 #line default
@@ -603,19 +637,19 @@ void case_9()
     0,    1,    1,    2,    2,    2,    2,    2,    3,    5,
     5,    6,    6,    6,    6,    6,    6,    6,    6,    6,
     6,    6,    6,    4,    7,    7,   11,    8,    8,    9,
-    9,   12,   10,   10,   13,   13,   13,   14,   14,   14,
-   15,   15,   20,   20,   20,   20,   20,   20,   20,   20,
-   20,   20,   18,   18,   21,   21,   21,   19,   16,   23,
-   22,   22,   17,
+    9,   12,   13,   13,   13,   13,   13,   13,   13,   13,
+   13,   13,   14,   14,   15,   15,   15,   15,   17,   18,
+   19,   16,   16,   20,   21,   22,   22,   10,   10,   23,
+   23,   23,   24,   24,   24,   25,   25,   25,
   };
    static readonly short [] yyLen = {           2,
     1,    1,    2,    3,    4,    4,    4,    1,    3,    1,
     3,    1,    1,    1,    1,    1,    1,    1,    1,    4,
     2,    1,    5,   11,    1,    2,    1,    1,    1,    1,
-    2,    1,    1,    2,    1,    1,    9,    1,    7,    2,
-    8,    6,    1,    1,    1,    1,    1,    1,    1,    1,
-    1,    1,    1,    1,    1,    1,    3,    2,    2,    2,
-    1,    3,    2,
+    2,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+    1,    1,    1,    1,    1,    1,    1,    3,    2,    2,
+    2,    1,    3,    2,    2,    1,    3,    1,    2,    1,
+    1,    9,    1,    7,    2,    8,    6,    9,
   };
    static readonly short [] yyDefRed = {            0,
     0,    0,    0,    0,    0,    0,    2,    8,    0,    0,
@@ -624,114 +658,113 @@ void case_9()
     0,    0,    0,    0,   21,    5,    6,    7,    9,    0,
     0,    0,    0,    0,    0,    0,    0,   25,   20,   23,
     0,   26,   28,   29,    0,   32,    0,   30,    0,   31,
-    0,   38,    0,    0,    0,   33,   35,   36,    0,    0,
-    0,   40,    0,    0,   24,   34,    0,    0,   58,   56,
-   55,   54,    0,    0,   53,   59,    0,    0,   43,   44,
-   45,   46,   47,   48,   49,   50,   51,   52,    0,    0,
-    0,   61,    0,    0,    0,    0,   60,    0,   57,    0,
-    0,    0,    0,   62,    0,    0,    0,   39,    0,   41,
-    0,    0,   37,   63,
+    0,   63,    0,    0,    0,   58,   60,   61,    0,    0,
+    0,   65,    0,    0,   24,   59,    0,    0,    0,   49,
+   47,   46,   45,   44,    0,    0,   43,   50,    0,    0,
+    0,   33,   34,   35,   36,   37,   38,   39,   40,   41,
+   42,    0,    0,    0,   52,    0,    0,    0,    0,    0,
+   51,    0,   48,    0,    0,    0,    0,    0,   53,    0,
+    0,    0,    0,   64,    0,    0,   66,    0,    0,   56,
+    0,    0,   62,   55,    0,   54,   57,
   };
   protected static readonly short [] yyDgoto  = {             5,
     6,    7,   23,    8,   30,   73,   47,   55,   57,   65,
-   48,   58,   66,   67,   68,   74,  123,   84,   72,   99,
-   85,  101,  102,
+   48,   58,  102,   86,   87,  104,   72,   74,  105,  133,
+  130,  131,   66,   67,   68,
   };
-  protected static readonly short [] yySindex = {         -234,
-    1, -210,    2,  -19,    0, -234,    0,    0, -225,   14,
-   15, -230,    0,    0,    0,    0,    0,    0,    0,    0,
-  -19, -180,    0,  -34,    0,    0, -181, -179,  -44,  -28,
-   -2, -183,   43,  -19,    0,    0,    0,    0,    0,  -19,
-  -19,  -19,   11,   -2,  -13,   -2,  -41,    0,    0,    0,
- -223,    0,    0,    0, -200,    0, -110,    0, -260,    0,
-   24,    0, -228,  -19, -116,    0,    0,    0, -285, -182,
-  -55,    0,  -39,   45,    0,    0,  -19, -277,    0,    0,
-    0,    0,  -19,   46,    0,    0,  -19, -245,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,  -19,  -38,
-  -16,    0, -172,   48,  -19,  -39,    0,  -19,    0,   50,
- -231,   -2,   52,    0, -172, -157,  -55,    0,   57,    0,
- -168, -166,    0,    0,
+  protected static readonly short [] yySindex = {         -208,
+  -26, -203,  -23,  -53,    0, -208,    0,    0, -199,    8,
+   13, -197,    0,    0,    0,    0,    0,    0,    0,    0,
+  -53, -181,    0,  -34,    0,    0, -182, -180,  -45,  -40,
+   12, -184,   41,  -53,    0,    0,    0,    0,    0,  -53,
+  -53,  -53,    1,   12,   -6,   12,  -41,    0,    0,    0,
+ -211,    0,    0,    0, -201,    0, -109,    0, -254,    0,
+   23,    0, -226,  -53, -120,    0,    0,    0, -292, -183,
+  -58,    0,  -39,   42,    0,    0, -239,  -53, -225,    0,
+    0,    0,    0,    0,  -53,   45,    0,    0,  -53,  -53,
+ -244,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,  -53,  -16,  -21,    0, -171,   50,   19,  -53,  -39,
+    0,  -53,    0,   51, -229,  -53,   12,   54,    0, -171,
+ -158,   56,  -58,    0,   58,  -53,    0, -168,  -27,    0,
+   60, -166,    0,    0,  -53,    0,    0,
   };
   protected static readonly short [] yyRindex = {            0,
-    0,    0,    0,    0,    0,  106,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,  107,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-  -27,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,  -26,    0,  -30,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+  -24,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,  -19,    0,  -30,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0, -113,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0, -116,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+ -113,    0,    0,    0,    0,    0,    0,
   };
   protected static readonly short [] yyGindex = {            0,
-    0,  101,   80,    0,   76,    3,    0,    0,    0,    0,
-   65,   56,   49,    0,    0,  -54,    0,  -53,  -64,    0,
-   16,    0,    7,
+    0,  103,   81,    0,   77,    6,    0,    0,    0,    0,
+   65,   57,    0,  -55,   10,    0,  -77,  -50,    4,    0,
+  -18,    0,   64,    0,    0,
   };
   protected static readonly short [] yyTable = {            51,
-   34,   34,   35,   35,   83,   34,   24,   35,   75,   61,
-   27,   42,   59,   10,   11,   40,   10,   11,   22,   86,
-   83,   83,   88,   31,   62,   63,   34,  108,   35,   27,
-    1,    2,  104,   26,   70,    3,   31,   34,  110,   35,
-   22,   29,   44,   45,   46,  109,    4,   71,   50,   46,
-  118,   49,  113,   77,   40,   78,   10,   11,   53,   54,
-   64,    9,   12,  120,   89,   90,   91,   92,   93,   94,
-   95,   96,   97,   98,   27,   28,   32,   36,   21,   37,
-   41,   21,   42,   56,   69,  100,  105,   79,   87,  103,
-   70,  111,   27,  115,  116,  117,   39,   10,   11,  119,
-  121,  106,  122,   21,  124,    1,   25,  112,   38,   43,
-  100,   52,   60,   76,  114,  107,    0,    0,    0,    0,
+   34,   85,   35,   40,   75,   34,   22,   35,   67,   24,
+   27,   68,   34,   59,   35,   61,   10,   88,   22,   10,
+   85,   11,  112,   34,   11,   35,   31,   91,  114,   27,
+   62,   63,   77,   34,    9,   35,   70,   12,  107,   31,
+  113,   49,  124,   85,   40,   44,   45,   46,   78,   71,
+   79,   34,   46,   35,  118,   50,    1,    2,   34,   26,
+   35,    3,  116,   10,   11,  122,   64,  127,   27,   21,
+   53,   54,    4,   28,   29,   32,   36,   21,   37,   41,
+   42,   21,   56,   69,   39,   89,   80,   90,  106,  109,
+  103,   70,   27,  115,  120,  108,  121,  123,  125,  126,
+   10,  128,  132,  135,  136,   11,    1,  110,   25,   38,
+   43,   52,  111,   60,  117,  119,  137,  103,   92,   93,
+   94,   95,   96,   97,   98,   99,  100,  101,   76,    0,
+    0,  129,    0,    0,    0,    0,    0,    0,    0,    0,
+  129,    0,    0,    0,    0,    0,    0,    0,    0,   61,
+    0,    0,    0,   67,    0,    0,   68,    0,    0,    0,
+    0,    0,    0,    0,   62,   63,    0,    0,   67,   67,
+    0,   68,   68,    0,   56,    0,    0,    0,    0,    0,
     0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,   61,    0,    0,   42,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,   62,   63,
-    0,   42,   42,   56,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,   80,    0,   64,    0,   81,   42,    0,    0,
-    0,    0,    0,    0,   82,    0,    0,    0,   80,   80,
-    0,    0,   81,   81,    0,    0,    0,    0,   13,    0,
-   82,   14,   15,   16,   33,   17,   18,   19,   20,   27,
-    0,    0,   27,   27,   27,    0,   27,   27,   27,   27,
-   13,    0,    0,   14,   15,   16,    0,   17,   18,   19,
-   20,
+    0,    0,    0,    0,    0,    0,    0,    0,   81,   82,
+   64,    0,    0,   83,   67,    0,    0,   68,    0,    0,
+    0,   84,    0,    0,    0,    0,   13,   81,   82,   14,
+   15,   16,   83,   17,   18,   19,   20,    0,   13,  134,
+   84,   14,   15,   16,   33,   17,   18,   19,   20,   27,
+   81,   82,   27,   27,   27,   83,   27,   27,   27,   27,
   };
   protected static readonly short [] yyCheck = {            41,
-   40,   40,   42,   42,   60,   40,    4,   42,  125,  270,
-   41,  125,  123,   41,   41,   44,   44,   44,   60,   73,
-   60,   60,   77,   21,  285,  286,   40,   44,   42,   60,
-  265,  266,   87,  259,  263,  270,   34,   40,  103,   42,
-   60,  272,   40,   41,   42,   62,  281,  276,   62,   47,
-  115,   41,  106,  339,   44,  341,  267,  268,  282,  283,
-  321,   61,   61,  117,  342,  343,  344,  345,  346,  347,
-  348,  349,  350,  351,   61,   61,  257,  259,  123,  259,
-  264,  123,   40,  284,   61,   83,  332,  270,   44,   44,
-  263,   44,  123,   44,  326,   44,  125,  125,  125,  257,
-   44,   99,  271,  123,  271,    0,    6,  105,   29,   34,
-  108,   47,   57,   65,  108,  100,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   40,   60,   42,   44,  125,   40,   60,   42,  125,    4,
+   41,  125,   40,  123,   42,  270,   41,   73,   60,   44,
+   60,   41,   44,   40,   44,   42,   21,   78,  106,   60,
+  285,  286,  325,   40,   61,   42,  263,   61,   89,   34,
+   62,   41,  120,   60,   44,   40,   41,   42,  341,  276,
+  343,   40,   47,   42,  110,   62,  265,  266,   40,  259,
+   42,  270,   44,  267,  268,  116,  321,  123,   61,  123,
+  282,  283,  281,   61,  272,  257,  259,  123,  259,  264,
+   40,  123,  284,   61,  125,   44,  270,  327,   44,  334,
+   85,  263,  123,   44,   44,   90,  326,   44,  257,   44,
+  125,   44,  271,   44,  271,  125,    0,  102,    6,   29,
+   34,   47,  103,   57,  109,  112,  135,  112,  344,  345,
+  346,  347,  348,  349,  350,  351,  352,  353,   65,   -1,
+   -1,  126,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+  135,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  270,
    -1,   -1,   -1,  270,   -1,   -1,  270,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  285,  286,
-   -1,  285,  286,  284,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,  285,  286,   -1,   -1,  285,  286,
+   -1,  285,  286,   -1,  284,   -1,   -1,   -1,   -1,   -1,
    -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
-   -1,   -1,  258,   -1,  321,   -1,  262,  321,   -1,   -1,
-   -1,   -1,   -1,   -1,  270,   -1,   -1,   -1,  258,  258,
-   -1,   -1,  262,  262,   -1,   -1,   -1,   -1,  270,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  257,  258,
+  321,   -1,   -1,  262,  321,   -1,   -1,  321,   -1,   -1,
+   -1,  270,   -1,   -1,   -1,   -1,  270,  257,  258,  273,
+  274,  275,  262,  277,  278,  279,  280,   -1,  270,  257,
   270,  273,  274,  275,  269,  277,  278,  279,  280,  270,
-   -1,   -1,  273,  274,  275,   -1,  277,  278,  279,  280,
-  270,   -1,   -1,  273,  274,  275,   -1,  277,  278,  279,
-  280,
+  257,  258,  273,  274,  275,  262,  277,  278,  279,  280,
   };
 
-#line 245 "Repil/IR/IR.jay"
+#line 268 "Repil/IR/IR.jay"
 
 }
 
@@ -882,49 +915,51 @@ namespace yydebug {
   public const int ATOMICRMW = 324;
   public const int GETELEMENTPTR = 325;
   public const int ALIGN = 326;
-  public const int TRUNC = 327;
-  public const int ZEXT = 328;
-  public const int SEXT = 329;
-  public const int FPTRUNC = 330;
-  public const int FPEXT = 331;
-  public const int TO = 332;
-  public const int FPTOUI = 333;
-  public const int FPTOSI = 334;
-  public const int UITOFP = 335;
-  public const int SITOFP = 336;
-  public const int PTRTOINT = 337;
-  public const int INTTOPTR = 338;
-  public const int BITCAST = 339;
-  public const int ADDRSPACECAST = 340;
-  public const int ICMP = 341;
-  public const int EQ = 342;
-  public const int NE = 343;
-  public const int UGT = 344;
-  public const int UGE = 345;
-  public const int ULT = 346;
-  public const int ULE = 347;
-  public const int SGT = 348;
-  public const int SGE = 349;
-  public const int SLT = 350;
-  public const int SLE = 351;
-  public const int FCMP = 352;
-  public const int OEQ = 353;
-  public const int OGT = 354;
-  public const int OGE = 355;
-  public const int OLT = 356;
-  public const int OLE = 357;
-  public const int ONE = 358;
-  public const int ORD = 359;
-  public const int UEQ = 360;
-  public const int UNE = 361;
-  public const int UNO = 362;
-  public const int PHI = 363;
-  public const int SELECT = 364;
-  public const int CALL = 365;
-  public const int VA_ARG = 366;
-  public const int LANDINGPAD = 367;
-  public const int CATCHPAD = 368;
-  public const int CLEANUPPAD = 369;
+  public const int INBOUNDS = 327;
+  public const int INRANGE = 328;
+  public const int TRUNC = 329;
+  public const int ZEXT = 330;
+  public const int SEXT = 331;
+  public const int FPTRUNC = 332;
+  public const int FPEXT = 333;
+  public const int TO = 334;
+  public const int FPTOUI = 335;
+  public const int FPTOSI = 336;
+  public const int UITOFP = 337;
+  public const int SITOFP = 338;
+  public const int PTRTOINT = 339;
+  public const int INTTOPTR = 340;
+  public const int BITCAST = 341;
+  public const int ADDRSPACECAST = 342;
+  public const int ICMP = 343;
+  public const int EQ = 344;
+  public const int NE = 345;
+  public const int UGT = 346;
+  public const int UGE = 347;
+  public const int ULT = 348;
+  public const int ULE = 349;
+  public const int SGT = 350;
+  public const int SGE = 351;
+  public const int SLT = 352;
+  public const int SLE = 353;
+  public const int FCMP = 354;
+  public const int OEQ = 355;
+  public const int OGT = 356;
+  public const int OGE = 357;
+  public const int OLT = 358;
+  public const int OLE = 359;
+  public const int ONE = 360;
+  public const int ORD = 361;
+  public const int UEQ = 362;
+  public const int UNE = 363;
+  public const int UNO = 364;
+  public const int PHI = 365;
+  public const int SELECT = 366;
+  public const int CALL = 367;
+  public const int VA_ARG = 368;
+  public const int LANDINGPAD = 369;
+  public const int CATCHPAD = 370;
+  public const int CLEANUPPAD = 371;
   public const int yyErrorCode = 256;
  }
  namespace yyParser {

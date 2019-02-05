@@ -53,6 +53,8 @@ namespace Repil.IR
             { Symbol.Intern ("to"), Token.TO },
             { Symbol.Intern ("store"), Token.STORE },
             { Symbol.Intern ("align"), Token.ALIGN },
+            { Symbol.Intern ("getelementptr"), Token.GETELEMENTPTR },
+            { Symbol.Intern ("inbounds"), Token.INBOUNDS },
         };
 
         public Lexer (string llvm)

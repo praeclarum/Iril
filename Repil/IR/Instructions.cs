@@ -1,5 +1,8 @@
 ﻿using System;
 using Repil.Types;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Repil.IR
 {
@@ -59,6 +62,21 @@ namespace Repil.IR
         public UnconditionalBrInstruction (LabelValue destination)
         {
             Destination = destination;
+        }
+    }
+
+    public class GetElementPointerInstruction : AssignInstruction
+    {
+        public readonly LType Type;
+        public readonly TypedValue Pointer;
+        public readonly int[] Indices;
+
+        public GetElementPointerInstruction (LocalSymbol result, LType type, TypedValue pointer, IEnumerable<int> indices)
+            : base (result)
+        {
+            Type = type;
+            Pointer = pointer;
+            Indices = indices.ToArray ();
         }
     }
 

@@ -28,7 +28,7 @@ namespace Repil.IR
 %token AND OR XOR
 %token EXTRACTELEMENT INSERTELEMENT SHUFFLEVECTOR
 %token EXTRACTVALUE INSERTVALUE
-%token ALLOCA LOAD STORE FENCE CMPXCHG ATOMICRMW GETELEMENTPTR ALIGN
+%token ALLOCA LOAD STORE FENCE CMPXCHG ATOMICRMW GETELEMENTPTR ALIGN INBOUNDS INRANGE
 %token TRUNC ZEXT SEXT FPTRUNC FPEXT TO
 %token FPTOUI FPTOSI UITOFP SITOFP PTRTOINT INTTOPTR BITCAST ADDRSPACECAST
 %token ICMP EQ NE UGT UGE ULT ULE SGT SGE SLT SLE
@@ -144,40 +144,6 @@ attribute_group_ref
     : ATTRIBUTE_GROUP_REF
     ;
     
-instructions
-    : instruction
-    | instructions instruction
-    ;
-    
-instruction
-    : terminal_instruction
-    | assign_instruction
-    | STORE typed_value ',' typed_value ',' ALIGN INTEGER ',' tbaa
-    ;
-    
-terminal_instruction
-    : RET
-    | BR I1 value ',' label_value ',' label_value
-    {
-        $$ = new ConditionalBrInstruction ((Value)$3, (LabelValue)$5, (LabelValue)$7);
-    }
-    | BR label_value
-    {
-        $$ = new UnconditionalBrInstruction ((LabelValue)$2);
-    }
-    ;
-    
-assign_instruction
-    : LOCAL_SYMBOL '=' ICMP icmp_condition type value ',' value
-    {
-        $$ = new IcmpInstruction ((LocalSymbol)$1, (IcmpCondition)$4, (LType)$5, (Value)$6, (Value)$8);
-    }
-    | LOCAL_SYMBOL '=' BITCAST typed_value TO type
-    {
-        $$ = new BitcastInstruction ((LocalSymbol)$1, (TypedValue)$4, (LType)$6);
-    }
-    ;
-    
 icmp_condition
     : EQ  { $$ = IcmpCondition.Equal; }
     | NE  { $$ = IcmpCondition.NotEqual; }
@@ -199,6 +165,7 @@ value
 constant
     : NULL            { $$ = NullConstant.Null; }
     | FLOAT_LITERAL   { $$ = new FloatConstant ((double)$1); }
+    | INTEGER         { $$ = new IntegerConstant ((BigInteger)$1); }
     | '<' typed_constants '>'
     {
         $$ = new VectorConstant ((List<TypedConstant>)$2);
@@ -237,10 +204,66 @@ typed_constants
     }
     ;
 
-            
 tbaa
     : META_SYMBOL META_SYMBOL
     ;
+    
+element_index
+    : type INTEGER
+    {
+        $$ = (int)(BigInteger)$2;
+    }
+    ;
+    
+element_indices
+    : element_index
+    {
+        $$ = NewList ((int)$1);
+    }
+    | element_indices ',' element_index
+    {
+        $$ = ListAdd ($1, (int)$3);
+    }
+    ;
+
+instructions
+    : instruction
+    | instructions instruction
+    ;
+    
+instruction
+    : terminal_instruction
+    | assign_instruction
+    | STORE typed_value ',' typed_value ',' ALIGN INTEGER ',' tbaa
+    ;
+    
+terminal_instruction
+    : RET
+    | BR I1 value ',' label_value ',' label_value
+    {
+        $$ = new ConditionalBrInstruction ((Value)$3, (LabelValue)$5, (LabelValue)$7);
+    }
+    | BR label_value
+    {
+        $$ = new UnconditionalBrInstruction ((LabelValue)$2);
+    }
+    ;
+    
+assign_instruction
+    : LOCAL_SYMBOL '=' ICMP icmp_condition type value ',' value
+    {
+        $$ = new IcmpInstruction ((LocalSymbol)$1, (IcmpCondition)$4, (LType)$5, (Value)$6, (Value)$8);
+    }
+    | LOCAL_SYMBOL '=' BITCAST typed_value TO type
+    {
+        $$ = new BitcastInstruction ((LocalSymbol)$1, (TypedValue)$4, (LType)$6);
+    }
+    | LOCAL_SYMBOL '=' GETELEMENTPTR INBOUNDS type ',' typed_value ',' element_indices
+    {
+        $$ = new GetElementPointerInstruction ((LocalSymbol)$1, (LType)$5, (TypedValue)$7, (List<int>)$9);
+    }
+    ;
+    
 %%
 
 }
