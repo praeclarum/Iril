@@ -2,8 +2,9 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <PreBuildEvent>cd $(SolutionDir) &amp;&amp; make</PreBuildEvent>
   </PropertyGroup>
-
+  
   <ItemGroup>
     <Folder Include="IR\" />
     <Folder Include="Types\" />

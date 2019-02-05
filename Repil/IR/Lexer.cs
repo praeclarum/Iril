@@ -10,7 +10,12 @@ namespace Repil.IR
         int p;
         int lastP;
         int tok;
-        object val;
+        object val = singleCharToken;
+
+        class SingleCharToken
+        {
+        }
+        static readonly SingleCharToken singleCharToken = new SingleCharToken ();
 
         static readonly Dictionary<Symbol, int> keywords = new Dictionary<Symbol, int> () {
             { Symbol.Intern ("source_filename"), Token.SOURCE_FILENAME },
@@ -46,6 +51,8 @@ namespace Repil.IR
             { Symbol.Intern ("label"), Token.LABEL },
             { Symbol.Intern ("bitcast"), Token.BITCAST },
             { Symbol.Intern ("to"), Token.TO },
+            { Symbol.Intern ("store"), Token.STORE },
+            { Symbol.Intern ("align"), Token.ALIGN },
         };
 
         public Lexer (string llvm)
@@ -86,7 +93,7 @@ namespace Repil.IR
 
             if (p >= n) {
                 tok = -1;
-                val = null;
+                val = singleCharToken;
                 return false;
             }
 
@@ -104,7 +111,7 @@ namespace Repil.IR
                 case '<':
                 case '>':
                     tok = s[p];
-                    val = null;
+                    val = singleCharToken;
                     p++;
                     break;
                 case '"': {
@@ -165,12 +172,21 @@ namespace Repil.IR
                     break;
                 case var ch when char.IsDigit (ch): {
                         var ep = p + 1;
-                        //var isfloat = false;
-                        while (ep < n && (char.IsDigit (s[ep]) || s[ep] == '.' || s[ep] == 'e' || s[ep] == '-'))
+                        var isfloat = false;
+                        while (ep < n && (char.IsDigit (s[ep]) || s[ep] == '.' || s[ep] == 'e' || s[ep] == '-' || s[ep] == '+')) {
+                            isfloat = isfloat || (s[ep] == '.' || s[ep] == 'e' || s[ep] == '-' || s[ep] == '+');
                             ep++;
-                        val = BigInteger.Parse (s.Substring (p, ep - p));
+                        }
+                        var ss = s.Substring (p, ep - p);
                         p = ep;
-                        tok = Token.INTEGER;
+                        if (isfloat) {
+                            val = double.Parse (ss);
+                            tok = Token.FLOAT_LITERAL;
+                        }
+                        else {
+                            val = BigInteger.Parse (ss);
+                            tok = Token.INTEGER;
+                        }
                     }
                     break;
                 default:

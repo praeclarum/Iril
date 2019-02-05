@@ -1,5 +1,9 @@
 ﻿using System;
 using System.Numerics;
+using System.Collections.Generic;
+using Repil.Types;
+using System.Linq;
+
 namespace Repil.IR
 {
     public abstract class Constant : Value
@@ -8,6 +12,22 @@ namespace Repil.IR
 
     public abstract class SimpleConstant : Constant
     {
+    }
+
+    public abstract class ComplexConstant : Constant
+    {
+    }
+
+    public class TypedConstant
+    {
+        public readonly LType Type;
+        public readonly Constant Constant;
+
+        public TypedConstant (LType type, Constant constant)
+        {
+            Type = type;
+            Constant = constant ?? throw new ArgumentNullException (nameof (constant));
+        }
     }
 
     public class BooleanConstant : SimpleConstant
@@ -49,6 +69,20 @@ namespace Repil.IR
 
         NullConstant ()
         {
+        }
+    }
+
+    public class VectorConstant : ComplexConstant
+    {
+        public readonly TypedConstant[] Constants;
+
+        public VectorConstant (IEnumerable<TypedConstant> constants)
+        {
+            if (constants == null) {
+                throw new ArgumentNullException (nameof (constants));
+            }
+
+            Constants = constants.ToArray ();
         }
     }
 }

@@ -23,15 +23,13 @@ namespace Repil.IR
 
     public class BitcastInstruction : AssignInstruction
     {
-        public readonly LType InputType;
-        public readonly Value Value;
+        public readonly TypedValue Input;
         public readonly LType OutputType;
 
-        public BitcastInstruction (LocalSymbol result, LType inputType, Value value, LType outputType)
+        public BitcastInstruction (LocalSymbol result, TypedValue input, LType outputType)
             : base (result)
         {
-            InputType = inputType;
-            Value = value;
+            Input = input;
             OutputType = outputType;
         }
     }
@@ -93,5 +91,17 @@ namespace Repil.IR
         SignedGreaterThanOrEqual,
         SignedLessThan,
         SignedLessThanOrEqual,
+    }
+
+    public class StoreInstruction : Instruction
+    {
+        public readonly TypedValue Value;
+        public readonly TypedValue Pointer;
+
+        public StoreInstruction (TypedValue value, TypedValue pointer)
+        {
+            Value = value;
+            Pointer = pointer;
+        }
     }
 }

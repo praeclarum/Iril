@@ -15,7 +15,7 @@ namespace Repil.IR
 	{
 %}
 
-%token INTEGER FLOAT STRING TRUE FALSE NULL LABEL X
+%token INTEGER FLOAT_LITERAL STRING TRUE FALSE NULL LABEL X
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
 %token GLOBAL_SYMBOL LOCAL_SYMBOL
 %token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64
@@ -28,7 +28,7 @@ namespace Repil.IR
 %token AND OR XOR
 %token EXTRACTELEMENT INSERTELEMENT SHUFFLEVECTOR
 %token EXTRACTVALUE INSERTVALUE
-%token ALLOCA LOAD STORE FENCE CMPXCHG ATOMICRMW GETELEMENTPTR
+%token ALLOCA LOAD STORE FENCE CMPXCHG ATOMICRMW GETELEMENTPTR ALIGN
 %token TRUNC ZEXT SEXT FPTRUNC FPEXT TO
 %token FPTOUI FPTOSI UITOFP SITOFP PTRTOINT INTTOPTR BITCAST ADDRSPACECAST
 %token ICMP EQ NE UGT UGE ULT ULE SGT SGE SLT SLE
@@ -152,6 +152,7 @@ instructions
 instruction
     : terminal_instruction
     | assign_instruction
+    | STORE typed_value ',' typed_value ',' ALIGN INTEGER ','
     ;
     
 terminal_instruction
@@ -171,9 +172,9 @@ assign_instruction
     {
         $$ = new IcmpInstruction ((LocalSymbol)$1, (IcmpCondition)$4, (LType)$5, (Value)$6, (Value)$8);
     }
-    | LOCAL_SYMBOL '=' BITCAST type value TO type
+    | LOCAL_SYMBOL '=' BITCAST typed_value TO type
     {
-        $$ = new BitcastInstruction ((LocalSymbol)$1, (LType)$4, (Value)$5, (LType)$7);
+        $$ = new BitcastInstruction ((LocalSymbol)$1, (TypedValue)$4, (LType)$6);
     }
     ;
     
@@ -196,13 +197,43 @@ value
     ;
 
 constant
-    : NULL         { $$ = NullConstant.Null; }
+    : NULL            { $$ = NullConstant.Null; }
+    | FLOAT_LITERAL   { $$ = new FloatConstant ((double)$1); }
+    | '<' typed_constants '>'
+    {
+        $$ = new VectorConstant ((List<TypedConstant>)$2);
+    }
     ;
     
 label_value
     : LABEL LOCAL_SYMBOL
     {
         $$ = new LabelValue ((LocalSymbol)$2);
+    }
+    ;
+    
+typed_value
+    : type value
+    {
+        $$ = new TypedValue ((LType)$1, (Value)$2);
+    }
+    ;
+            
+typed_constant
+    : type constant
+    {
+        $$ = new TypedConstant ((LType)$1, (Constant)$2);
+    }
+    ;
+    
+typed_constants
+    : typed_constant
+    {
+        $$ = NewList ((TypedConstant)$1);
+    }
+    | typed_constants ',' typed_constant
+    {
+        $$ = ListAdd ($1, (TypedConstant)$3);
     }
     ;
             
