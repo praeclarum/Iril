@@ -14,14 +14,14 @@ namespace Repil.IR
 	{
 %}
 
-%token INTEGER STRING
+%token INTEGER STRING NULL
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
 %token GLOBAL_SYMBOL LOCAL_SYMBOL
 %token TYPE HALF FLOAT DOUBLE I8 I16 I32 I64
 %token DEFINE UNNAMED_ADDR LOCAL_UNNAMED_ADDR
 %token ATTRIBUTE_GROUP_REF
 %token RET
-%token PHI
+%token ICMP EQ NE UGT UGE ULT ULE SGT SGE SLT SLE
 
 %start module
 %%
@@ -142,7 +142,32 @@ terminal_instruction
     ;
     
 assign_instruction
-    : LOCAL_SYMBOL '=' PHI
+    : LOCAL_SYMBOL '=' ICMP icmp_condition type operand ',' operand
+    {
+        $$ = new IcmpInstruction ((LocalSymbol)$1, (IcmpCondition)$4, (LType)$5, (Value)$6, (Value)$8);
+    }
+    ;
+    
+icmp_condition
+    : EQ  { $$ = IcmpCondition.Equal; }
+    | NE  { $$ = IcmpCondition.NotEqual; }
+    | UGT { $$ = IcmpCondition.UnsignedGreaterThan; }
+    | UGE { $$ = IcmpCondition.UnsignedGreaterThanOrEqual; }
+    | ULT { $$ = IcmpCondition.UnsignedLessThan; }
+    | ULE { $$ = IcmpCondition.UnsignedLessThanOrEqual; }
+    | SGT { $$ = IcmpCondition.SignedGreaterThan; }
+    | SGE { $$ = IcmpCondition.SignedGreaterThanOrEqual; }
+    | SLT { $$ = IcmpCondition.SignedLessThan; }
+    | SLE { $$ = IcmpCondition.SignedLessThanOrEqual; }
+    ;
+    
+operand
+    : value
+    ;
+    
+value
+    : NULL         { $$ = NullConstant.Null; }
+    | LOCAL_SYMBOL { $$ = new LocalValue ((LocalSymbol)$1); }
     ;
     
 %%

@@ -21,4 +21,11 @@ namespace Repil.IR
             Instructions = instructions.ToArray ();
         }
     }
+
+    public class Parameter
+    {
+        public Parameter ()
+        {
+        }
+    }
 }

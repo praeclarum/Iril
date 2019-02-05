@@ -27,6 +27,18 @@ namespace Repil.IR
             { Symbol.Intern ("define"), Token.DEFINE },
             { Symbol.Intern ("unnamed_addr"), Token.UNNAMED_ADDR },
             { Symbol.Intern ("local_unnamed_addr"), Token.LOCAL_UNNAMED_ADDR },
+            { Symbol.Intern ("icmp"), Token.ICMP },
+            { Symbol.Intern ("eq"), Token.EQ },
+            { Symbol.Intern ("ne"), Token.NE },
+            { Symbol.Intern ("ugt"), Token.UGT },
+            { Symbol.Intern ("uge"), Token.UGE },
+            { Symbol.Intern ("ult"), Token.ULT },
+            { Symbol.Intern ("ule"), Token.ULE },
+            { Symbol.Intern ("sgt"), Token.SGT },
+            { Symbol.Intern ("sge"), Token.SGE },
+            { Symbol.Intern ("slt"), Token.SLT },
+            { Symbol.Intern ("sle"), Token.SLE },
+            { Symbol.Intern ("null"), Token.NULL },
         };
 
         public Lexer (string llvm)
