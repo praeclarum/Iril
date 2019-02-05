@@ -4,6 +4,10 @@ using System.Linq;
 
 namespace Repil.IR
 {
+    /// <summary>
+    /// https://llvm.org/docs/LangRef.html
+    /// clang -O3 -S -emit-llvm -fpic *.c
+    /// </summary>
     public class Module
     {
         /// <summary>
