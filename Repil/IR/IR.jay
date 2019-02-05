@@ -17,7 +17,7 @@ namespace Repil.IR
 
 %token INTEGER FLOAT_LITERAL STRING TRUE FALSE NULL LABEL X
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
-%token GLOBAL_SYMBOL LOCAL_SYMBOL
+%token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL
 %token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64
 %token DEFINE UNNAMED_ADDR LOCAL_UNNAMED_ADDR
 %token ATTRIBUTE_GROUP_REF
@@ -152,7 +152,7 @@ instructions
 instruction
     : terminal_instruction
     | assign_instruction
-    | STORE typed_value ',' typed_value ',' ALIGN INTEGER ','
+    | STORE typed_value ',' typed_value ',' ALIGN INTEGER ',' tbaa
     ;
     
 terminal_instruction
@@ -236,7 +236,11 @@ typed_constants
         $$ = ListAdd ($1, (TypedConstant)$3);
     }
     ;
+
             
+tbaa
+    : META_SYMBOL META_SYMBOL
+    ;
 %%
 
 }

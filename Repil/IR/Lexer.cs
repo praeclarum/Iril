@@ -129,6 +129,7 @@ namespace Repil.IR
                         }
                     }
                     break;
+                case '!' when p + 1 < n && char.IsDigit (s[p + 1]):
                 case '@' when p + 1 < n && char.IsDigit (s[p + 1]):
                 case '%' when p + 1 < n && char.IsDigit (s[p + 1]):
                 case '#' when p + 1 < n && char.IsDigit (s[p + 1]): {
@@ -137,11 +138,13 @@ namespace Repil.IR
                             ep++;
                         var sym = Symbol.Intern (s, p, ep - p);
                         tok = s[p] == '@' ? Token.GLOBAL_SYMBOL :
-                            (s[p] == '%' ? Token.LOCAL_SYMBOL : Token.ATTRIBUTE_GROUP_REF);
+                            (s[p] == '%' ? Token.LOCAL_SYMBOL :
+                            (s[p] == '!' ? Token.META_SYMBOL : Token.ATTRIBUTE_GROUP_REF));
                         val = sym;
                         p = ep;
                     }
                     break;
+                case '!' when p + 1 < n && IsNamedStart (s[p + 1]):
                 case '@' when p + 1 < n && IsNamedStart (s[p + 1]):
                 case '%' when p + 1 < n && IsNamedStart (s[p + 1]):
                 case '#' when p + 1 < n && IsNamedStart (s[p + 1]): {
@@ -150,7 +153,8 @@ namespace Repil.IR
                             ep++;
                         var sym = Symbol.Intern (s, p, ep - p);
                         tok = s[p] == '@' ? Token.GLOBAL_SYMBOL :
-                            (s[p] == '%' ? Token.LOCAL_SYMBOL : Token.ATTRIBUTE_GROUP_REF);
+                            (s[p] == '%' ? Token.LOCAL_SYMBOL :
+                            (s[p] == '!' ? Token.META_SYMBOL : Token.ATTRIBUTE_GROUP_REF));
                         val = sym;
                         p = ep;
                     }
