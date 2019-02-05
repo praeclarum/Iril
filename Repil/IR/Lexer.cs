@@ -7,6 +7,7 @@ namespace Repil.IR
     {
         readonly string code;
         int p;
+        int lastP;
         int tok;
         object val;
 
@@ -35,9 +36,17 @@ namespace Repil.IR
 
         public string Surrounding {
             get {
-                var min = Math.Max (0, p - 10);
-                var max = Math.Min (code.Length - 1, p + 10);
-                return code.Substring (min, max - min);
+                var s = code;
+                var n = s.Length;
+                var min = lastP;
+                while (min >= 0 && s[min] != '\n')
+                    min--;
+                var max = lastP;
+                while (max < n && s[max] != '\n')
+                    max++;
+                var line = s.Substring (min + 1, max - min - 1);
+                var arrow = new String ('~', lastP - min) + "^";
+                return line + "\n" + arrow;
             }
         }
 
@@ -45,6 +54,8 @@ namespace Repil.IR
         {
             var s = code;
             var n = s.Length;
+
+            lastP = p;
 
             while (p < n && (char.IsWhiteSpace (s[p]) || s[p] == ';')) {
                 if (s[p] == ';') {
