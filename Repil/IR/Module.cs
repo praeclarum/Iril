@@ -32,6 +32,8 @@ namespace Repil.IR
 
         public SymbolTable<FunctionDeclaration> FunctionDeclarations = new SymbolTable<FunctionDeclaration> ();
 
+        public SymbolTable<AttributeGroup> AttributeGroups = new SymbolTable<AttributeGroup> ();
+
         public static Module Parse (string llvm)
         {
             var module = new Module ();

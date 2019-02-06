@@ -66,6 +66,12 @@ namespace Repil.IR
             { Symbol.Intern ("ret"), Token.RET },
             { Symbol.Intern ("nocapture"), Token.NOCAPTURE },
             { Symbol.Intern ("writeonly"), Token.WRITEONLY },
+            { Symbol.Intern ("attributes"), Token.ATTRIBUTES },
+            { Symbol.Intern ("norecurse"), Token.NORECURSE },
+            { Symbol.Intern ("nounwind"), Token.NOUNWIND },
+            { Symbol.Intern ("ssp"), Token.SSP },
+            { Symbol.Intern ("uwtable"), Token.UWTABLE },
+            { Symbol.Intern ("argmemonly"), Token.ARGMEMONLY },
         };
 
         public Lexer (string llvm)
@@ -113,23 +119,6 @@ namespace Repil.IR
             }
 
             switch (s[p]) {
-                case '=':
-                case ',':
-                case '+':
-                case '*':
-                case '/':
-                case '{':
-                case '}':
-                case '(':
-                case ')':
-                case '<':
-                case '>':
-                case '[':
-                case ']':
-                    tok = s[p];
-                    val = singleCharToken;
-                    p++;
-                    break;
                 case '"': {
                         var ep = p + 1;
                         while (ep < n && (s[ep] != '\"'))
@@ -175,6 +164,23 @@ namespace Repil.IR
                         p = ep;
                     }
                     break;
+                case '!' when p + 1 < n && s[p + 1] == '\"':
+                case '@' when p + 1 < n && s[p + 1] == '\"':
+                case '%' when p + 1 < n && s[p + 1] == '\"':
+                case '#' when p + 1 < n && s[p + 1] == '\"': {
+                        var ep = p + 2;
+                        while (ep < n && s[ep] != '\"')
+                            ep++;
+                        if (ep < n)
+                            ep++;
+                        var sym = Symbol.Intern (s, p, ep - p);
+                        tok = s[p] == '@' ? Token.GLOBAL_SYMBOL :
+                            (s[p] == '%' ? Token.LOCAL_SYMBOL :
+                            (s[p] == '!' ? Token.META_SYMBOL : Token.ATTRIBUTE_GROUP_REF));
+                        val = sym;
+                        p = ep;
+                    }
+                    break;
                 case var ch when char.IsLetter (ch) && char.IsLower (ch): {
                         var ep = p + 1;
                         while (ep < n && (char.IsLetterOrDigit (s[ep]) || s[ep] == '_'))
@@ -208,6 +214,24 @@ namespace Repil.IR
                             tok = Token.INTEGER;
                         }
                     }
+                    break;
+                case '=':
+                case ',':
+                case '+':
+                case '*':
+                case '/':
+                case '{':
+                case '}':
+                case '(':
+                case ')':
+                case '<':
+                case '>':
+                case '[':
+                case ']':
+                case '!':
+                    tok = s[p];
+                    val = singleCharToken;
+                    p++;
                     break;
                 default:
                     throw new InvalidOperationException ($"Unexpected '{s[p++]}'");

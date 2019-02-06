@@ -21,7 +21,7 @@ namespace Repil.IR
 %token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64
 %token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR
 %token NONNULL NOCAPTURE WRITEONLY
-%token ATTRIBUTE_GROUP_REF ATTRIBUTES
+%token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND SSP UWTABLE ARGMEMONLY
 %token RET BR SWITCH INDIRECTBR INVOKE RESUME CATCHSWITCH CATCHRET CLEANUPRET UNREACHABLE
 %token FNEG
 %token ADD FADD SUB FSUB MUL FMUL UDIV SDIV FDIV UREM SREM FREM
@@ -76,6 +76,33 @@ module_part
         var f = (FunctionDeclaration)$1;
         module.FunctionDeclarations[f.Symbol] = f;
     }
+    | ATTRIBUTES ATTRIBUTE_GROUP_REF '=' '{' attributes '}'
+    | META_SYMBOL '=' '!' '{' metadata '}'
+    ;
+    
+attributes
+    : attribute
+    | attributes attribute
+    ;
+    
+attribute
+    : NORECURSE
+    | NOUNWIND
+    | SSP
+    | UWTABLE
+    | ARGMEMONLY
+    | STRING '=' STRING
+    | STRING
+    ;
+    
+metadata
+    : metadatum
+    | metadata ',' metadatum
+    ;
+    
+metadatum
+    : typed_value
+    | META_SYMBOL
     ;
     
 literal_structure

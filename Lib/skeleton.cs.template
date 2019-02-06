@@ -92,7 +92,7 @@ t  internal yydebug.yyDebug debug;
 .    int [] tokens = yyExpectingTokens (state);
 .    string [] result = new string[tokens.Length];
 .    for (int n = 0; n < tokens.Length;  n++)
-.      result[n++] = yyNames[tokens [n]];
+.      result[n] = yyNames[tokens [n]];
 .    return result;
 .  }
 .
@@ -197,7 +197,7 @@ t              debug.shift(yyState, yyTable[yyN], yyErrorFlag-1);
 .  
 .            case 0:
 .              //yyExpectingState = yyState;
-.              Console.WriteLine(String.Format ("syntax error, got token `{0}' expecting {1}",
+.              Console.WriteLine(String.Format ("syntax error, got token `{0}' expecting: {1}",
 .                                yyname (yyToken),
 .                                String.Join(", ", yyExpecting(yyState))));
 t              if (debug != null) debug.error("syntax error");
