@@ -3,6 +3,8 @@ using NUnit.Framework;
 using Repil;
 using System.IO;
 using System.Reflection;
+using System.Diagnostics;
+using System.Text;
 
 namespace Tests
 {
@@ -21,11 +23,33 @@ namespace Tests
                 assemblyName: "SuiteSparse.dll",
                 systemAssemblyPath: rp);
 
-            var o = new MemoryStream ();
-            compilation.WriteAssembly (o);
-            Assert.Greater (o.Length, 1024);
+            var asmStream = new MemoryStream ();
+            compilation.WriteAssembly (asmStream);
+            Assert.Greater (asmStream.Length, 1024);
 
-            var asm = Assembly.Load (o.ToArray ());
+            var asmBytes = asmStream.ToArray ();
+            var asmPath = Path.GetTempFileName ();
+            File.WriteAllBytes (asmPath, asmBytes);
+            var disProc = new Process {
+                StartInfo = new ProcessStartInfo {
+                    FileName = "monodis",
+                    Arguments = $"\"{asmPath}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                }
+            };
+            var disAsmB = new StringBuilder ();
+            disProc.Start ();
+            while (!disProc.StandardOutput.EndOfStream) {
+                string line = disProc.StandardOutput.ReadLine ();
+                disAsmB.AppendLine (line);
+            }
+            var disAsm = disAsmB.ToString ();
+            System.Console.WriteLine (disAsm);
+            File.Delete (asmPath);
+
+            var asm = Assembly.Load (asmBytes);
 
             var types = asm.GetTypes ();
             Assert.Greater (types.Length, 0);
