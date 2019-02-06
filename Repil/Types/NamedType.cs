@@ -8,7 +8,9 @@ namespace Repil.Types
 
         public NamedType (Symbol symbol)
         {
-            Symbol = symbol;
+            Symbol = symbol ?? throw new ArgumentNullException (nameof (symbol));
         }
+
+        public override string ToString () => Symbol.ToString ();
     }
 }

@@ -19,6 +19,9 @@ namespace Repil.IR
             Parameters = parameters.ToArray ();
             Instructions = instructions.ToArray ();
         }
+
+        public override string ToString () =>
+            $"{ReturnType} ({String.Join(", ", (object[])Parameters)}) {{ }}";
     }
 
     public class Parameter
@@ -29,6 +32,9 @@ namespace Repil.IR
         {
             Type = type;
         }
+
+        public override string ToString () =>
+            $"{Type}";
     }
 
     [Flags]
@@ -69,5 +75,8 @@ namespace Repil.IR
             Symbol = symbol;
             Parameters = parameters.ToArray ();
         }
+
+        public override string ToString () =>
+            $"{ReturnType} ({String.Join (", ", (object[])Parameters)})";
     }
 }

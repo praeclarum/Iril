@@ -108,7 +108,7 @@ metadatum
 literal_structure
     : '{' type_list '}'
     {
-        var s = new LiteralStructureType ();
+        var s = new LiteralStructureType ((List<LType>)$2);
         $$ = s;
     }
     ;
@@ -137,7 +137,7 @@ type
     | I64    { $$ = IntegerType.I8; }
     | type '(' type_list ')'
     {
-        $$ = new FunctionType ();
+        $$ = new FunctionType ((LType)$1, (List<LType>)$3);
     }
     | type '*'
     {

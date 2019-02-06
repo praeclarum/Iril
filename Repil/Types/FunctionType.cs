@@ -1,10 +1,20 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 namespace Repil.Types
 {
     public class FunctionType : LType
     {
-        public FunctionType ()
+        public readonly LType ReturnType;
+        public readonly LType[] ParameterTypes;
+
+        public FunctionType (LType returnType, IEnumerable<LType> parameterTypes)
         {
+            ReturnType = returnType;
+            ParameterTypes = parameterTypes.ToArray ();
         }
+
+        public override string ToString () =>
+            $"{ReturnType} ({String.Join(", ", (object[])ParameterTypes)})";
     }
 }

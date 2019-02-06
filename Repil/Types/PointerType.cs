@@ -14,5 +14,7 @@ namespace Repil.Types
             ElementType = elementType;
             AddressSpace = addressSpace;
         }
+
+        public override string ToString () => $"{ElementType}*";
     }
 }

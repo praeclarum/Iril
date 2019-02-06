@@ -479,7 +479,7 @@ case 37:
 case 38:
 #line 141 "Repil/IR/IR.jay"
   {
-        yyVal = new FunctionType ();
+        yyVal = new FunctionType ((LType)yyVals[-3+yyTop], (List<LType>)yyVals[-1+yyTop]);
     }
   break;
 case 39:
@@ -848,7 +848,7 @@ void case_9()
 void case_25()
 #line 110 "Repil/IR/IR.jay"
 {
-        var s = new LiteralStructureType ();
+        var s = new LiteralStructureType ((List<LType>)yyVals[-1+yyTop]);
         yyVal = s;
     }
 

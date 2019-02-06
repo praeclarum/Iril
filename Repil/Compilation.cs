@@ -18,8 +18,8 @@ namespace Repil
         readonly string namespac;
 
         readonly HashSet<string> structNames = new HashSet<string> ();
-        readonly SymbolTable<(StructureType, TypeDefinition)> structs =
-            new SymbolTable<(StructureType, TypeDefinition)> ();
+        readonly SymbolTable<(LiteralStructureType, TypeDefinition)> structs =
+            new SymbolTable<(LiteralStructureType, TypeDefinition)> ();
 
         AssemblyDefinition sysAsm;
         TypeReference sysObj;
@@ -62,7 +62,7 @@ namespace Repil
                         var td = new TypeDefinition (namespac, name, TypeAttributes.SequentialLayout, sysObj);
 
                         mod.Types.Add (td);
-
+                        structs[i.Key] = (l, td);
                     }
                 }
             }
