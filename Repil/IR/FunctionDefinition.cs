@@ -24,8 +24,11 @@ namespace Repil.IR
 
     public class Parameter
     {
-        public Parameter ()
+        public readonly LType Type;
+
+        public Parameter (LType type)
         {
+            Type = type;
         }
     }
 

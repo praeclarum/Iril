@@ -149,6 +149,16 @@ namespace Repil.IR
         }
     }
 
+    public class RetInstruction : Instruction
+    {
+        public readonly TypedValue Value;
+
+        public RetInstruction (TypedValue value)
+        {
+            Value = value;
+        }
+    }
+
     public class StoreInstruction : Instruction
     {
         public readonly TypedValue Value;

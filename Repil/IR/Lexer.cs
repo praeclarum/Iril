@@ -62,6 +62,7 @@ namespace Repil.IR
             { Symbol.Intern ("inbounds"), Token.INBOUNDS },
             { Symbol.Intern ("call"), Token.CALL },
             { Symbol.Intern ("phi"), Token.PHI },
+            { Symbol.Intern ("ret"), Token.RET },
         };
 
         public Lexer (string llvm)

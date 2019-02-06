@@ -125,11 +125,20 @@ function_definition
     
 parameter_list
     : parameter
-    | parameter_list parameter
+    {
+        $$ = NewList ((Parameter)$1);
+    }
+    | parameter_list ',' parameter
+    {
+        $$ = ListAdd ($1, (Parameter)$3);
+    }
     ;
     
 parameter
     : type
+    {
+        $$ = new Parameter ((LType)$1);
+    }
     ;
     
 function_addr
@@ -297,7 +306,10 @@ phi_val
     ;
     
 instruction
-    : RET
+    : RET typed_value
+    {
+        $$ = new RetInstruction ((TypedValue)$2);
+    }
     | BR I1 value ',' label_value ',' label_value
     {
         $$ = new ConditionalBrInstruction ((Value)$3, (LabelValue)$5, (LabelValue)$7);
