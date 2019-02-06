@@ -15,12 +15,13 @@ namespace Repil.IR
 	{
 %}
 
-%token INTEGER FLOAT_LITERAL STRING TRUE FALSE UNDEF VOID NULL NONNULL LABEL X
+%token INTEGER FLOAT_LITERAL STRING TRUE FALSE UNDEF VOID NULL LABEL X
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
 %token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL
 %token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64
-%token DEFINE UNNAMED_ADDR LOCAL_UNNAMED_ADDR
-%token ATTRIBUTE_GROUP_REF
+%token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR
+%token NONNULL NOCAPTURE WRITEONLY
+%token ATTRIBUTE_GROUP_REF ATTRIBUTES
 %token RET BR SWITCH INDIRECTBR INVOKE RESUME CATCHSWITCH CATCHRET CLEANUPRET UNREACHABLE
 %token FNEG
 %token ADD FADD SUB FSUB MUL FMUL UDIV SDIV FDIV UREM SREM FREM
@@ -66,6 +67,15 @@ module_part
         module.IdentifiedStructures[(Symbol)$1] = (StructureType)$4;
     }
     | function_definition
+    {
+        var f = (FunctionDefinition)$1;
+        module.FunctionDefinitions[f.Symbol] = f;
+    }
+    | function_declaration
+    {
+        var f = (FunctionDeclaration)$1;
+        module.FunctionDeclarations[f.Symbol] = f;
+    }
     ;
     
 literal_structure
@@ -119,7 +129,14 @@ type
 function_definition
     : DEFINE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs '{' assignments '}'
     {
-        var f = new FunctionDefinition ((GlobalSymbol)$3, (LType)$2, (List<Parameter>)$5, (List<Assignment>)$10);
+        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (List<Parameter>)$5, (List<Assignment>)$10);
+    }
+    ;
+    
+function_declaration
+    : DECLARE type GLOBAL_SYMBOL '(' parameter_list ')' attribute_group_refs
+    {
+        $$ = new FunctionDeclaration ((LType)$2, (GlobalSymbol)$3, (List<Parameter>)$5);
     }
     ;
     
@@ -139,6 +156,24 @@ parameter
     {
         $$ = new Parameter ((LType)$1);
     }
+    | type parameter_attributes
+    {
+        $$ = new Parameter ((LType)$1);
+    }
+    ;
+    
+parameter_attributes
+    : parameter_attribute
+    | parameter_attributes parameter_attribute
+    {
+        $$ = ((ParameterAttributes)$1) | ((ParameterAttributes)$2);
+    }
+    ;
+    
+parameter_attribute
+    : NONNULL   { $$ = ParameterAttributes.NonNull; }
+    | NOCAPTURE { $$ = ParameterAttributes.NoCapture; }
+    | WRITEONLY { $$ = ParameterAttributes.WriteOnly; }
     ;
     
 function_addr
@@ -282,7 +317,7 @@ function_arg
     {
         $$ = new Argument ((LType)$1, (Value)$2, (ParameterAttributes)0);
     }
-    | type NONNULL value
+    | type parameter_attributes value
     {
         $$ = new Argument ((LType)$1, (Value)$3, ParameterAttributes.NonNull);
     }

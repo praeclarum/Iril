@@ -28,6 +28,10 @@ namespace Repil.IR
 
         public SymbolTable<StructureType> IdentifiedStructures = new SymbolTable<StructureType> ();
 
+        public SymbolTable<FunctionDefinition> FunctionDefinitions = new SymbolTable<FunctionDefinition> ();
+
+        public SymbolTable<FunctionDeclaration> FunctionDeclarations = new SymbolTable<FunctionDeclaration> ();
+
         public static Module Parse (string llvm)
         {
             var module = new Module ();

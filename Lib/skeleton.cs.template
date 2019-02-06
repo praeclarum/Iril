@@ -54,12 +54,12 @@ t  internal yydebug.yyDebug debug;
 .      @param token single character or %token value.
 .      @return token name or [illegal] or [unknown].
 .    */
-t  public static string yyname (int token) {
-t    if ((token < 0) || (token > yyNames.Length)) return "[illegal]";
-t    string name;
-t    if ((name = yyNames[token]) != null) return name;
-t    return "[unknown]";
-t  }
+.  public static string yyname (int token) {
+.    if ((token < 0) || (token > yyNames.Length)) return "[illegal]";
+.    string name;
+.    if ((name = yyNames[token]) != null) return name;
+.    return "[unknown]";
+.  }
 .
 .  //int yyExpectingState;
 .  /** computes list of expected tokens on error by tracing the tables.
@@ -197,7 +197,9 @@ t              debug.shift(yyState, yyTable[yyN], yyErrorFlag-1);
 .  
 .            case 0:
 .              //yyExpectingState = yyState;
-.              // yyerror(String.Format ("syntax error, got token `{0}'", yyname (yyToken)), yyExpecting(yyState));
+.              Console.WriteLine(String.Format ("syntax error, got token `{0}' expecting {1}",
+.                                yyname (yyToken),
+.                                String.Join(", ", yyExpecting(yyState))));
 t              if (debug != null) debug.error("syntax error");
 .              if (yyToken == 0 /*eof*/ || yyToken == eof_token) throw new yyParser.yyUnexpectedEof ();
 .              goto case 1;

@@ -35,6 +35,7 @@ namespace Repil.IR
             { Symbol.Intern ("i16"), Token.I16 },
             { Symbol.Intern ("i32"), Token.I32 },
             { Symbol.Intern ("i64"), Token.I64 },
+            { Symbol.Intern ("declare"), Token.DECLARE },
             { Symbol.Intern ("define"), Token.DEFINE },
             { Symbol.Intern ("unnamed_addr"), Token.UNNAMED_ADDR },
             { Symbol.Intern ("local_unnamed_addr"), Token.LOCAL_UNNAMED_ADDR },
@@ -63,6 +64,8 @@ namespace Repil.IR
             { Symbol.Intern ("call"), Token.CALL },
             { Symbol.Intern ("phi"), Token.PHI },
             { Symbol.Intern ("ret"), Token.RET },
+            { Symbol.Intern ("nocapture"), Token.NOCAPTURE },
+            { Symbol.Intern ("writeonly"), Token.WRITEONLY },
         };
 
         public Lexer (string llvm)

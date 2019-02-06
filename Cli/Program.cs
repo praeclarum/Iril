@@ -8,10 +8,7 @@ namespace Cli
     {
         static void Main(string[] args)
         {
-            foreach (var a in args) {
-                var m = Module.Parse (File.ReadAllText (a));
-                Console.WriteLine (m);
-            }
+            Module.Parse ("declare void @llvm.memset.p0i8.i64(i8* nocapture writeonly, i8, i64, i32, i1) #1");
         }
     }
 }
