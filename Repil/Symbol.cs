@@ -79,6 +79,7 @@ namespace Repil
                         if (e.Symbol.Hash == hash && e.Symbol.Equals (code, index, length)) {
                             return e.Symbol;
                         }
+                        e = e.Next;
                     }
                     var text = code.Substring (index, length);
                     var symbol =

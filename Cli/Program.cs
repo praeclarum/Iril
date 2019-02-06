@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO;
+using Repil.IR;
 
 namespace Cli
 {
@@ -6,7 +8,10 @@ namespace Cli
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            foreach (var a in args) {
+                var m = Module.Parse (File.ReadAllText (a));
+                Console.WriteLine (m);
+            }
         }
     }
 }

@@ -15,7 +15,7 @@ namespace Repil.IR
 	{
 %}
 
-%token INTEGER FLOAT_LITERAL STRING TRUE FALSE NULL LABEL X
+%token INTEGER FLOAT_LITERAL STRING TRUE FALSE UNDEF VOID NULL NONNULL LABEL X
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
 %token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL
 %token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64
@@ -89,13 +89,15 @@ type_list
     
 type
     : literal_structure
-    | HALF { $$ = FloatType.Half; }
-    | FLOAT { $$ = FloatType.Float; }
+    | VOID   { $$ = VoidType.Void; }
+    | HALF   { $$ = FloatType.Half; }
+    | FLOAT  { $$ = FloatType.Float; }
     | DOUBLE { $$ = FloatType.Double; }
-    | I8 { $$ = IntegerType.I8; }
-    | I16 { $$ = IntegerType.I8; }
-    | I32 { $$ = IntegerType.I8; }
-    | I64 { $$ = IntegerType.I8; }
+    | I1     { $$ = IntegerType.I1; }
+    | I8     { $$ = IntegerType.I8; }
+    | I16    { $$ = IntegerType.I8; }
+    | I32    { $$ = IntegerType.I8; }
+    | I64    { $$ = IntegerType.I8; }
     | type '(' type_list ')'
     {
         $$ = new FunctionType ();
@@ -115,9 +117,9 @@ type
     ;
     
 function_definition
-    : DEFINE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs '{' instructions '}'
+    : DEFINE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs '{' assignments '}'
     {
-        var f = new FunctionDefinition ((GlobalSymbol)$3, (LType)$2, (List<Parameter>)$5, (List<Instruction>)$10);
+        var f = new FunctionDefinition ((GlobalSymbol)$3, (LType)$2, (List<Parameter>)$5, (List<Assignment>)$10);
     }
     ;
     
@@ -159,13 +161,16 @@ icmp_condition
     
 value
     : constant 
-    | LOCAL_SYMBOL { $$ = new LocalValue ((LocalSymbol)$1); }
+    | LOCAL_SYMBOL  { $$ = new LocalValue ((LocalSymbol)$1); }
+    | GLOBAL_SYMBOL { $$ = new GlobalValue ((GlobalSymbol)$1); }
     ;
 
 constant
     : NULL            { $$ = NullConstant.Null; }
     | FLOAT_LITERAL   { $$ = new FloatConstant ((double)$1); }
     | INTEGER         { $$ = new IntegerConstant ((BigInteger)$1); }
+    | TRUE            { $$ = BooleanConstant.True; }
+    | FALSE           { $$ = BooleanConstant.False; }
     | '<' typed_constants '>'
     {
         $$ = new VectorConstant ((List<TypedConstant>)$2);
@@ -226,18 +231,55 @@ element_indices
     }
     ;
 
-instructions
+assignments
+    : assignment
+    {
+        $$ = NewList ((Assignment)$1);
+    }
+    | assignments assignment
+    {
+        $$ = ListAdd ($1, (Assignment)$2);
+    }
+    ;
+    
+assignment
     : instruction
-    | instructions instruction
+    {
+        $$ = new Assignment ((Instruction)$1);
+    }
+    | LOCAL_SYMBOL '=' instruction
+    {
+        $$ = new Assignment ((LocalSymbol)$1, (Instruction)$3);
+    }
+    ;
+    
+function_pointer
+    : value
+    ;
+    
+function_args
+    : function_arg
+    {
+        $$ = NewList ((Argument)$1);
+    }
+    | function_args ',' function_arg
+    {
+        $$ = ListAdd ($1, (Argument)$3);
+    }
+    ;
+    
+function_arg
+    : type value
+    {
+        $$ = new Argument ((LType)$1, (Value)$2, (ParameterAttributes)0);
+    }
+    | type NONNULL value
+    {
+        $$ = new Argument ((LType)$1, (Value)$3, ParameterAttributes.NonNull);
+    }
     ;
     
 instruction
-    : terminal_instruction
-    | assign_instruction
-    | STORE typed_value ',' typed_value ',' ALIGN INTEGER ',' tbaa
-    ;
-    
-terminal_instruction
     : RET
     | BR I1 value ',' label_value ',' label_value
     {
@@ -247,20 +289,25 @@ terminal_instruction
     {
         $$ = new UnconditionalBrInstruction ((LabelValue)$2);
     }
-    ;
-    
-assign_instruction
-    : LOCAL_SYMBOL '=' ICMP icmp_condition type value ',' value
+    | STORE typed_value ',' typed_value ',' ALIGN INTEGER ',' tbaa
     {
-        $$ = new IcmpInstruction ((LocalSymbol)$1, (IcmpCondition)$4, (LType)$5, (Value)$6, (Value)$8);
+        $$ = new StoreInstruction ((TypedValue)$2, (TypedValue)$4);
     }
-    | LOCAL_SYMBOL '=' BITCAST typed_value TO type
+    | ICMP icmp_condition type value ',' value
     {
-        $$ = new BitcastInstruction ((LocalSymbol)$1, (TypedValue)$4, (LType)$6);
+        $$ = new IcmpInstruction ((IcmpCondition)$2, (LType)$3, (Value)$4, (Value)$6);
     }
-    | LOCAL_SYMBOL '=' GETELEMENTPTR INBOUNDS type ',' typed_value ',' element_indices
+    | BITCAST typed_value TO type
     {
-        $$ = new GetElementPointerInstruction ((LocalSymbol)$1, (LType)$5, (TypedValue)$7, (List<int>)$9);
+        $$ = new BitcastInstruction ((TypedValue)$2, (LType)$4);
+    }
+    | GETELEMENTPTR INBOUNDS type ',' typed_value ',' element_indices
+    {
+        $$ = new GetElementPointerInstruction ((LType)$3, (TypedValue)$5, (List<int>)$7);
+    }
+    | CALL type function_pointer '(' function_args ')'
+    {
+        $$ = new CallInstruction ((LType)$2, (Value)$3, (List<Argument>)$5);
     }
     ;
     

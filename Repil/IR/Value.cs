@@ -29,6 +29,16 @@ namespace Repil.IR
         }
     }
 
+    public class GlobalValue : Value
+    {
+        public readonly GlobalSymbol Symbol;
+
+        public GlobalValue (GlobalSymbol symbol)
+        {
+            Symbol = symbol ?? throw new ArgumentNullException (nameof (symbol));
+        }
+    }
+
     public class VectorValue : Value
     {
         public readonly TypedValue[] Values;

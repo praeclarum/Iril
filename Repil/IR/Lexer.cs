@@ -23,9 +23,12 @@ namespace Repil.IR
             { Symbol.Intern ("datalayout"), Token.DATALAYOUT },
             { Symbol.Intern ("triple"), Token.TRIPLE },
             { Symbol.Intern ("type"), Token.TYPE },
+            { Symbol.Intern ("void"), Token.VOID },
             { Symbol.Intern ("half"), Token.HALF },
             { Symbol.Intern ("float"), Token.FLOAT },
             { Symbol.Intern ("double"), Token.DOUBLE },
+            { Symbol.Intern ("true"), Token.TRUE },
+            { Symbol.Intern ("false"), Token.FALSE },
             { Symbol.Intern ("x"), Token.X },
             { Symbol.Intern ("i1"), Token.I1 },
             { Symbol.Intern ("i8"), Token.I8 },
@@ -47,6 +50,8 @@ namespace Repil.IR
             { Symbol.Intern ("slt"), Token.SLT },
             { Symbol.Intern ("sle"), Token.SLE },
             { Symbol.Intern ("null"), Token.NULL },
+            { Symbol.Intern ("nonnull"), Token.NONNULL },
+            { Symbol.Intern ("undef"), Token.UNDEF },
             { Symbol.Intern ("br"), Token.BR },
             { Symbol.Intern ("label"), Token.LABEL },
             { Symbol.Intern ("bitcast"), Token.BITCAST },
@@ -55,6 +60,7 @@ namespace Repil.IR
             { Symbol.Intern ("align"), Token.ALIGN },
             { Symbol.Intern ("getelementptr"), Token.GETELEMENTPTR },
             { Symbol.Intern ("inbounds"), Token.INBOUNDS },
+            { Symbol.Intern ("call"), Token.CALL },
         };
 
         public Lexer (string llvm)
@@ -83,6 +89,8 @@ namespace Repil.IR
             var s = code;
             var n = s.Length;
 
+            //Console.WriteLine (Surrounding);
+
             while (p < n && (char.IsWhiteSpace (s[p]) || s[p] == ';')) {
                 if (s[p] == ';') {
                     while (p < n && (s[p] != '\n'))
@@ -103,7 +111,6 @@ namespace Repil.IR
                 case '=':
                 case ',':
                 case '+':
-                case '-':
                 case '*':
                 case '/':
                 case '{':
@@ -176,7 +183,7 @@ namespace Repil.IR
                         }
                     }
                     break;
-                case var ch when char.IsDigit (ch): {
+                case var ch when char.IsDigit (ch) || ch == '-': {
                         var ep = p + 1;
                         var isfloat = false;
                         while (ep < n && (char.IsDigit (s[ep]) || s[ep] == '.' || s[ep] == 'e' || s[ep] == '-' || s[ep] == '+')) {

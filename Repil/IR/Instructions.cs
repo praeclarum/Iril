@@ -1,6 +1,5 @@
 ﻿using System;
 using Repil.Types;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -10,27 +9,16 @@ namespace Repil.IR
     {
     }
 
-    public abstract class TerminalInstruction
+    public abstract class TerminalInstruction : Instruction
     {
     }
 
-    public abstract class AssignInstruction
-    {
-        public readonly LocalSymbol Result;
-
-        protected AssignInstruction (LocalSymbol result)
-        {
-            Result = result;
-        }
-    }
-
-    public class BitcastInstruction : AssignInstruction
+    public class BitcastInstruction : Instruction
     {
         public readonly TypedValue Input;
         public readonly LType OutputType;
 
-        public BitcastInstruction (LocalSymbol result, TypedValue input, LType outputType)
-            : base (result)
+        public BitcastInstruction (TypedValue input, LType outputType)
         {
             Input = input;
             OutputType = outputType;
@@ -65,14 +53,41 @@ namespace Repil.IR
         }
     }
 
-    public class GetElementPointerInstruction : AssignInstruction
+    public class CallInstruction : Instruction
+    {
+        public readonly LType ReturnType;
+        public readonly Value Pointer;
+        public readonly Argument[] Arguments;
+
+        public CallInstruction (LType returnType, Value pointer, IEnumerable<Argument> arguments)
+        {
+            ReturnType = returnType;
+            Pointer = pointer;
+            Arguments = arguments.ToArray ();
+        }
+    }
+
+    public class Argument
+    {
+        public readonly LType Type;
+        public readonly Value Value;
+        public readonly ParameterAttributes Attributes;
+
+        public Argument (LType type, Value value, ParameterAttributes attributes)
+        {
+            Type = type;
+            Value = value;
+            Attributes = attributes;
+        }
+    }
+
+    public class GetElementPointerInstruction : Instruction
     {
         public readonly LType Type;
         public readonly TypedValue Pointer;
         public readonly int[] Indices;
 
-        public GetElementPointerInstruction (LocalSymbol result, LType type, TypedValue pointer, IEnumerable<int> indices)
-            : base (result)
+        public GetElementPointerInstruction (LType type, TypedValue pointer, IEnumerable<int> indices)
         {
             Type = type;
             Pointer = pointer;
@@ -80,15 +95,14 @@ namespace Repil.IR
         }
     }
 
-    public class IcmpInstruction : AssignInstruction
+    public class IcmpInstruction : Instruction
     {
         public readonly IcmpCondition Condition;
         public readonly LType Type;
         public readonly Value Op1;
         public readonly Value Op2;
 
-        public IcmpInstruction (LocalSymbol result, IcmpCondition condition, LType type, Value op1, Value op2)
-            : base (result)
+        public IcmpInstruction (IcmpCondition condition, LType type, Value op1, Value op2)
         {
             Condition = condition;
             Type = type;

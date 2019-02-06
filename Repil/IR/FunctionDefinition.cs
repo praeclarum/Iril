@@ -11,9 +11,9 @@ namespace Repil.IR
         public readonly GlobalSymbol Symbol;
         public readonly LType ReturnType;
         public readonly Parameter[] Parameters;
-        public readonly Instruction[] Instructions;
+        public readonly Assignment[] Instructions;
 
-        public FunctionDefinition (GlobalSymbol symbol, LType returnType, IEnumerable<Parameter> parameters, IEnumerable<Instruction> instructions)
+        public FunctionDefinition (GlobalSymbol symbol, LType returnType, IEnumerable<Parameter> parameters, IEnumerable<Assignment> instructions)
         {
             Symbol = symbol;
             ReturnType = returnType;
@@ -26,6 +26,30 @@ namespace Repil.IR
     {
         public Parameter ()
         {
+        }
+    }
+
+    [Flags]
+    public enum ParameterAttributes
+    {
+        NonNull = 1 << 0,
+    }
+
+    public class Assignment
+    {
+        public readonly LocalSymbol Result;
+        public readonly Instruction Instruction;
+
+        public Assignment (Instruction instruction)
+        {
+            Result = null;
+            Instruction = instruction;
+        }
+
+        public Assignment (LocalSymbol result, Instruction instruction)
+        {
+            Result = result;
+            Instruction = instruction;
         }
     }
 }
