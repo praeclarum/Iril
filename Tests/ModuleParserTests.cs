@@ -1,22 +1,16 @@
 ﻿using NUnit.Framework;
 using System.IO;
 
-using Repil.IR;
+using Repil;
 
 namespace Tests
 {
-    public class ModuleParserTests
+    [TestFixture]
+    public class ModuleParserTests : TestsBase
     {
         public void Parse (string name)
         {
-            var asm = GetType ().Assembly;
-            var names = asm.GetManifestResourceNames ();
-            string code;
-            using (var s = asm.GetManifestResourceStream ("Tests.Inputs." + name)) {
-                using (var r = new StreamReader (s)) {
-                    code = r.ReadToEnd ();
-                }
-            }
+            var code = GetCode (name);
 
             var mod = Module.Parse (code);
             Assert.NotNull (mod);

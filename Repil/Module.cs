@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+
+using Repil.IR;
 using Repil.Types;
 
-namespace Repil.IR
+namespace Repil
 {
     /// <summary>
     /// https://llvm.org/docs/LangRef.html
@@ -49,7 +51,10 @@ namespace Repil.IR
             return module;
         }
     }
+}
 
+namespace Repil.IR
+{
     public partial class Parser
     {
         Module module;

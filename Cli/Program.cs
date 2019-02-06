@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using Repil.IR;
+using Repil;
 
 namespace Cli
 {
