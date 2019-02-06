@@ -5,6 +5,9 @@ using System.Linq;
 using Mono.Cecil;
 using Repil.Types;
 using Mono.Cecil.Rocks;
+using Mono.Cecil.Cil;
+
+using CecilInstruction = Mono.Cecil.Cil.Instruction;
 
 namespace Repil
 {
@@ -24,6 +27,7 @@ namespace Repil
 
         AssemblyDefinition sysAsm;
         TypeReference sysObj;
+        TypeReference sysVal;
         TypeReference sysByte;
         TypeReference sysInt16;
         TypeReference sysInt32;
@@ -50,12 +54,14 @@ namespace Repil
         {
             FindSystemTypes ();
             CompileStructures ();
+            CompileFunctions ();
         }
 
         void FindSystemTypes ()
         {
             sysAsm = AssemblyDefinition.ReadAssembly (SystemAssemblyPath);
             sysObj = mod.ImportReference (sysAsm.MainModule.GetType ("System.Object"));
+            sysVal = mod.ImportReference (sysAsm.MainModule.GetType ("System.ValueType"));
             sysByte = mod.ImportReference (sysAsm.MainModule.GetType ("System.Byte"));
             sysInt16 = mod.ImportReference (sysAsm.MainModule.GetType ("System.Int16"));
             sysInt32 = mod.ImportReference (sysAsm.MainModule.GetType ("System.Int32"));
@@ -72,7 +78,7 @@ namespace Repil
 
                         var tname = iskv.Key.Text.Substring (1).Split ('.').Last ();
 
-                        var td = new TypeDefinition (namespac, tname, TypeAttributes.SequentialLayout, sysObj);
+                        var td = new TypeDefinition (namespac, tname, TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.Public, sysVal);
 
                         var fields =
                             from e in l.Elements.Zip(Enumerable.Range(0, l.Elements.Length), (e, i) => (e, i))
@@ -83,10 +89,47 @@ namespace Repil
                             td.Fields.Add (f);
                         }
 
+                        td.IsValueType = true;
+
                         mod.Types.Add (td);
                         structNames.Add (tname);
                         structs[iskv.Key] = (l, td);
                     }
+                }
+            }
+        }
+
+        void CompileFunctions ()
+        {
+            var funcstd = new TypeDefinition (namespac, "Functions", TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, sysObj);
+            mod.Types.Add (funcstd);
+
+            foreach (var m in Modules) {
+                foreach (var iskv in m.FunctionDefinitions) {
+                    var f = iskv.Value;
+                    var tname = iskv.Key.Text.Substring (1).Split ('.').Last ();
+
+                    var md = new MethodDefinition (tname, MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.Static, GetClrType (f.ReturnType));
+
+                    for (var i = 0; i < f.Parameters.Length; i++) {
+                        var fp = f.Parameters[i];
+                        var pname = "p" + i;
+                        //var pt = GetClrType (fp.Type);
+                        var pt = sysInt32.MakePointerType ();
+                        var p = new ParameterDefinition (pname, ParameterAttributes.None, pt);
+                        md.Parameters.Add (p);
+                    }
+
+                    var b = new MethodBody (md);
+                    var il = b.GetILProcessor ();
+
+                    if (f.ReturnType != VoidType.Void) {
+                        il.Append (CecilInstruction.Create (OpCodes.Ldc_I4, 42));
+                    }
+                    il.Append (CecilInstruction.Create (OpCodes.Ret));
+                    md.Body = b;
+
+                    funcstd.Methods.Add (md);
                 }
             }
         }
@@ -120,6 +163,8 @@ namespace Repil
                     return sysInt32.MakePointerType ();
                 case Repil.Types.PointerType pt:
                     return GetClrType (pt.ElementType).MakePointerType ();
+                case NamedType nt:
+                    return structs[nt.Symbol].Item2;
                 default:
                     throw new NotSupportedException ($"{e} not supported");
             }

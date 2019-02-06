@@ -11,7 +11,7 @@
     <Folder Include="Types\" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Mono.Cecil" Version="0.10.3" />
+    <PackageReference Include="Mono.Cecil" Version="0.10.0" />
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Class1.cs" />
