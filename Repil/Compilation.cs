@@ -89,8 +89,6 @@ namespace Repil
                             td.Fields.Add (f);
                         }
 
-                        td.IsValueType = true;
-
                         mod.Types.Add (td);
                         structNames.Add (tname);
                         structs[iskv.Key] = (l, td);
