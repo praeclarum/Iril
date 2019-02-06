@@ -125,6 +125,30 @@ namespace Repil.IR
         SignedLessThanOrEqual,
     }
 
+    public class PhiInstruction : Instruction
+    {
+        public readonly LType Type;
+        public readonly PhiValue[] Values;
+
+        public PhiInstruction (LType type, IEnumerable<PhiValue> values)
+        {
+            Type = type;
+            Values = values.ToArray ();
+        }
+    }
+
+    public class PhiValue
+    {
+        public readonly Value Value;
+        public readonly Value Label;
+
+        public PhiValue (Value value, Value label)
+        {
+            Value = value;
+            Label = label;
+        }
+    }
+
     public class StoreInstruction : Instruction
     {
         public readonly TypedValue Value;

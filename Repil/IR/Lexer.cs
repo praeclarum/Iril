@@ -61,6 +61,7 @@ namespace Repil.IR
             { Symbol.Intern ("getelementptr"), Token.GETELEMENTPTR },
             { Symbol.Intern ("inbounds"), Token.INBOUNDS },
             { Symbol.Intern ("call"), Token.CALL },
+            { Symbol.Intern ("phi"), Token.PHI },
         };
 
         public Lexer (string llvm)
@@ -119,6 +120,8 @@ namespace Repil.IR
                 case ')':
                 case '<':
                 case '>':
+                case '[':
+                case ']':
                     tok = s[p];
                     val = singleCharToken;
                     p++;

@@ -279,6 +279,23 @@ function_arg
     }
     ;
     
+phi_vals
+    : phi_val
+    {
+        $$ = NewList ((PhiValue)$1);
+    }
+    | phi_vals ',' phi_val
+    {
+        $$ = ListAdd ($1, (PhiValue)$3);
+    };
+    
+phi_val
+    : '[' value ',' value ']'
+    {
+        $$ = new PhiValue ((Value)$2, (Value)$4);
+    }
+    ;
+    
 instruction
     : RET
     | BR I1 value ',' label_value ',' label_value
@@ -308,6 +325,10 @@ instruction
     | CALL type function_pointer '(' function_args ')'
     {
         $$ = new CallInstruction ((LType)$2, (Value)$3, (List<Argument>)$5);
+    }
+    | PHI type phi_vals
+    {
+        $$ = new PhiInstruction ((LType)$2, (List<PhiValue>)$3);
     }
     ;
     
