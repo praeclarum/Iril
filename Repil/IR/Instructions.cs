@@ -16,6 +16,21 @@ namespace Repil.IR
         public override LType ResultType => VoidType.Void;
     }
 
+    public class AllocaInstruction : Instruction
+    {
+        public readonly LType Type;
+        public readonly int Align;
+
+        public AllocaInstruction (LType type, int align)
+        {
+            Type = type;
+            Align = align;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
+        public override LType ResultType => Type;
+    }
+
     public class BitcastInstruction : Instruction
     {
         public readonly TypedValue Input;

@@ -14,19 +14,20 @@ namespace Tests
         [Test]
         public void SuiteSparse ()
         {
+            var asmFileName = "SuiteSparse.dll";
             var irmods =
                 new[] { "SuiteSparse.klu_defaults.ll" }
                 .Select (x => Repil.Module.Parse (GetCode (x)));
             var compilation = new Compilation (
                 irmods,
-                assemblyName: "SuiteSparse.dll");
+                assemblyName: asmFileName);
 
             var asmStream = new MemoryStream ();
             compilation.WriteAssembly (asmStream);
             Assert.Greater (asmStream.Length, 1024);
 
             var asmBytes = asmStream.ToArray ();
-            var asmPath = Path.GetTempFileName ();
+            var asmPath = Path.Combine (Path.GetTempPath (), asmFileName);
             File.WriteAllBytes (asmPath, asmBytes);
             var disProc = new Process {
                 StartInfo = new ProcessStartInfo {
@@ -45,7 +46,7 @@ namespace Tests
             }
             var disAsm = disAsmB.ToString ();
             System.Console.WriteLine (disAsm);
-            File.Delete (asmPath);
+            System.Console.WriteLine (asmPath);
 
             var asm = Assembly.Load (asmBytes);
 

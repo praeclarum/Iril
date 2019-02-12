@@ -26,6 +26,7 @@ namespace Repil
             new SymbolTable<(LiteralStructureType, TypeDefinition)> ();
 
         AssemblyDefinition sysAsm;
+        TypeReference sysVoid;
         TypeReference sysObj;
         TypeReference sysVal;
         TypeReference sysByte;
@@ -34,6 +35,9 @@ namespace Repil
         TypeReference sysInt64;
         TypeReference sysSingle;
         TypeReference sysDouble;
+
+        readonly Dictionary<(int, string), (TypeReference, MethodReference)> vectorTypes =
+            new Dictionary<(int, string), (TypeReference, MethodReference)> ();
 
         public Compilation (IEnumerable<Module> documents, string assemblyName)
         {
@@ -113,6 +117,7 @@ namespace Repil
             sysInt64 = Import ("System.Int64");
             sysSingle = Import ("System.Single");
             sysDouble = Import ("System.Double");
+            sysVoid = Import ("System.Void");
         }
 
         void CompileStructures ()
@@ -274,17 +279,43 @@ namespace Repil
             void EmitInstruction (IR.Assignment assignment, IR.Block nextBlock)
             {
                 switch (assignment.Instruction) {
+                    case IR.BitcastInstruction bitcast:
+                        EmitTypedValue (bitcast.Input);
+                        break;
                     case IR.CallInstruction call:
                         break;
                     case IR.ConditionalBrInstruction cbr:
-                        EmitValue (cbr.Condition);
+                        EmitValue (cbr.Condition, cbr.ResultType);
                         Emit (il.Create (OpCodes.Brtrue, GetLabel (cbr.IfTrue)));
                         if (cbr.IfFalse.Symbol != nextBlock?.Symbol)
                             Emit (il.Create (OpCodes.Br, GetLabel (cbr.IfFalse)));
                         break;
+                    case IR.GetElementPointerInstruction gep: {
+                            var t = gep.Pointer.Type;
+                            EmitTypedValue (gep.Pointer);
+                            var n = gep.Indices.Length;
+                            for (var i = 1; i < n; i++) {
+                                var index = gep.Indices[i];
+                                if (t is Types.PointerType pt && Resolve (pt.ElementType) is Types.StructureType st) {
+                                    var cst = GetClrType (pt).GetElementType ().Resolve ();
+                                    var field = cst.Fields[index];
+                                    if (i == n - 1) {
+                                        Emit (il.Create (OpCodes.Ldflda, field));
+                                        Emit (il.Create (OpCodes.Conv_U));
+                                    }
+                                    else {
+                                        throw new NotSupportedException ();
+                                    }
+                                }
+                                else {
+                                    throw new NotSupportedException ();
+                                }
+                            }
+                        }
+                        break;
                     case IR.IcmpInstruction icmp:
-                        EmitValue (icmp.Op1);
-                        EmitValue (icmp.Op2);
+                        EmitValue (icmp.Op1, icmp.Type);
+                        EmitValue (icmp.Op2, icmp.Type);
                         switch (icmp.Condition) {
                             case IR.IcmpCondition.Equal:
                                 Emit (il.Create (OpCodes.Ceq));
@@ -327,10 +358,46 @@ namespace Repil
                         Emit (il.Create (OpCodes.Ldloc, GetPhiLocal (assignment)));
                         break;
                     case IR.RetInstruction ret:
-                        EmitValue (ret.Value.Value);
+                        EmitTypedValue (ret.Value);
                         Emit (il.Create (OpCodes.Ret));
                         break;
                     case IR.StoreInstruction store:
+                        EmitTypedValue (store.Pointer);
+                        EmitTypedValue (store.Value); {
+                            var et = GetClrType (store.Value.Type);
+                            if (store.Value.Type is IntegerType intt) {
+                                switch (intt.Bits) {
+                                    case 8:
+                                        Emit (il.Create (OpCodes.Stind_I1));
+                                        break;
+                                    case 16:
+                                        Emit (il.Create (OpCodes.Stind_I2));
+                                        break;
+                                    case 32:
+                                        Emit (il.Create (OpCodes.Stind_I4));
+                                        break;
+                                    case 64:
+                                        Emit (il.Create (OpCodes.Stind_I8));
+                                        break;
+                                    default:
+                                        Emit (il.Create (OpCodes.Stobj, et));
+                                        break;
+                                }
+                            }
+                            else if (store.Value.Type is FloatType fltt) {
+                                switch (fltt.Bits) {
+                                    case 32:
+                                        Emit (il.Create (OpCodes.Stind_R4));
+                                        break;
+                                    default:
+                                        Emit (il.Create (OpCodes.Stind_R8));
+                                        break;
+                                }
+                            }
+                            else {
+                                Emit (il.Create (OpCodes.Stobj, et));
+                            }
+                        }
                         break;
                     case IR.UnconditionalBrInstruction br:
                         Emit (il.Create (OpCodes.Br, GetLabel (br.Destination)));
@@ -340,9 +407,31 @@ namespace Repil
                 }
             }
 
-            void EmitValue (IR.Value value)
+            void EmitTypedValue (IR.TypedValue value)
+            {
+                EmitValue (value.Value, value.Type);
+            }
+
+            void EmitValue (IR.Value value, LType type)
             {
                 switch (value) {
+                    case IR.FloatConstant flt:
+                        Emit (il.Create (
+                            ((FloatType)type).Bits == 64 ? OpCodes.Ldc_R8 : OpCodes.Ldc_R4,
+                            flt.Value));
+                        break;
+                    case IR.IntegerConstant i:
+                        switch (((IntegerType)type).Bits) {
+                            case 8:
+                                Emit (il.Create (OpCodes.Ldc_I4, ((int)i.Value) & 0xFF));
+                                break;
+                            case 32:
+                                Emit (il.Create (OpCodes.Ldc_I4, (int)i.Value));
+                                break;
+                            default:
+                                throw new NotSupportedException ($"{((IntegerType)type).Bits}-bit integers");
+                        }
+                        break;
                     case IR.LocalValue local:
                         if (locals.TryGetValue (local.Symbol, out var vd)) {
                             Emit (il.Create (OpCodes.Ldloc, vd));
@@ -359,6 +448,14 @@ namespace Repil
                     case IR.NullConstant nll:
                         Emit (il.Create (OpCodes.Ldnull));
                         break;
+                    case IR.VectorConstant vec:
+                        foreach (var c in vec.Constants) {
+                            EmitValue (c.Constant, c.Type);
+                        } {
+                            var (vt, ctor) = GetVectorType ((VectorType)type);
+                            Emit (il.Create (OpCodes.Newobj, ctor));
+                        }
+                        break;
                     default:
                         throw new NotImplementedException (value.ToString ());
                 }
@@ -368,6 +465,14 @@ namespace Repil
             {
                 return blockFirstInstr[label.Symbol];
             }
+        }
+
+        LType Resolve (LType elementType)
+        {
+            if (elementType is NamedType nt) {
+                return structs[nt.Symbol].Item1;
+            }
+            return elementType;
         }
 
         TypeReference GetClrType (LType e)
@@ -401,9 +506,59 @@ namespace Repil
                     return GetClrType (pt.ElementType).MakePointerType ();
                 case NamedType nt:
                     return structs[nt.Symbol].Item2;
+                case VectorType vt: {
+                        return GetVectorType (vt).Item1;
+                    }
+                case VoidType vdt:
+                    return sysVoid;
                 default:
                     throw new NotSupportedException ($"{e} not supported");
             }
+        }
+
+        private (TypeReference, MethodReference) GetVectorType (VectorType vt)
+        {
+            var et = GetClrType (vt.ElementType);
+            var key = (vt.Length, et.FullName);
+            if (vectorTypes.TryGetValue (key, out var vct)) {
+                return vct;
+            }
+            return AddVectorType (key, et);
+        }
+
+        (TypeReference, MethodReference) AddVectorType ((int Length, string TypeFullName) key, TypeReference elementType)
+        {
+            var tname = $"Vector{key.Length}{elementType.Name}";
+
+            var td = new TypeDefinition (namespac, tname, TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.Public, sysVal);
+
+            for (var i = 0; i < key.Length; i++) {
+                var f = new FieldDefinition ("E" + i, FieldAttributes.Public, elementType);
+                td.Fields.Add (f);
+            }
+
+            var ctor = new MethodDefinition (".ctor", MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName, sysVoid);
+            for (var i = 0; i < key.Length; i++) {
+                var p = new ParameterDefinition ("e" + i, ParameterAttributes.None, elementType);
+                ctor.Parameters.Add (p);
+            }
+            var cbody = new MethodBody (ctor);
+            var il = cbody.GetILProcessor ();
+            for (var i = 0; i < key.Length; i++) {
+                il.Append (il.Create (OpCodes.Ldarg_0));
+                il.Append (il.Create (OpCodes.Ldarg, i + 1));
+                il.Append (il.Create (OpCodes.Stfld, td.Fields[i]));
+            }
+            il.Append (il.Create (OpCodes.Ret));
+            cbody.Optimize ();
+            ctor.Body = cbody;
+            td.Methods.Add (ctor);
+
+            mod.Types.Add (td);
+            var r = ((TypeReference)td, (MethodReference)ctor);
+            vectorTypes[key] = r;
+
+            return r;
         }
 
         public void WriteAssembly (Stream output)

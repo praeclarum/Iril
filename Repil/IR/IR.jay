@@ -132,9 +132,9 @@ type
     | DOUBLE { $$ = FloatType.Double; }
     | I1     { $$ = IntegerType.I1; }
     | I8     { $$ = IntegerType.I8; }
-    | I16    { $$ = IntegerType.I8; }
-    | I32    { $$ = IntegerType.I8; }
-    | I64    { $$ = IntegerType.I8; }
+    | I16    { $$ = IntegerType.I16; }
+    | I32    { $$ = IntegerType.I32; }
+    | I64    { $$ = IntegerType.I64; }
     | type '(' type_list ')'
     {
         $$ = new FunctionType ((LType)$1, (List<LType>)$3);
@@ -150,6 +150,10 @@ type
     | '<' INTEGER X type '>'
     {
         $$ = new VectorType ((int)(BigInteger)$2, (LType)$4);
+    }
+    | '[' INTEGER X type ']'
+    {
+        $$ = new ArrayType ((long)(BigInteger)$2, (LType)$4);
     }
     ;
     
@@ -410,29 +414,33 @@ terminal_instruction
     ;
     
 instruction
-    : STORE typed_value ',' typed_value ',' ALIGN INTEGER ',' tbaa
+    : ALLOCA type ',' ALIGN INTEGER
     {
-        $$ = new StoreInstruction ((TypedValue)$2, (TypedValue)$4);
-    }
-    | ICMP icmp_condition type value ',' value
-    {
-        $$ = new IcmpInstruction ((IcmpCondition)$2, (LType)$3, (Value)$4, (Value)$6);
+        $$ = new AllocaInstruction ((LType)$2, (int)(BigInteger)$5);
     }
     | BITCAST typed_value TO type
     {
         $$ = new BitcastInstruction ((TypedValue)$2, (LType)$4);
     }
-    | GETELEMENTPTR INBOUNDS type ',' typed_value ',' element_indices
-    {
-        $$ = new GetElementPointerInstruction ((LType)$3, (TypedValue)$5, (List<int>)$7);
-    }
     | CALL type function_pointer '(' function_args ')'
     {
         $$ = new CallInstruction ((LType)$2, (Value)$3, (List<Argument>)$5);
     }
+    | GETELEMENTPTR INBOUNDS type ',' typed_value ',' element_indices
+    {
+        $$ = new GetElementPointerInstruction ((LType)$3, (TypedValue)$5, (List<int>)$7);
+    }
+    | ICMP icmp_condition type value ',' value
+    {
+        $$ = new IcmpInstruction ((IcmpCondition)$2, (LType)$3, (Value)$4, (Value)$6);
+    }
     | PHI type phi_vals
     {
         $$ = new PhiInstruction ((LType)$2, (List<PhiValue>)$3);
+    }
+    | STORE typed_value ',' typed_value ',' ALIGN INTEGER ',' tbaa
+    {
+        $$ = new StoreInstruction ((TypedValue)$2, (TypedValue)$4);
     }
     ;
     
