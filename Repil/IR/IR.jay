@@ -318,7 +318,7 @@ blocks
     ;
 
 block
-    : assignments terminal_assignment
+    : assignments terminator_assignment
     {
         var l = (List<Assignment>)$1;
         l.Add ((Assignment)$2);
@@ -337,8 +337,8 @@ assignments
     }
     ;
     
-terminal_assignment
-    : terminal_instruction
+terminator_assignment
+    : terminator_instruction
     {
         $$ = new Assignment ((Instruction)$1);
     }
@@ -398,18 +398,40 @@ phi_val
     }
     ;
     
-terminal_instruction
-    : RET typed_value
+switch_cases
+    : switch_case
     {
-        $$ = new RetInstruction ((TypedValue)$2);
+        $$ = NewList ((SwitchCase)$1);
+    }
+    | switch_cases switch_case
+    {
+        $$ = ListAdd ($1, (SwitchCase)$2);
+    }
+    ;
+    
+switch_case
+    : typed_value ',' label_value
+    {
+        $$ = new SwitchCase ((TypedValue)$1, (LabelValue)$3);
+    }
+    ;
+    
+terminator_instruction
+    : BR label_value
+    {
+        $$ = new UnconditionalBrInstruction ((LabelValue)$2);
     }
     | BR I1 value ',' label_value ',' label_value
     {
         $$ = new ConditionalBrInstruction ((Value)$3, (LabelValue)$5, (LabelValue)$7);
     }
-    | BR label_value
+    | RET typed_value
     {
-        $$ = new UnconditionalBrInstruction ((LabelValue)$2);
+        $$ = new RetInstruction ((TypedValue)$2);
+    }
+    | SWITCH typed_value ',' label_value '[' switch_cases ']'
+    {
+        $$ = new SwitchInstruction ((TypedValue)$2, (LabelValue)$4, (List<SwitchCase>)$6);
     }
     ;
     

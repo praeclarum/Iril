@@ -11,7 +11,7 @@ namespace Repil.IR
         public abstract LType ResultType { get; }
     }
 
-    public abstract class TerminalInstruction : Instruction
+    public abstract class TerminatorInstruction : Instruction
     {
         public override LType ResultType => VoidType.Void;
     }
@@ -46,7 +46,7 @@ namespace Repil.IR
         public override LType ResultType => OutputType;
     }
 
-    public abstract class BrInstruction : TerminalInstruction
+    public abstract class BrInstruction : TerminatorInstruction
     {
     }
 
@@ -221,7 +221,7 @@ namespace Repil.IR
         }
     }
 
-    public class RetInstruction : TerminalInstruction
+    public class RetInstruction : TerminatorInstruction
     {
         public readonly TypedValue Value;
 
@@ -246,5 +246,34 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals.Concat (Pointer.ReferencedLocals);
         public override LType ResultType => VoidType.Void;
+    }
+
+    public class SwitchInstruction : TerminatorInstruction
+    {
+        public readonly TypedValue Value;
+        public readonly LabelValue DefaultLabel;
+        public readonly SwitchCase[] Cases;
+
+        public SwitchInstruction (TypedValue value, LabelValue pointer, IEnumerable<SwitchCase> cases)
+        {
+            Value = value;
+            DefaultLabel = pointer;
+            Cases = cases.ToArray ();
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals.Concat (DefaultLabel.ReferencedLocals);
+        public override LType ResultType => VoidType.Void;
+    }
+
+    public class SwitchCase
+    {
+        public readonly TypedValue Value;
+        public readonly LabelValue Label;
+
+        public SwitchCase (TypedValue value, LabelValue label)
+        {
+            Value = value;
+            Label = label;
+        }
     }
 }

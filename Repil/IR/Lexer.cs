@@ -75,6 +75,7 @@ namespace Repil.IR
             { Symbol.Intern ("alloca"), Token.ALLOCA },
             { Symbol.Intern ("load"), Token.LOAD },
             { Symbol.Intern ("tail"), Token.TAIL },
+            { Symbol.Intern ("switch"), Token.SWITCH },
         };
 
         public Lexer (string llvm)
