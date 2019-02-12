@@ -10,26 +10,39 @@ namespace Repil.IR
         public readonly LType ReturnType;
         public readonly GlobalSymbol Symbol;
         public readonly Parameter[] Parameters;
-        public readonly Assignment[] Instructions;
+        public readonly Block[] Blocks;
 
-        public FunctionDefinition (LType returnType, GlobalSymbol symbol, IEnumerable<Parameter> parameters, IEnumerable<Assignment> instructions)
+        public FunctionDefinition (LType returnType, GlobalSymbol symbol, IEnumerable<Parameter> parameters, IEnumerable<Block> blocks)
         {
             ReturnType = returnType;
             Symbol = symbol;
             Parameters = parameters.ToArray ();
-            Instructions = instructions.ToArray ();
+            Blocks = blocks.ToArray ();
         }
 
         public override string ToString () =>
             $"{ReturnType} ({String.Join(", ", (object[])Parameters)}) {{ }}";
+
+        public Assignment GetAssignment (LocalValue local)
+        {
+            foreach (var b in Blocks) {
+                foreach (var a in b.Assignments) {
+                    if (ReferenceEquals (a.Result, local.Symbol))
+                        return a;
+                }
+            }
+            throw new KeyNotFoundException ();
+        }
     }
 
     public class Parameter
     {
+        public readonly LocalSymbol Symbol;
         public readonly LType Type;
 
-        public Parameter (LType type)
+        public Parameter (LocalSymbol symbol, LType type)
         {
+            Symbol = symbol;
             Type = type;
         }
 
@@ -43,6 +56,18 @@ namespace Repil.IR
         NonNull   = 1 << 0,
         NoCapture = 1 << 1,
         WriteOnly = 1 << 2,
+    }
+
+    public class Block
+    {
+        public readonly Symbol Symbol;
+        public readonly Assignment[] Assignments;
+
+        public Block (Symbol symbol, IEnumerable<Assignment> assignments)
+        {
+            Symbol = symbol;
+            Assignments = assignments.ToArray ();
+        }
     }
 
     public class Assignment

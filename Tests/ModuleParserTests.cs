@@ -17,6 +17,7 @@ namespace Tests
             Assert.Greater (mod.SourceFilename.Length, 2);
             Assert.Greater (mod.TargetTriple.Length, 2);
             Assert.Greater (mod.TargetDatalayout.Length, 2);
+            Assert.Greater (mod.FunctionDefinitions.Count, 0);
         }
 
         [Test]

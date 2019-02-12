@@ -154,9 +154,9 @@ type
     ;
     
 function_definition
-    : DEFINE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs '{' assignments '}'
+    : DEFINE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (List<Parameter>)$5, (List<Assignment>)$10);
+        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (List<Parameter>)$5, (List<Block>)$10);
     }
     ;
     
@@ -181,11 +181,11 @@ parameter_list
 parameter
     : type
     {
-        $$ = new Parameter ((LType)$1);
+        $$ = new Parameter (LocalSymbol.None, (LType)$1);
     }
     | type parameter_attributes
     {
-        $$ = new Parameter ((LType)$1);
+        $$ = new Parameter (LocalSymbol.None, (LType)$1);
     }
     ;
     
@@ -301,7 +301,27 @@ element_indices
         $$ = ListAdd ($1, (int)$3);
     }
     ;
+    
+blocks
+    : block
+    {
+        $$ = NewList ((Block)$1);
+    }
+    | blocks block
+    {
+        $$ = ListAdd ($1, (Block)$2);
+    }
+    ;
 
+block
+    : assignments terminal_assignment
+    {
+        var l = (List<Assignment>)$1;
+        l.Add ((Assignment)$2);
+        $$ = new Block (LocalSymbol.None, l);
+    }
+    ;
+    
 assignments
     : assignment
     {
@@ -310,6 +330,13 @@ assignments
     | assignments assignment
     {
         $$ = ListAdd ($1, (Assignment)$2);
+    }
+    ;
+    
+terminal_assignment
+    : terminal_instruction
+    {
+        $$ = new Assignment ((Instruction)$1);
     }
     ;
     
@@ -367,7 +394,7 @@ phi_val
     }
     ;
     
-instruction
+terminal_instruction
     : RET typed_value
     {
         $$ = new RetInstruction ((TypedValue)$2);
@@ -380,7 +407,10 @@ instruction
     {
         $$ = new UnconditionalBrInstruction ((LabelValue)$2);
     }
-    | STORE typed_value ',' typed_value ',' ALIGN INTEGER ',' tbaa
+    ;
+    
+instruction
+    : STORE typed_value ',' typed_value ',' ALIGN INTEGER ',' tbaa
     {
         $$ = new StoreInstruction ((TypedValue)$2, (TypedValue)$4);
     }

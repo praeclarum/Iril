@@ -7,10 +7,13 @@ namespace Repil.IR
 {
     public abstract class Instruction
     {
+        public abstract IEnumerable<LocalSymbol> ReferencedLocals { get; }
+        public abstract LType ResultType { get; }
     }
 
     public abstract class TerminalInstruction : Instruction
     {
+        public override LType ResultType => VoidType.Void;
     }
 
     public class BitcastInstruction : Instruction
@@ -23,6 +26,9 @@ namespace Repil.IR
             Input = input;
             OutputType = outputType;
         }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Input.ReferencedLocals;
+        public override LType ResultType => OutputType;
     }
 
     public abstract class BrInstruction : TerminalInstruction
@@ -41,6 +47,8 @@ namespace Repil.IR
             IfTrue = ifTrue;
             IfFalse = ifFalse;
         }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Condition.ReferencedLocals;
     }
 
     public class UnconditionalBrInstruction : BrInstruction
@@ -51,6 +59,8 @@ namespace Repil.IR
         {
             Destination = destination;
         }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
     }
 
     public class CallInstruction : Instruction
@@ -65,6 +75,18 @@ namespace Repil.IR
             Pointer = pointer;
             Arguments = arguments.ToArray ();
         }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals {
+            get {
+                foreach (var a in Arguments) {
+                    foreach (var l in a.Value.ReferencedLocals) {
+                        yield return l;
+                    }
+                }
+            }
+        }
+
+        public override LType ResultType => ReturnType;
     }
 
     public class Argument
@@ -93,6 +115,9 @@ namespace Repil.IR
             Pointer = pointer;
             Indices = indices.ToArray ();
         }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Pointer.ReferencedLocals;
+        public override LType ResultType => Type;
     }
 
     public class IcmpInstruction : Instruction
@@ -109,6 +134,9 @@ namespace Repil.IR
             Op1 = op1;
             Op2 = op2;
         }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
+        public override LType ResultType => IntegerType.I1;
     }
 
     public enum IcmpCondition
@@ -135,6 +163,18 @@ namespace Repil.IR
             Type = type;
             Values = values.ToArray ();
         }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals {
+            get {
+                foreach (var v in Values) {
+                    foreach (var l in v.Value.ReferencedLocals) {
+                        yield return l;
+                    }
+                }
+            }
+        }
+
+        public override LType ResultType => Type;
     }
 
     public class PhiValue
@@ -149,7 +189,7 @@ namespace Repil.IR
         }
     }
 
-    public class RetInstruction : Instruction
+    public class RetInstruction : TerminalInstruction
     {
         public readonly TypedValue Value;
 
@@ -157,6 +197,8 @@ namespace Repil.IR
         {
             Value = value;
         }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
     }
 
     public class StoreInstruction : Instruction
@@ -169,5 +211,8 @@ namespace Repil.IR
             Value = value;
             Pointer = pointer;
         }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals.Concat (Pointer.ReferencedLocals);
+        public override LType ResultType => VoidType.Void;
     }
 }

@@ -14,14 +14,12 @@ namespace Tests
         [Test]
         public void SuiteSparse ()
         {
-            var rp = typeof (object).Assembly.Location;
             var irmods =
                 new[] { "SuiteSparse.klu_defaults.ll" }
                 .Select (x => Repil.Module.Parse (GetCode (x)));
             var compilation = new Compilation (
                 irmods,
-                assemblyName: "SuiteSparse.dll",
-                systemAssemblyPath: rp);
+                assemblyName: "SuiteSparse.dll");
 
             var asmStream = new MemoryStream ();
             compilation.WriteAssembly (asmStream);
@@ -32,7 +30,7 @@ namespace Tests
             File.WriteAllBytes (asmPath, asmBytes);
             var disProc = new Process {
                 StartInfo = new ProcessStartInfo {
-                    FileName = "monodis",
+                    FileName = "ikdasm",
                     Arguments = $"\"{asmPath}\"",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,

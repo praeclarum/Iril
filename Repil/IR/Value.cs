@@ -7,6 +7,7 @@ namespace Repil.IR
 {
     public abstract class Value
     {
+        public virtual IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
     }
 
     public class LabelValue : Value
@@ -26,6 +27,12 @@ namespace Repil.IR
         public LocalValue (LocalSymbol symbol)
         {
             Symbol = symbol ?? throw new ArgumentNullException (nameof (symbol));
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals {
+            get {
+                yield return Symbol;
+            }
         }
     }
 
@@ -51,6 +58,16 @@ namespace Repil.IR
 
             Values = values.ToArray ();
         }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals {
+            get {
+                foreach (var v in Values) {
+                    foreach (var l in v.ReferencedLocals) {
+                        yield return l;
+                    }
+                }
+            }
+        }
     }
 
     public class TypedValue
@@ -63,5 +80,7 @@ namespace Repil.IR
             Type = type ?? throw new ArgumentNullException (nameof (type));
             Value = value ?? throw new ArgumentNullException (nameof (value));
         }
+
+        public IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
     }
 }

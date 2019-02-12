@@ -112,6 +112,8 @@ namespace Repil
 
     public class LocalSymbol : Symbol
     {
+        public static readonly LocalSymbol None = (LocalSymbol)Intern ("%");
+
         public LocalSymbol (uint hash, string text) : base (hash, text)
         {
         }
