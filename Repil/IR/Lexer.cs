@@ -73,6 +73,8 @@ namespace Repil.IR
             { Symbol.Intern ("uwtable"), Token.UWTABLE },
             { Symbol.Intern ("argmemonly"), Token.ARGMEMONLY },
             { Symbol.Intern ("alloca"), Token.ALLOCA },
+            { Symbol.Intern ("load"), Token.LOAD },
+            { Symbol.Intern ("tail"), Token.TAIL },
         };
 
         public Lexer (string llvm)

@@ -34,7 +34,7 @@ namespace Repil.IR
 %token FPTOUI FPTOSI UITOFP SITOFP PTRTOINT INTTOPTR BITCAST ADDRSPACECAST
 %token ICMP EQ NE UGT UGE ULT ULE SGT SGE SLT SLE
 %token FCMP OEQ OGT OGE OLT OLE ONE ORD UEQ UNE UNO
-%token PHI SELECT CALL VA_ARG
+%token PHI SELECT CALL TAIL VA_ARG
 %token LANDINGPAD CATCHPAD CLEANUPPAD
 
 %start module
@@ -424,7 +424,15 @@ instruction
     }
     | CALL type function_pointer '(' function_args ')'
     {
-        $$ = new CallInstruction ((LType)$2, (Value)$3, (List<Argument>)$5);
+        $$ = new CallInstruction ((LType)$2, (Value)$3, (List<Argument>)$5, false);
+    }
+    | CALL type function_pointer '(' function_args ')' attribute_group_refs
+    {
+        $$ = new CallInstruction ((LType)$2, (Value)$3, (List<Argument>)$5, false);
+    }
+    | TAIL CALL type function_pointer '(' function_args ')' attribute_group_refs
+    {
+        $$ = new CallInstruction ((LType)$3, (Value)$4, (List<Argument>)$6, true);
     }
     | GETELEMENTPTR INBOUNDS type ',' typed_value ',' element_indices
     {
@@ -433,6 +441,10 @@ instruction
     | ICMP icmp_condition type value ',' value
     {
         $$ = new IcmpInstruction ((IcmpCondition)$2, (LType)$3, (Value)$4, (Value)$6);
+    }
+    | LOAD type ',' typed_value ',' ALIGN INTEGER ',' tbaa
+    {
+        $$ = new LoadInstruction ((LType)$2, (TypedValue)$4);
     }
     | PHI type phi_vals
     {

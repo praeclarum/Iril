@@ -83,12 +83,14 @@ namespace Repil.IR
         public readonly LType ReturnType;
         public readonly Value Pointer;
         public readonly Argument[] Arguments;
+        public readonly bool Tail;
 
-        public CallInstruction (LType returnType, Value pointer, IEnumerable<Argument> arguments)
+        public CallInstruction (LType returnType, Value pointer, IEnumerable<Argument> arguments, bool tail)
         {
             ReturnType = returnType;
             Pointer = pointer;
             Arguments = arguments.ToArray ();
+            Tail = tail;
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals {
@@ -166,6 +168,21 @@ namespace Repil.IR
         SignedGreaterThanOrEqual,
         SignedLessThan,
         SignedLessThanOrEqual,
+    }
+
+    public class LoadInstruction : Instruction
+    {
+        public readonly LType Type;
+        public readonly TypedValue Pointer;
+
+        public LoadInstruction (LType type, TypedValue pointer)
+        {
+            Type = type;
+            Pointer = pointer;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Pointer.ReferencedLocals;
+        public override LType ResultType => Type;
     }
 
     public class PhiInstruction : Instruction
