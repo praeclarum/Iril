@@ -16,6 +16,31 @@ namespace Repil.IR
         public override LType ResultType => VoidType.Void;
     }
 
+    public abstract class BinaryInstruction : Instruction
+    {
+        public readonly LType Type;
+        public readonly Value Op1;
+        public readonly Value Op2;
+
+        protected BinaryInstruction (LType type, Value op1, Value op2)
+        {
+            Type = type;
+            Op1 = op1;
+            Op2 = op2;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
+        public override LType ResultType => Type;
+    }
+
+    public class AddInstruction : BinaryInstruction
+    {
+        public AddInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
+        {
+        }
+    }
+
     public class AllocaInstruction : Instruction
     {
         public readonly LType Type;
@@ -28,6 +53,23 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
+        public override LType ResultType => Type;
+    }
+
+    public class AndInstruction : Instruction
+    {
+        public readonly LType Type;
+        public readonly Value Op1;
+        public readonly Value Op2;
+
+        public AndInstruction (LType type, Value op1, Value op2)
+        {
+            Type = type;
+            Op1 = op1;
+            Op2 = op2;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
         public override LType ResultType => Type;
     }
 
@@ -120,20 +162,63 @@ namespace Repil.IR
         }
     }
 
+    public class FloatAddInstruction : Instruction
+    {
+        public readonly LType Type;
+        public readonly Value Op1;
+        public readonly Value Op2;
+
+        public FloatAddInstruction (LType type, Value op1, Value op2)
+        {
+            Type = type;
+            Op1 = op1;
+            Op2 = op2;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
+        public override LType ResultType => Type;
+    }
+
+    public class FloatMultiplyInstruction : Instruction
+    {
+        public readonly LType Type;
+        public readonly Value Op1;
+        public readonly Value Op2;
+
+        public FloatMultiplyInstruction (LType type, Value op1, Value op2)
+        {
+            Type = type;
+            Op1 = op1;
+            Op2 = op2;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
+        public override LType ResultType => Type;
+    }
+
+    public class FloatSubInstruction : BinaryInstruction
+    {
+        public FloatSubInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
+        {
+        }
+    }
+
     public class GetElementPointerInstruction : Instruction
     {
         public readonly LType Type;
         public readonly TypedValue Pointer;
-        public readonly int[] Indices;
+        public readonly TypedValue[] Indices;
 
-        public GetElementPointerInstruction (LType type, TypedValue pointer, IEnumerable<int> indices)
+        public GetElementPointerInstruction (LType type, TypedValue pointer, IEnumerable<TypedValue> indices)
         {
             Type = type;
             Pointer = pointer;
             Indices = indices.ToArray ();
         }
 
-        public override IEnumerable<LocalSymbol> ReferencedLocals => Pointer.ReferencedLocals;
+        public override IEnumerable<LocalSymbol> ReferencedLocals =>
+            Pointer.ReferencedLocals.Concat (Indices.SelectMany (x => x.Value.ReferencedLocals));
         public override LType ResultType => Type;
     }
 
@@ -185,6 +270,31 @@ namespace Repil.IR
         public override LType ResultType => Type;
     }
 
+    public class LshrInstruction : BinaryInstruction
+    {
+        public LshrInstruction (LType type, Value op1, Value op2, bool exact)
+            : base (type, op1, op2)
+        {
+        }
+    }
+
+    public class MultiplyInstruction : Instruction
+    {
+        public readonly LType Type;
+        public readonly Value Op1;
+        public readonly Value Op2;
+
+        public MultiplyInstruction (LType type, Value op1, Value op2)
+        {
+            Type = type;
+            Op1 = op1;
+            Op2 = op2;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
+        public override LType ResultType => Type;
+    }
+
     public class PhiInstruction : Instruction
     {
         public readonly LType Type;
@@ -233,6 +343,21 @@ namespace Repil.IR
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
     }
 
+    public class SextInstruction : Instruction
+    {
+        public readonly TypedValue Value;
+        public readonly LType Type;
+
+        public SextInstruction (TypedValue value, LType type)
+        {
+            Value = value;
+            Type = type;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
+        public override LType ResultType => Type;
+    }
+
     public class StoreInstruction : Instruction
     {
         public readonly TypedValue Value;
@@ -246,6 +371,14 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals.Concat (Pointer.ReferencedLocals);
         public override LType ResultType => VoidType.Void;
+    }
+
+    public class SubInstruction : BinaryInstruction
+    {
+        public SubInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
+        {
+        }
     }
 
     public class SwitchInstruction : TerminatorInstruction
@@ -267,13 +400,43 @@ namespace Repil.IR
 
     public class SwitchCase
     {
-        public readonly TypedValue Value;
+        public readonly TypedConstant Value;
         public readonly LabelValue Label;
 
-        public SwitchCase (TypedValue value, LabelValue label)
+        public SwitchCase (TypedConstant value, LabelValue label)
         {
             Value = value;
             Label = label;
         }
+    }
+
+    public class TruncInstruction : Instruction
+    {
+        public readonly TypedValue Value;
+        public readonly LType Type;
+
+        public TruncInstruction (TypedValue value, LType type)
+        {
+            Value = value;
+            Type = type;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
+        public override LType ResultType => Type;
+    }
+
+    public class ZextInstruction : Instruction
+    {
+        public readonly TypedValue Value;
+        public readonly LType Type;
+
+        public ZextInstruction (TypedValue value, LType type)
+        {
+            Value = value;
+            Type = type;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
+        public override LType ResultType => Type;
     }
 }

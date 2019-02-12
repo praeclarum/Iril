@@ -24,8 +24,8 @@ namespace Repil.IR
 %token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND SSP UWTABLE ARGMEMONLY
 %token RET BR SWITCH INDIRECTBR INVOKE RESUME CATCHSWITCH CATCHRET CLEANUPRET UNREACHABLE
 %token FNEG
-%token ADD FADD SUB FSUB MUL FMUL UDIV SDIV FDIV UREM SREM FREM
-%token SHL LSHR ASHR
+%token ADD NUW NSW FADD SUB FSUB MUL FMUL UDIV SDIV FDIV UREM SREM FREM
+%token SHL LSHR EXACT ASHR
 %token AND OR XOR
 %token EXTRACTELEMENT INSERTELEMENT SHUFFLEVECTOR
 %token EXTRACTVALUE INSERTVALUE
@@ -289,20 +289,17 @@ tbaa
     ;
     
 element_index
-    : type INTEGER
-    {
-        $$ = (int)(BigInteger)$2;
-    }
+    : typed_value
     ;
     
 element_indices
     : element_index
     {
-        $$ = NewList ((int)$1);
+        $$ = NewList ((TypedValue)$1);
     }
     | element_indices ',' element_index
     {
-        $$ = ListAdd ($1, (int)$3);
+        $$ = ListAdd ($1, (TypedValue)$3);
     }
     ;
     
@@ -410,10 +407,20 @@ switch_cases
     ;
     
 switch_case
-    : typed_value ',' label_value
+    : typed_constant ',' label_value
     {
-        $$ = new SwitchCase ((TypedValue)$1, (LabelValue)$3);
+        $$ = new SwitchCase ((TypedConstant)$1, (LabelValue)$3);
     }
+    ;
+    
+wrappings
+    : wrapping
+    | wrappings wrapping
+    ;
+    
+wrapping
+    : NUW
+    | NSW
     ;
     
 terminator_instruction
@@ -436,9 +443,17 @@ terminator_instruction
     ;
     
 instruction
-    : ALLOCA type ',' ALIGN INTEGER
+    : ADD wrappings type value ',' value
+    {
+        $$ = new AddInstruction ((LType)$3, (Value)$4, (Value)$6);
+    }
+    | ALLOCA type ',' ALIGN INTEGER
     {
         $$ = new AllocaInstruction ((LType)$2, (int)(BigInteger)$5);
+    }
+    | AND type value ',' value
+    {
+        $$ = new AndInstruction ((LType)$2, (Value)$3, (Value)$5);
     }
     | BITCAST typed_value TO type
     {
@@ -456,9 +471,21 @@ instruction
     {
         $$ = new CallInstruction ((LType)$3, (Value)$4, (List<Argument>)$6, true);
     }
+    | FADD type value ',' value
+    {
+        $$ = new FloatAddInstruction ((LType)$2, (Value)$3, (Value)$5);
+    }
+    | FMUL type value ',' value
+    {
+        $$ = new FloatMultiplyInstruction ((LType)$2, (Value)$3, (Value)$5);
+    }
+    | GETELEMENTPTR type ',' typed_value ',' element_indices
+    {
+        $$ = new GetElementPointerInstruction ((LType)$2, (TypedValue)$4, (List<TypedValue>)$6);
+    }
     | GETELEMENTPTR INBOUNDS type ',' typed_value ',' element_indices
     {
-        $$ = new GetElementPointerInstruction ((LType)$3, (TypedValue)$5, (List<int>)$7);
+        $$ = new GetElementPointerInstruction ((LType)$3, (TypedValue)$5, (List<TypedValue>)$7);
     }
     | ICMP icmp_condition type value ',' value
     {
@@ -468,13 +495,41 @@ instruction
     {
         $$ = new LoadInstruction ((LType)$2, (TypedValue)$4);
     }
+    | LSHR EXACT type value ',' value
+    {
+        $$ = new LshrInstruction ((LType)$3, (Value)$4, (Value)$6, true);
+    }
+    | MUL wrappings type value ',' value
+    {
+        $$ = new MultiplyInstruction ((LType)$3, (Value)$4, (Value)$6);
+    }
     | PHI type phi_vals
     {
         $$ = new PhiInstruction ((LType)$2, (List<PhiValue>)$3);
     }
+    | SEXT typed_value TO type
+    {
+        $$ = new SextInstruction ((TypedValue)$2, (LType)$4);
+    }
     | STORE typed_value ',' typed_value ',' ALIGN INTEGER ',' tbaa
     {
         $$ = new StoreInstruction ((TypedValue)$2, (TypedValue)$4);
+    }
+    | SUB type value ',' value
+    {
+        $$ = new SubInstruction ((LType)$2, (Value)$3, (Value)$5);
+    }
+    | SUB wrappings type value ',' value
+    {
+        $$ = new SubInstruction ((LType)$3, (Value)$4, (Value)$6);
+    }
+    | TRUNC typed_value TO type
+    {
+        $$ = new TruncInstruction ((TypedValue)$2, (LType)$4);
+    }
+    | ZEXT typed_value TO type
+    {
+        $$ = new ZextInstruction ((TypedValue)$2, (LType)$4);
     }
     ;
     

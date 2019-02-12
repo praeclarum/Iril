@@ -296,9 +296,9 @@ namespace Repil
                             var n = gep.Indices.Length;
                             for (var i = 1; i < n; i++) {
                                 var index = gep.Indices[i];
-                                if (t is Types.PointerType pt && Resolve (pt.ElementType) is Types.StructureType st) {
+                                if (t is Types.PointerType pt && Resolve (pt.ElementType) is Types.StructureType st && index.Value is IR.IntegerConstant iconst) {
                                     var cst = GetClrType (pt).GetElementType ().Resolve ();
-                                    var field = cst.Fields[index];
+                                    var field = cst.Fields[(int)iconst.Value];
                                     if (i == n - 1) {
                                         Emit (il.Create (OpCodes.Ldflda, field));
                                         Emit (il.Create (OpCodes.Conv_U));

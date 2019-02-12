@@ -76,6 +76,20 @@ namespace Repil.IR
             { Symbol.Intern ("load"), Token.LOAD },
             { Symbol.Intern ("tail"), Token.TAIL },
             { Symbol.Intern ("switch"), Token.SWITCH },
+            { Symbol.Intern ("trunc"), Token.TRUNC },
+            { Symbol.Intern ("add"), Token.ADD },
+            { Symbol.Intern ("nsw"), Token.NSW },
+            { Symbol.Intern ("nuw"), Token.NUW },
+            { Symbol.Intern ("sext"), Token.SEXT },
+            { Symbol.Intern ("zext"), Token.ZEXT },
+            { Symbol.Intern ("mul"), Token.MUL },
+            { Symbol.Intern ("fadd"), Token.FADD },
+            { Symbol.Intern ("fmul"), Token.FMUL },
+            { Symbol.Intern ("and"), Token.AND },
+            { Symbol.Intern ("lshr"), Token.LSHR },
+            { Symbol.Intern ("exact"), Token.EXACT },
+            { Symbol.Intern ("sub"), Token.SUB },
+            { Symbol.Intern ("fsub"), Token.FSUB },
         };
 
         public Lexer (string llvm)
