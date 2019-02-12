@@ -18,6 +18,8 @@ namespace Repil.IR
         {
             Symbol = symbol ?? throw new ArgumentNullException (nameof (symbol));
         }
+
+        public override string ToString () => $"label {Symbol}";
     }
 
     public class LocalValue : Value
@@ -34,6 +36,8 @@ namespace Repil.IR
                 yield return Symbol;
             }
         }
+
+        public override string ToString () => Symbol.ToString ();
     }
 
     public class GlobalValue : Value
@@ -44,6 +48,8 @@ namespace Repil.IR
         {
             Symbol = symbol ?? throw new ArgumentNullException (nameof (symbol));
         }
+
+        public override string ToString () => Symbol.ToString ();
     }
 
     public class VectorValue : Value

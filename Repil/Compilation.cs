@@ -165,12 +165,14 @@ namespace Repil
             //
             // Create parameters
             //
+            var paramSyms = new SymbolTable<ParameterDefinition> ();
             for (var i = 0; i < f.Parameters.Length; i++) {
                 var fp = f.Parameters[i];
                 var pname = "p" + i;
-                var pt = GetClrType (fp.Type);
+                var pt = GetClrType (fp.ParameterType);
                 var p = new ParameterDefinition (pname, ParameterAttributes.None, pt);
                 md.Parameters.Add (p);
+                paramSyms[fp.Symbol] = p;
             }
 
             var body = new MethodBody (md);
@@ -182,7 +184,7 @@ namespace Repil
             var phiLocals = new SymbolTable<VariableDefinition> ();
             foreach (var b in f.Blocks) {
                 foreach (var a in b.Assignments) {
-                    if (a.Result != null && a.Instruction is IR.PhiInstruction phi) {
+                    if (a.HasResult && a.Instruction is IR.PhiInstruction phi) {
                         var local = new VariableDefinition (GetClrType (phi.Type));
                         phiLocals[a.Result] = local;
                         body.Variables.Add (local);
@@ -225,12 +227,25 @@ namespace Repil
             }
 
             //
+            // Create target instructions for each block
+            //
+            var blockFirstInstr = new SymbolTable<CecilInstruction> ();
+            foreach (var b in f.Blocks) {
+                var i = il.Create (OpCodes.Nop);
+                il.Append (i);
+                blockFirstInstr[b.Symbol] = i;
+            }
+
+            //
             // Emit the instructions
             //
-            foreach (var b in f.Blocks) {
+            var prev = default (CecilInstruction);
+            for (var i = 0; i < f.Blocks.Length; i++) {
+                var b = f.Blocks[i];
+                prev = blockFirstInstr[b.Symbol];
                 foreach (var a in b.Assignments) {
                     if (!ShouldInline (a.Result)) {
-                        CompileInstruction (a);
+                        EmitInstruction (a, i + 1 < f.Blocks.Length ? f.Blocks[i + 1] : null);
                     }
                 }
             }
@@ -239,6 +254,12 @@ namespace Repil
             body.Optimize ();
 
             return md;
+
+            void Emit (CecilInstruction i)
+            {
+                il.InsertAfter (prev, i);
+                prev = i;
+            }
 
             bool ShouldInline (LocalSymbol symbol)
             {
@@ -250,31 +271,102 @@ namespace Repil
                 return phiLocals[assignment.Result];
             }
 
-            void CompileInstruction (IR.Assignment assignment)
+            void EmitInstruction (IR.Assignment assignment, IR.Block nextBlock)
             {
                 switch (assignment.Instruction) {
+                    case IR.CallInstruction call:
+                        break;
+                    case IR.ConditionalBrInstruction cbr:
+                        EmitValue (cbr.Condition);
+                        Emit (il.Create (OpCodes.Brtrue, GetLabel (cbr.IfTrue)));
+                        if (cbr.IfFalse.Symbol != nextBlock?.Symbol)
+                            Emit (il.Create (OpCodes.Br, GetLabel (cbr.IfFalse)));
+                        break;
+                    case IR.IcmpInstruction icmp:
+                        EmitValue (icmp.Op1);
+                        EmitValue (icmp.Op2);
+                        switch (icmp.Condition) {
+                            case IR.IcmpCondition.Equal:
+                                Emit (il.Create (OpCodes.Ceq));
+                                break;
+                            case IR.IcmpCondition.NotEqual:
+                                Emit (il.Create (OpCodes.Ceq));
+                                Emit (il.Create (OpCodes.Not));
+                                break;
+                            case IR.IcmpCondition.UnsignedGreaterThan:
+                                Emit (il.Create (OpCodes.Cgt_Un));
+                                break;
+                            case IR.IcmpCondition.UnsignedGreaterThanOrEqual:
+                                Emit (il.Create (OpCodes.Clt_Un));
+                                Emit (il.Create (OpCodes.Not));
+                                break;
+                            case IR.IcmpCondition.UnsignedLessThan:
+                                Emit (il.Create (OpCodes.Clt_Un));
+                                break;
+                            case IR.IcmpCondition.UnsignedLessThanOrEqual:
+                                Emit (il.Create (OpCodes.Cgt_Un));
+                                Emit (il.Create (OpCodes.Not));
+                                break;
+                            case IR.IcmpCondition.SignedGreaterThan:
+                                Emit (il.Create (OpCodes.Cgt));
+                                break;
+                            case IR.IcmpCondition.SignedGreaterThanOrEqual:
+                                Emit (il.Create (OpCodes.Clt));
+                                Emit (il.Create (OpCodes.Not));
+                                break;
+                            case IR.IcmpCondition.SignedLessThan:
+                                Emit (il.Create (OpCodes.Clt));
+                                break;
+                            case IR.IcmpCondition.SignedLessThanOrEqual:
+                                Emit (il.Create (OpCodes.Cgt));
+                                Emit (il.Create (OpCodes.Not));
+                                break;
+                        }
+                        break;
                     case IR.PhiInstruction phi:
-                        il.Append (il.Create (OpCodes.Ldloc, GetPhiLocal (assignment)));
+                        Emit (il.Create (OpCodes.Ldloc, GetPhiLocal (assignment)));
                         break;
                     case IR.RetInstruction ret:
-                        CompileValue (ret.Value);
-                        il.Append (il.Create (OpCodes.Ret));
+                        EmitValue (ret.Value.Value);
+                        Emit (il.Create (OpCodes.Ret));
                         break;
+                    case IR.StoreInstruction store:
+                        break;
+                    case IR.UnconditionalBrInstruction br:
+                        Emit (il.Create (OpCodes.Br, GetLabel (br.Destination)));
+                        break;
+                    default:
+                        throw new NotImplementedException (assignment.Instruction.ToString ());
                 }
             }
 
-            void CompileValue (IR.TypedValue value)
+            void EmitValue (IR.Value value)
             {
-                switch (value.Value) {
+                switch (value) {
                     case IR.LocalValue local:
                         if (locals.TryGetValue (local.Symbol, out var vd)) {
-                            il.Append (il.Create (OpCodes.Ldloc, vd));
+                            Emit (il.Create (OpCodes.Ldloc, vd));
                         }
                         else {
-                            CompileInstruction (f.GetAssignment (local));
+                            if (paramSyms.TryGetValue (local.Symbol, out var pd)) {
+                                Emit (il.Create (OpCodes.Ldarg, pd));
+                            }
+                            else {
+                                EmitInstruction (f.GetAssignment (local), null);
+                            }
                         }
                         break;
+                    case IR.NullConstant nll:
+                        Emit (il.Create (OpCodes.Ldnull));
+                        break;
+                    default:
+                        throw new NotImplementedException (value.ToString ());
                 }
+            }
+
+            CecilInstruction GetLabel (IR.LabelValue label)
+            {
+                return blockFirstInstr[label.Symbol];
             }
         }
 

@@ -16,8 +16,34 @@ namespace Repil.IR
         {
             ReturnType = returnType;
             Symbol = symbol;
-            Parameters = parameters.ToArray ();
-            Blocks = blocks.ToArray ();
+
+            var implicitLocalCounter = 0;
+
+            var ps = new List<Parameter> ();
+            foreach (var p in parameters) {
+                if (p.Symbol == LocalSymbol.None) {
+                    var s = (LocalSymbol)Repil.Symbol.Intern ('%', implicitLocalCounter);
+                    ps.Add (p.WithSymbol (s));
+                    implicitLocalCounter++;
+                }
+            }
+
+            var bs = new List<Block> ();
+            foreach (var b in blocks) {
+                if (b.Symbol == LocalSymbol.None) {
+                    var s = (LocalSymbol)Repil.Symbol.Intern ('%', implicitLocalCounter);
+                    bs.Add (b.WithSymbol (s));
+                    implicitLocalCounter++;
+                }
+                foreach (var a in b.Assignments) {
+                    if (a.HasResult && a.Result.HasNumericValue) {
+                        implicitLocalCounter = a.Result.NumericValue + 1;
+                    }
+                }
+            }
+
+            Parameters = ps.ToArray ();
+            Blocks = bs.ToArray ();
         }
 
         public override string ToString () =>
@@ -31,23 +57,28 @@ namespace Repil.IR
                         return a;
                 }
             }
-            throw new KeyNotFoundException ();
+            throw new KeyNotFoundException ($"{local}");
         }
     }
 
     public class Parameter
     {
         public readonly LocalSymbol Symbol;
-        public readonly LType Type;
+        public readonly LType ParameterType;
 
         public Parameter (LocalSymbol symbol, LType type)
         {
-            Symbol = symbol;
-            Type = type;
+            Symbol = symbol ?? throw new ArgumentNullException (nameof (symbol));
+            ParameterType = type ?? throw new ArgumentNullException (nameof (type));
         }
 
         public override string ToString () =>
-            $"{Type}";
+            $"{ParameterType}";
+
+        public Parameter WithSymbol (LocalSymbol symbol)
+        {
+            return new Parameter (symbol, ParameterType);
+        }
     }
 
     [Flags]
@@ -65,8 +96,22 @@ namespace Repil.IR
 
         public Block (Symbol symbol, IEnumerable<Assignment> assignments)
         {
-            Symbol = symbol;
+            if (assignments == null) {
+                throw new ArgumentNullException (nameof (assignments));
+            }
+
+            Symbol = symbol ?? throw new ArgumentNullException (nameof (symbol));
             Assignments = assignments.ToArray ();
+        }
+
+        public override string ToString ()
+        {
+            return $"{Symbol} = {{ {Assignments.Length} instructions }}";
+        }
+
+        public Block WithSymbol (LocalSymbol newSymbol)
+        {
+            return new Block (newSymbol, Assignments);
         }
     }
 
@@ -77,14 +122,23 @@ namespace Repil.IR
 
         public Assignment (Instruction instruction)
         {
-            Result = null;
-            Instruction = instruction;
+            Result = LocalSymbol.None;
+            Instruction = instruction ?? throw new ArgumentNullException (nameof (instruction));
         }
 
         public Assignment (LocalSymbol result, Instruction instruction)
         {
-            Result = result;
-            Instruction = instruction;
+            Result = result ?? throw new ArgumentNullException (nameof (result));
+            Instruction = instruction ?? throw new ArgumentNullException (nameof (instruction));
+        }
+
+        public bool HasResult => Result != LocalSymbol.None;
+
+        public override string ToString ()
+        {
+            if (!HasResult)
+                return Instruction.ToString ();
+            return $"{Result} = {Instruction}";
         }
     }
 
@@ -96,8 +150,12 @@ namespace Repil.IR
 
         public FunctionDeclaration (LType returnType, GlobalSymbol symbol, IEnumerable<Parameter> parameters)
         {
-            ReturnType = returnType;
-            Symbol = symbol;
+            if (parameters == null) {
+                throw new ArgumentNullException (nameof (parameters));
+            }
+
+            ReturnType = returnType ?? throw new ArgumentNullException (nameof (returnType));
+            Symbol = symbol ?? throw new ArgumentNullException (nameof (symbol));
             Parameters = parameters.ToArray ();
         }
 

@@ -35,6 +35,11 @@ namespace Repil
             return true;
         }
 
+        public static Symbol Intern (char prefix, int value)
+        {
+            return Intern (prefix + value.ToString ());
+        }
+
         public static Symbol Intern (string symbol)
         {
             return SymbolTable.Get (symbol, 0, symbol.Length);
@@ -117,5 +122,8 @@ namespace Repil
         public LocalSymbol (uint hash, string text) : base (hash, text)
         {
         }
+
+        public bool HasNumericValue => Text.Length > 1 && char.IsDigit (Text[1]);
+        public int NumericValue => int.Parse (Text.Substring (1));
     }
 }
