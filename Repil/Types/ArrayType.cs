@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Numerics;
+
 namespace Repil.Types
 {
     public class ArrayType : AggregateType

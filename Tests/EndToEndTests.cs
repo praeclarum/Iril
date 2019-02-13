@@ -11,12 +11,17 @@ namespace Tests
     [TestFixture]
     public class EndToEndTests : TestsBase
     {
+        // clang -g -O3 -S -emit-llvm -fpic *.c
+
         [Test]
         public void SuiteSparse ()
         {
             var asmFileName = "SuiteSparse.dll";
             var irmods =
-                new[] { "SuiteSparse.klu_defaults.ll" }
+                new[] {
+                    "SuiteSparse.klu_defaults.ll",
+                    "SuiteSparse.klu_analyze.ll",
+                }
                 .Select (x => Repil.Module.Parse (GetCode (x)));
             var compilation = new Compilation (
                 irmods,

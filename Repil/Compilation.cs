@@ -35,9 +35,14 @@ namespace Repil
         TypeReference sysInt64;
         TypeReference sysSingle;
         TypeReference sysDouble;
+        TypeReference sysNotImpl;
+        MethodReference sysNotImplCtor;
 
         readonly Dictionary<(int, string), (TypeReference, MethodReference)> vectorTypes =
             new Dictionary<(int, string), (TypeReference, MethodReference)> ();
+
+        readonly SymbolTable<DefinedFunction> methodDefs =
+            new SymbolTable<DefinedFunction> ();
 
         public Compilation (IEnumerable<Module> documents, string assemblyName)
         {
@@ -58,6 +63,7 @@ namespace Repil
         {
             FindSystemTypes ();
             CompileStructures ();
+            FindFunctions ();
             CompileFunctions ();
         }
 
@@ -118,6 +124,8 @@ namespace Repil
             sysSingle = Import ("System.Single");
             sysDouble = Import ("System.Double");
             sysVoid = Import ("System.Void");
+            sysNotImpl = Import ("System.NotImplementedException");
+            sysNotImplCtor = new MethodReference (".ctor", sysVoid, sysNotImpl);
         }
 
         void CompileStructures ()
@@ -147,39 +155,125 @@ namespace Repil
             }
         }
 
-        void CompileFunctions ()
+        class DefinedFunction
+        {
+            public Symbol Symbol;
+            public Repil.Module IRModule;
+            //public IR.FunctionDeclaration IRDeclaration;
+            public IR.FunctionDefinition IRDefinition;
+            public MethodDefinition ILDefinition;
+            public SymbolTable<ParameterDefinition> ParamSyms;
+        }
+
+        void FindFunctions ()
         {
             var funcstd = new TypeDefinition (namespac, "Functions", TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, sysObj);
             mod.Types.Add (funcstd);
 
             foreach (var m in Modules) {
                 foreach (var iskv in m.FunctionDefinitions) {
-                    var md = CompileFunction (iskv.Key, iskv.Value);
+                    var f = iskv.Value;
+                    var tname = iskv.Key.Text.Substring (1).Split ('.').Last ();
+
+                    var md = new MethodDefinition (tname, MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.Static, GetClrType (f.ReturnType));
+
+                    //
+                    // Create parameters
+                    //
+                    var paramSyms = new SymbolTable<ParameterDefinition> ();
+                    for (var i = 0; i < f.Parameters.Length; i++) {
+                        var fp = f.Parameters[i];
+                        var pname = "p" + i;
+                        var pt = GetClrType (fp.ParameterType);
+                        var p = new ParameterDefinition (pname, ParameterAttributes.None, pt);
+                        md.Parameters.Add (p);
+                        paramSyms[fp.Symbol] = p;
+                    }
+
                     funcstd.Methods.Add (md);
+
+                    methodDefs[iskv.Key] = new DefinedFunction {
+                        Symbol = iskv.Key,
+                        IRModule = m,
+                        IRDefinition = f,
+                        ILDefinition = md,
+                        ParamSyms = paramSyms,
+                    };
+                }
+            }
+
+            foreach (var m in Modules) {
+                foreach (var iskv in m.FunctionDeclarations) {
+                    if (methodDefs.ContainsKey (iskv.Key))
+                        continue;
+
+                    var f = iskv.Value;
+                    var tname = iskv.Key.Text.Substring (1).Split ('.').Last ();
+
+                    var md = new MethodDefinition (tname, MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.Static, GetClrType (f.ReturnType));
+
+                    //
+                    // Create parameters
+                    //
+                    var paramSyms = new SymbolTable<ParameterDefinition> ();
+                    for (var i = 0; i < f.Parameters.Length; i++) {
+                        var fp = f.Parameters[i];
+                        var pname = "p" + i;
+                        var pt = GetClrType (fp.ParameterType);
+                        var p = new ParameterDefinition (pname, ParameterAttributes.None, pt);
+                        md.Parameters.Add (p);
+                        paramSyms[fp.Symbol] = p;
+                    }
+
+                    funcstd.Methods.Add (md);
+
+                    methodDefs[iskv.Key] = new DefinedFunction {
+                        Symbol = iskv.Key,
+                        IRModule = m,
+                        //IRDeclaration = f,
+                        ILDefinition = md,
+                        ParamSyms = paramSyms,
+                    };
                 }
             }
         }
 
-        MethodDefinition CompileFunction (Symbol functionSymbol, IR.FunctionDefinition functionDefinition)
+        void CompileFunctions ()
         {
-            var f = functionDefinition;
-            var tname = functionSymbol.Text.Substring (1).Split ('.').Last ();
+            var funcstd = new TypeDefinition (namespac, "Functions", TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, sysObj);
+            mod.Types.Add (funcstd);
 
-            var md = new MethodDefinition (tname, MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.Static, GetClrType (f.ReturnType));
-
-            //
-            // Create parameters
-            //
-            var paramSyms = new SymbolTable<ParameterDefinition> ();
-            for (var i = 0; i < f.Parameters.Length; i++) {
-                var fp = f.Parameters[i];
-                var pname = "p" + i;
-                var pt = GetClrType (fp.ParameterType);
-                var p = new ParameterDefinition (pname, ParameterAttributes.None, pt);
-                md.Parameters.Add (p);
-                paramSyms[fp.Symbol] = p;
+            foreach (var m in methodDefs) {
+                if (m.Value.IRDefinition != null) {
+                    CompileFunction (m.Value);
+                }
+                else {
+                    CompileMissingFunction (m.Value);
+                }
             }
+        }
 
+        void CompileMissingFunction (DefinedFunction function)
+        {
+            var f = function.IRDefinition;
+
+            var md = function.ILDefinition;
+            var body = new MethodBody (md);
+            var il = body.GetILProcessor ();
+
+            il.Append (il.Create (OpCodes.Newobj, sysNotImplCtor));
+            il.Append (il.Create (OpCodes.Throw));
+
+            body.Optimize ();
+            md.Body = body;
+        }
+
+        void CompileFunction (DefinedFunction function)
+        {
+            var f = function.IRDefinition;
+
+            var paramSyms = function.ParamSyms;
+            var md = function.ILDefinition;
             var body = new MethodBody (md);
             var il = body.GetILProcessor ();
 
@@ -255,10 +349,8 @@ namespace Repil
                 }
             }
 
-            md.Body = body;
             body.Optimize ();
-
-            return md;
+            md.Body = body;
 
             void Emit (CecilInstruction i)
             {
@@ -291,28 +383,8 @@ namespace Repil
                         if (cbr.IfFalse.Symbol != nextBlock?.Symbol)
                             Emit (il.Create (OpCodes.Br, GetLabel (cbr.IfFalse)));
                         break;
-                    case IR.GetElementPointerInstruction gep: {
-                            var t = gep.Pointer.Type;
-                            EmitTypedValue (gep.Pointer);
-                            var n = gep.Indices.Length;
-                            for (var i = 1; i < n; i++) {
-                                var index = gep.Indices[i];
-                                if (t is Types.PointerType pt && Resolve (pt.ElementType) is Types.StructureType st && index.Value is IR.IntegerConstant iconst) {
-                                    var cst = GetClrType (pt).GetElementType ().Resolve ();
-                                    var field = cst.Fields[(int)iconst.Value];
-                                    if (i == n - 1) {
-                                        Emit (il.Create (OpCodes.Ldflda, field));
-                                        Emit (il.Create (OpCodes.Conv_U));
-                                    }
-                                    else {
-                                        throw new NotSupportedException ();
-                                    }
-                                }
-                                else {
-                                    throw new NotSupportedException ();
-                                }
-                            }
-                        }
+                    case IR.GetElementPointerInstruction gep:
+                        EmitGetElementPointer (gep);
                         break;
                     case IR.IcmpInstruction icmp:
                         EmitValue (icmp.Op1, icmp.Type);
@@ -404,7 +476,8 @@ namespace Repil
                         Emit (il.Create (OpCodes.Br, GetLabel (br.Destination)));
                         break;
                     default:
-                        throw new NotImplementedException (assignment.Instruction.ToString ());
+                        //throw new NotImplementedException (assignment.Instruction.ToString ());
+                        break;
                 }
             }
 
@@ -464,15 +537,19 @@ namespace Repil
                         }
                         break;
                     default:
-                        throw new NotImplementedException (value.ToString ());
+                        //throw new NotImplementedException (value.ToString ());
+                        Emit (il.Create (OpCodes.Ldnull));
+                        break;
                 }
             }
 
             void EmitCall (IR.CallInstruction call)
             {
-                Console.WriteLine (call);
                 if (call.Pointer is IR.GlobalValue gv) {
                     switch (gv.Symbol.Text) {
+                        case "@llvm.lifetime.start.p0i8":
+                        case "@llvm.lifetime.end.p0i8":
+                            return;
                         // declare void @llvm.memset.p0i8.i32(i8* <dest>, i8 <val>,
                         //                                    i32<len>, i1<isvolatile>)
                         case "@llvm.memset.p0i8.i32" when call.Arguments.Length >= 3:
@@ -490,9 +567,51 @@ namespace Repil
                             Emit (il.Create (OpCodes.Conv_U4));
                             Emit (il.Create (OpCodes.Initblk));
                             return;
+                        default:
+                            if (methodDefs.TryGetValue (gv.Symbol, out var m)) {
+                                foreach (var a in call.Arguments) {
+                                    EmitValue (a.Value, a.Type);
+                                }
+                                Emit (il.Create (OpCodes.Call, m.ILDefinition));
+                                return;
+                            }
+                            break;
                     }
                 }
                 throw new NotSupportedException (call.ToString ());
+            }
+
+            void EmitGetElementPointer (IR.GetElementPointerInstruction gep)
+            {
+                var t = gep.Pointer.Type;
+                EmitTypedValue (gep.Pointer);
+                var n = gep.Indices.Length;
+                for (var i = 1; i < n; i++) {
+                    var index = gep.Indices[i];
+                    if (t is Types.PointerType pt && Resolve (pt.ElementType) is Types.StructureType st && index.Value is IR.IntegerConstant iconst) {
+                        var cst = GetClrType (pt).GetElementType ().Resolve ();
+                        var field = cst.Fields[(int)iconst.Value];
+                        if (i == n - 1) {
+                            Emit (il.Create (OpCodes.Ldflda, field));
+                            Emit (il.Create (OpCodes.Conv_U));
+                        }
+                        else {
+                            throw new NotSupportedException (gep.ToString ());
+                        }
+                    }
+                    else if (t is Types.ArrayType && index.Value is IR.IntegerConstant aconst) {
+                        var artt = (Types.ArrayType)t;
+                        var cst = GetClrType (artt).GetElementType ().Resolve ();
+                        if (i == n - 1) {
+                        }
+                        else {
+                            throw new NotSupportedException (gep.ToString ());
+                        }
+                    }
+                    else {
+                        throw new NotSupportedException (gep.ToString ());
+                    }
+                }
             }
 
             CecilInstruction GetLabel (IR.LabelValue label)
@@ -523,6 +642,8 @@ namespace Repil
                     }
                 case IntegerType intt:
                     switch (intt.Bits) {
+                        case 1:
+                            return sysByte;
                         case 8:
                             return sysByte;
                         case 16:
@@ -534,9 +655,11 @@ namespace Repil
                         default:
                             throw new NotSupportedException ($"{intt.Bits}-bit integers not supported");
                     }
-                case Repil.Types.PointerType pt when pt.ElementType is FunctionType ft:
+                case Types.ArrayType art:
+                    return GetClrType (art.ElementType).MakePointerType ();
+                case Types.PointerType pt when pt.ElementType is FunctionType ft:
                     return sysInt32.MakePointerType ();
-                case Repil.Types.PointerType pt:
+                case Types.PointerType pt:
                     return GetClrType (pt.ElementType).MakePointerType ();
                 case NamedType nt:
                     return structs[nt.Symbol].Item2;

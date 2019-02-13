@@ -2,7 +2,7 @@
 
 namespace Repil.Types
 {
-    public class PointerType : LType
+    public class PointerType : AggregateType
     {
         public readonly LType ElementType;
         public readonly int AddressSpace;
