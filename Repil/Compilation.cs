@@ -425,6 +425,23 @@ namespace Repil
             void EmitInstruction (LocalSymbol assignedSymbol, IR.Instruction instruction, IR.Block nextBlock)
             {
                 switch (instruction) {
+                    case IR.AndInstruction and: {
+                            var falseV = il.Create (OpCodes.Ldc_I4_0);
+
+                            EmitValue (and.Op1, and.Type);
+                            Emit (il.Create (OpCodes.Brfalse, falseV));
+
+                            EmitValue (and.Op2, and.Type);
+                            Emit (il.Create (OpCodes.Brfalse, falseV));
+
+                            Emit (il.Create (OpCodes.Ldc_I4_1));
+                            var end = il.Create (OpCodes.Nop);
+                            Emit (il.Create (OpCodes.Br, end));
+
+                            Emit (falseV);
+                            Emit (end);
+                        }
+                        break;
                     case IR.BitcastInstruction bitcast:
                         EmitTypedValue (bitcast.Input);
                         break;
@@ -449,7 +466,8 @@ namespace Repil
                                 break;
                             case IR.IcmpCondition.NotEqual:
                                 Emit (il.Create (OpCodes.Ceq));
-                                Emit (il.Create (OpCodes.Not));
+                                Emit (il.Create (OpCodes.Ldc_I4_0));
+                                Emit (il.Create (OpCodes.Ceq));
                                 break;
                             case IR.IcmpCondition.UnsignedGreaterThan:
                                 Emit (il.Create (OpCodes.Cgt_Un));
@@ -481,12 +499,22 @@ namespace Repil
                                 break;
                         }
                         break;
+                    case IR.MultiplyInstruction mul:
+                        EmitValue (mul.Op1, mul.Type);
+                        EmitValue (mul.Op2, mul.Type);
+                        Emit (il.Create (OpCodes.Mul));
+                        break;
                     case IR.PhiInstruction phi:
                         Emit (il.Create (OpCodes.Ldloc, GetPhiLocal (assignedSymbol)));
                         break;
                     case IR.RetInstruction ret:
                         EmitTypedValue (ret.Value);
                         Emit (il.Create (OpCodes.Ret));
+                        break;
+                    case IR.SelectInstruction sel:
+                        EmitValue (sel.Condition, Types.IntegerType.I1);
+                        Emit (il.Create (OpCodes.Pop));
+                        EmitTypedValue (sel.Value1);
                         break;
                     case IR.StoreInstruction store:
                         EmitTypedValue (store.Pointer);
@@ -525,6 +553,11 @@ namespace Repil
                                 Emit (il.Create (OpCodes.Stobj, et));
                             }
                         }
+                        break;
+                    case IR.SubInstruction sub:
+                        EmitValue (sub.Op1, sub.Type);
+                        EmitValue (sub.Op2, sub.Type);
+                        Emit (il.Create (OpCodes.Sub));
                         break;
                     case IR.UnconditionalBrInstruction br:
                         Emit (il.Create (OpCodes.Br, GetLabel (br.Destination)));
@@ -582,6 +615,7 @@ namespace Repil
                         break;
                     case IR.NullConstant nll:
                         Emit (il.Create (OpCodes.Ldc_I4_0));
+                        Emit (il.Create (OpCodes.Conv_U));
                         break;
                     case IR.VectorConstant vec:
                         foreach (var c in vec.Constants) {
