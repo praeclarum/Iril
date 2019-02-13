@@ -8,12 +8,12 @@ namespace Repil.IR
     public abstract class Instruction
     {
         public abstract IEnumerable<LocalSymbol> ReferencedLocals { get; }
-        public abstract LType ResultType { get; }
+        public abstract LType ResultType (Module module);
     }
 
     public abstract class TerminatorInstruction : Instruction
     {
-        public override LType ResultType => VoidType.Void;
+        public override LType ResultType (Module module) => VoidType.Void;
     }
 
     public abstract class BinaryInstruction : Instruction
@@ -30,7 +30,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
-        public override LType ResultType => Type;
+        public override LType ResultType (Module module) => Type;
     }
 
     public class AddInstruction : BinaryInstruction
@@ -53,7 +53,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
-        public override LType ResultType => Type;
+        public override LType ResultType (Module module) => Type;
     }
 
     public class AndInstruction : BinaryInstruction
@@ -76,7 +76,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Input.ReferencedLocals;
-        public override LType ResultType => OutputType;
+        public override LType ResultType (Module module) => OutputType;
     }
 
     public abstract class BrInstruction : TerminatorInstruction
@@ -136,7 +136,7 @@ namespace Repil.IR
             }
         }
 
-        public override LType ResultType => ReturnType;
+        public override LType ResultType (Module module) => ReturnType;
 
         public override string ToString ()
         {
@@ -177,7 +177,7 @@ namespace Repil.IR
         public override IEnumerable<LocalSymbol> ReferencedLocals =>
             Value.ReferencedLocals.Concat (Index.ReferencedLocals);
 
-        public override LType ResultType => ((VectorType)Value.Type).ElementType;
+        public override LType ResultType (Module module) => ((VectorType)Value.Type).ElementType;
     }
 
     public class FloatAddInstruction : Instruction
@@ -194,7 +194,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
-        public override LType ResultType => Type;
+        public override LType ResultType (Module module) => Type;
     }
 
     public class FcmpInstruction : Instruction
@@ -213,7 +213,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
-        public override LType ResultType => IntegerType.I1;
+        public override LType ResultType (Module module) => IntegerType.I1;
     }
 
     public enum FcmpCondition
@@ -250,7 +250,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
-        public override LType ResultType => Type;
+        public override LType ResultType (Module module) => Type;
     }
 
     public class FloatSubInstruction : BinaryInstruction
@@ -273,7 +273,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Input.ReferencedLocals;
-        public override LType ResultType => OutputType;
+        public override LType ResultType (Module module) => OutputType;
     }
 
     public class FptouiInstruction : Instruction
@@ -288,7 +288,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Input.ReferencedLocals;
-        public override LType ResultType => OutputType;
+        public override LType ResultType (Module module) => OutputType;
     }
 
     public class GetElementPointerInstruction : Instruction
@@ -306,7 +306,28 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals =>
             Pointer.ReferencedLocals.Concat (Indices.SelectMany (x => x.Value.ReferencedLocals));
-        public override LType ResultType => Type;
+        public override LType ResultType (Module module)
+        {
+            var t = Type.Resolve (module);
+            foreach (var i in Indices.Skip (1)) {
+                if (t is ArrayType art) {
+                    t = art.ElementType.Resolve (module);
+                }
+                else if (t is LiteralStructureType s) {
+                    if (i.Value is Constant c) {
+                        var e = s.Elements[c.Int32Value];
+                        t = e.Resolve (module);
+                    }
+                    else {
+                        throw new Exception ($"Cannot get element {i.Value} at compile time");
+                    }
+                }
+                else {
+                    throw new Exception ("Cannot get element type of " + t);
+                }
+            }
+            return new PointerType (t, 0);
+        }
     }
 
     public class IcmpInstruction : Instruction
@@ -325,7 +346,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
-        public override LType ResultType => IntegerType.I1;
+        public override LType ResultType (Module module) => IntegerType.I1;
     }
 
     public enum IcmpCondition
@@ -358,7 +379,7 @@ namespace Repil.IR
         public override IEnumerable<LocalSymbol> ReferencedLocals =>
             Value.ReferencedLocals.Concat (Element.ReferencedLocals).Concat (Index.ReferencedLocals);
 
-        public override LType ResultType => Value.Type;
+        public override LType ResultType (Module module) => Value.Type;
     }
 
     public class LoadInstruction : Instruction
@@ -373,7 +394,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Pointer.ReferencedLocals;
-        public override LType ResultType => Type;
+        public override LType ResultType (Module module) => Type;
     }
 
     public class LshrInstruction : BinaryInstruction
@@ -421,7 +442,7 @@ namespace Repil.IR
             }
         }
 
-        public override LType ResultType => Type;
+        public override LType ResultType (Module module) => Type;
     }
 
     public class PhiValue
@@ -472,7 +493,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Condition.ReferencedLocals.Concat (Value1.ReferencedLocals).Concat (Value2.ReferencedLocals);
-        public override LType ResultType => Type;
+        public override LType ResultType (Module module) => Type;
     }
 
     public class SextInstruction : Instruction
@@ -487,7 +508,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
-        public override LType ResultType => Type;
+        public override LType ResultType (Module module) => Type;
     }
 
     public class ShlInstruction : BinaryInstruction
@@ -518,7 +539,7 @@ namespace Repil.IR
         public override IEnumerable<LocalSymbol> ReferencedLocals =>
             Value1.ReferencedLocals.Concat (Value2.ReferencedLocals).Concat (Mask.ReferencedLocals);
 
-        public override LType ResultType => Type;
+        public override LType ResultType (Module module) => Type;
     }
 
     public class SitofpInstruction : Instruction
@@ -533,7 +554,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Input.ReferencedLocals;
-        public override LType ResultType => OutputType;
+        public override LType ResultType (Module module) => OutputType;
     }
 
     public class StoreInstruction : Instruction
@@ -548,7 +569,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals.Concat (Pointer.ReferencedLocals);
-        public override LType ResultType => VoidType.Void;
+        public override LType ResultType (Module module) => VoidType.Void;
     }
 
     public class SubInstruction : BinaryInstruction
@@ -573,7 +594,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals.Concat (DefaultLabel.ReferencedLocals);
-        public override LType ResultType => VoidType.Void;
+        public override LType ResultType (Module module) => VoidType.Void;
     }
 
     public class SwitchCase
@@ -600,7 +621,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
-        public override LType ResultType => Type;
+        public override LType ResultType (Module module) => Type;
     }
 
     public class UitofpInstruction : Instruction
@@ -615,7 +636,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Input.ReferencedLocals;
-        public override LType ResultType => OutputType;
+        public override LType ResultType (Module module) => OutputType;
     }
 
     public class XorInstruction : BinaryInstruction
@@ -638,6 +659,6 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
-        public override LType ResultType => Type;
+        public override LType ResultType (Module module) => Type;
     }
 }

@@ -12,5 +12,12 @@ namespace Repil.Types
         }
 
         public override string ToString () => Symbol.ToString ();
+
+        public override LType Resolve (Module module)
+        {
+            if (module.IdentifiedStructures.TryGetValue (Symbol, out var s))
+                return s;
+            return this;
+        }
     }
 }

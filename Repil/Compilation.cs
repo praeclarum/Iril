@@ -35,6 +35,7 @@ namespace Repil
         TypeReference sysInt64;
         TypeReference sysSingle;
         TypeReference sysDouble;
+        TypeReference sysString;
         TypeReference sysNotImpl;
         MethodReference sysNotImplCtor;
         TypeReference sysNotSupp;
@@ -126,10 +127,12 @@ namespace Repil
             sysSingle = Import ("System.Single");
             sysDouble = Import ("System.Double");
             sysVoid = Import ("System.Void");
+            sysString = Import ("System.String");
             sysNotImpl = Import ("System.NotImplementedException");
             sysNotImplCtor = new MethodReference (".ctor", sysVoid, sysNotImpl);
             sysNotSupp = Import ("System.NotSupportedException");
             sysNotSuppCtor = new MethodReference (".ctor", sysVoid, sysNotSupp);
+            sysNotSuppCtor.Parameters.Add (new ParameterDefinition (sysString));
         }
 
         void CompileStructures ()
@@ -274,6 +277,7 @@ namespace Repil
             var body = new MethodBody (md);
             var il = body.GetILProcessor ();
 
+            il.Append (il.Create (OpCodes.Ldstr, ex.ToString ()));
             il.Append (il.Create (OpCodes.Newobj, sysNotSuppCtor));
             il.Append (il.Create (OpCodes.Throw));
 
@@ -346,7 +350,8 @@ namespace Repil
                     if (a.Result != null) {
                         var l = a.Result;
                         if (localCounts.ContainsKey (l) && localCounts[l] > 1) {
-                            var local = new VariableDefinition (GetClrType (a.Instruction.ResultType));
+                            var irtype = a.Instruction.ResultType (function.IRModule);
+                            var local = new VariableDefinition (GetClrType (irtype));
                             locals[a.Result] = local;
                             body.Variables.Add (local);
                         }
@@ -379,6 +384,9 @@ namespace Repil
                 foreach (var a in b.Assignments) {
                     if (!ShouldInline (a.Result)) {
                         EmitInstruction (a.Result, a.Instruction, nextBlock);
+                        if (locals.TryGetValue (a.Result, out var vd)) {
+                            Emit (il.Create (OpCodes.Stloc, vd));
+                        }
                     }
                 }
 
@@ -414,7 +422,7 @@ namespace Repil
 
             bool ShouldInline (LocalSymbol symbol)
             {
-                return symbol != null && localCounts.ContainsKey (symbol) && localCounts[symbol] <= 1;
+                return symbol != null && localCounts.ContainsKey (symbol) && localCounts[symbol] == 1;
             }
 
             VariableDefinition GetPhiLocal (Symbol assignment)
@@ -425,14 +433,17 @@ namespace Repil
             void EmitInstruction (LocalSymbol assignedSymbol, IR.Instruction instruction, IR.Block nextBlock)
             {
                 switch (instruction) {
+                    case IR.AddInstruction add:
+                        EmitValue (add.Op1, add.Type);
+                        EmitValue (add.Op2, add.Type);
+                        Emit (il.Create (OpCodes.Add));
+                        break;
                     case IR.AndInstruction and: {
                             var falseV = il.Create (OpCodes.Ldc_I4_0);
 
-                            EmitValue (and.Op1, and.Type);
-                            Emit (il.Create (OpCodes.Brfalse, falseV));
+                            EmitBrfalse (and.Op1, and.Type, falseV);
 
-                            EmitValue (and.Op2, and.Type);
-                            Emit (il.Create (OpCodes.Brfalse, falseV));
+                            EmitBrfalse (and.Op2, and.Type, falseV);
 
                             Emit (il.Create (OpCodes.Ldc_I4_1));
                             var end = il.Create (OpCodes.Nop);
@@ -449,8 +460,7 @@ namespace Repil
                         EmitCall (call);
                         break;
                     case IR.ConditionalBrInstruction cbr:
-                        EmitValue (cbr.Condition, cbr.ResultType);
-                        Emit (il.Create (OpCodes.Brtrue, GetLabel (cbr.IfTrue)));
+                        EmitBrtrue (cbr.Condition, Types.IntegerType.I1, GetLabel (cbr.IfTrue));
                         if (cbr.IfFalse.Symbol != nextBlock?.Symbol)
                             Emit (il.Create (OpCodes.Br, GetLabel (cbr.IfFalse)));
                         break;
@@ -499,6 +509,45 @@ namespace Repil
                                 break;
                         }
                         break;
+                    case IR.LoadInstruction load: {
+
+                            EmitTypedValue (load.Pointer);
+
+                            var et = GetClrType (load.Type);
+                            if (load.Type is IntegerType intt) {
+                                switch (intt.Bits) {
+                                    case 8:
+                                        Emit (il.Create (OpCodes.Ldind_I1));
+                                        break;
+                                    case 16:
+                                        Emit (il.Create (OpCodes.Ldind_I2));
+                                        break;
+                                    case 32:
+                                        Emit (il.Create (OpCodes.Ldind_I4));
+                                        break;
+                                    case 64:
+                                        Emit (il.Create (OpCodes.Ldind_I8));
+                                        break;
+                                    default:
+                                        Emit (il.Create (OpCodes.Ldobj, et));
+                                        break;
+                                }
+                            }
+                            else if (load.Type is FloatType fltt) {
+                                switch (fltt.Bits) {
+                                    case 32:
+                                        Emit (il.Create (OpCodes.Ldind_R4));
+                                        break;
+                                    default:
+                                        Emit (il.Create (OpCodes.Ldind_R8));
+                                        break;
+                                }
+                            }
+                            else {
+                                Emit (il.Create (OpCodes.Ldobj, et));
+                            }
+                        }
+                        break;
                     case IR.MultiplyInstruction mul:
                         EmitValue (mul.Op1, mul.Type);
                         EmitValue (mul.Op2, mul.Type);
@@ -511,10 +560,21 @@ namespace Repil
                         EmitTypedValue (ret.Value);
                         Emit (il.Create (OpCodes.Ret));
                         break;
-                    case IR.SelectInstruction sel:
-                        EmitValue (sel.Condition, Types.IntegerType.I1);
-                        Emit (il.Create (OpCodes.Pop));
-                        EmitTypedValue (sel.Value1);
+                    case IR.SelectInstruction sel: {
+                            var end = il.Create (OpCodes.Nop);
+                            var trueI = il.Create (OpCodes.Nop);
+
+                            EmitBrtrue (sel.Condition, sel.Type, trueI);
+
+                            EmitTypedValue (sel.Value2);
+                            Emit (il.Create (OpCodes.Br, end));
+
+                            Emit (trueI);
+                            EmitTypedValue (sel.Value1);
+                            Emit (il.Create (OpCodes.Br, end));
+
+                            Emit (end);
+                        }
                         break;
                     case IR.StoreInstruction store:
                         EmitTypedValue (store.Pointer);
@@ -563,8 +623,7 @@ namespace Repil
                         Emit (il.Create (OpCodes.Br, GetLabel (br.Destination)));
                         break;
                     default:
-                        //throw new NotImplementedException (assignment.Instruction.ToString ());
-                        break;
+                        throw new NotImplementedException (instruction.ToString ());
                 }
             }
 
@@ -626,10 +685,106 @@ namespace Repil
                         }
                         break;
                     default:
-                        //throw new NotImplementedException (value.ToString ());
-                        Emit (il.Create (OpCodes.Ldnull));
-                        break;
+                        throw new NotImplementedException (value.ToString ());
                 }
+            }
+
+            void EmitBrtrue (IR.Value condition, LType conditionType, Instruction trueTarget)
+            {
+                if (condition is IR.LocalValue local && ShouldInline (local.Symbol)) {
+                    var a = function.IRDefinition.GetAssignment (local);
+                    if (a.Instruction is IR.IcmpInstruction icmp) {
+                        var op = OpCodes.Brfalse;
+                        switch (icmp.Condition) {
+                            case IR.IcmpCondition.Equal:
+                                op = OpCodes.Beq;
+                                break;
+                            case IR.IcmpCondition.NotEqual:
+                                op = OpCodes.Bne_Un;
+                                break;
+                            case IR.IcmpCondition.UnsignedGreaterThan:
+                                op = OpCodes.Bgt_Un;
+                                break;
+                            case IR.IcmpCondition.UnsignedGreaterThanOrEqual:
+                                op = OpCodes.Bge_Un;
+                                break;
+                            case IR.IcmpCondition.UnsignedLessThan:
+                                op = OpCodes.Blt_Un;
+                                break;
+                            case IR.IcmpCondition.UnsignedLessThanOrEqual:
+                                op = OpCodes.Ble_Un;
+                                break;
+                            case IR.IcmpCondition.SignedGreaterThan:
+                                op = OpCodes.Bgt;
+                                break;
+                            case IR.IcmpCondition.SignedGreaterThanOrEqual:
+                                op = OpCodes.Bge;
+                                break;
+                            case IR.IcmpCondition.SignedLessThan:
+                                op = OpCodes.Blt;
+                                break;
+                            case IR.IcmpCondition.SignedLessThanOrEqual:
+                                op = OpCodes.Ble;
+                                break;
+                        }
+                        EmitValue (icmp.Op1, icmp.Type);
+                        EmitValue (icmp.Op2, icmp.Type);
+                        Emit (il.Create (op, trueTarget));
+                        return;
+                    }
+                }
+
+                EmitValue (condition, conditionType);
+                Emit (il.Create (OpCodes.Brtrue, trueTarget));
+            }
+
+            void EmitBrfalse (IR.Value condition, LType conditionType, Instruction falseTarget)
+            {
+                if (condition is IR.LocalValue local && ShouldInline (local.Symbol)) {
+                    var a = function.IRDefinition.GetAssignment (local);
+                    if (a.Instruction is IR.IcmpInstruction icmp) {
+                        var op = OpCodes.Brfalse;
+                        switch (icmp.Condition) {
+                            case IR.IcmpCondition.Equal:
+                                op = OpCodes.Bne_Un;
+                                break;
+                            case IR.IcmpCondition.NotEqual:
+                                op = OpCodes.Beq;
+                                break;
+                            case IR.IcmpCondition.UnsignedGreaterThan:
+                                op = OpCodes.Ble_Un;
+                                break;
+                            case IR.IcmpCondition.UnsignedGreaterThanOrEqual:
+                                op = OpCodes.Blt_Un;
+                                break;
+                            case IR.IcmpCondition.UnsignedLessThan:
+                                op = OpCodes.Bge_Un;
+                                break;
+                            case IR.IcmpCondition.UnsignedLessThanOrEqual:
+                                op = OpCodes.Bgt_Un;
+                                break;
+                            case IR.IcmpCondition.SignedGreaterThan:
+                                op = OpCodes.Ble;
+                                break;
+                            case IR.IcmpCondition.SignedGreaterThanOrEqual:
+                                op = OpCodes.Blt;
+                                break;
+                            case IR.IcmpCondition.SignedLessThan:
+                                op = OpCodes.Bge;
+                                break;
+                            case IR.IcmpCondition.SignedLessThanOrEqual:
+                                op = OpCodes.Bgt;
+                                break;
+                        }
+                        EmitValue (icmp.Op1, icmp.Type);
+                        EmitValue (icmp.Op2, icmp.Type);
+                        Emit (il.Create (op, falseTarget));
+                        return;
+                    }
+                }
+
+                EmitValue (condition, conditionType);
+                Emit (il.Create (OpCodes.Brfalse, falseTarget));
             }
 
             void EmitCall (IR.CallInstruction call)

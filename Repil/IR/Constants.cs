@@ -8,6 +8,7 @@ namespace Repil.IR
 {
     public abstract class Constant : Value
     {
+        public abstract int Int32Value { get; }
     }
 
     public abstract class SimpleConstant : Constant
@@ -42,6 +43,8 @@ namespace Repil.IR
             IsTrue = isTrue;
         }
 
+        public override int Int32Value => IsTrue ? 1 : 0;
+
         public override string ToString () => IsTrue ? "true" : "false";
     }
 
@@ -53,6 +56,8 @@ namespace Repil.IR
         {
             Value = value;
         }
+
+        public override int Int32Value => (int)Value;
 
         public override string ToString () => Value.ToString ();
     }
@@ -66,6 +71,8 @@ namespace Repil.IR
             Value = value;
         }
 
+        public override int Int32Value => (int)Math.Round (Value);
+
         public override string ToString () => Value.ToString (System.Globalization.CultureInfo.InvariantCulture);
     }
 
@@ -76,6 +83,8 @@ namespace Repil.IR
         NullConstant ()
         {
         }
+
+        public override int Int32Value => 0;
 
         public override string ToString () => "null";
     }
@@ -92,6 +101,8 @@ namespace Repil.IR
 
             Constants = constants.ToArray ();
         }
+
+        public override int Int32Value => 0;
     }
 
     public class UndefinedConstant : SimpleConstant
@@ -99,5 +110,7 @@ namespace Repil.IR
         public static UndefinedConstant Undefined = new UndefinedConstant ();
 
         public override string ToString () => "undef";
+
+        public override int Int32Value => 0;
     }
 }
