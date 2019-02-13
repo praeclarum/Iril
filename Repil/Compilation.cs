@@ -283,6 +283,7 @@ namespace Repil
                         EmitTypedValue (bitcast.Input);
                         break;
                     case IR.CallInstruction call:
+                        EmitCall (call);
                         break;
                     case IR.ConditionalBrInstruction cbr:
                         EmitValue (cbr.Condition, cbr.ResultType);
@@ -425,8 +426,14 @@ namespace Repil
                             case 8:
                                 Emit (il.Create (OpCodes.Ldc_I4, ((int)i.Value) & 0xFF));
                                 break;
+                            case 16:
+                                Emit (il.Create (OpCodes.Ldc_I4, ((int)i.Value) & 0xFFFF));
+                                break;
                             case 32:
                                 Emit (il.Create (OpCodes.Ldc_I4, (int)i.Value));
+                                break;
+                            case 64:
+                                Emit (il.Create (OpCodes.Ldc_I8, (long)i.Value));
                                 break;
                             default:
                                 throw new NotSupportedException ($"{((IntegerType)type).Bits}-bit integers");
@@ -459,6 +466,33 @@ namespace Repil
                     default:
                         throw new NotImplementedException (value.ToString ());
                 }
+            }
+
+            void EmitCall (IR.CallInstruction call)
+            {
+                Console.WriteLine (call);
+                if (call.Pointer is IR.GlobalValue gv) {
+                    switch (gv.Symbol.Text) {
+                        // declare void @llvm.memset.p0i8.i32(i8* <dest>, i8 <val>,
+                        //                                    i32<len>, i1<isvolatile>)
+                        case "@llvm.memset.p0i8.i32" when call.Arguments.Length >= 3:
+                            EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                            EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                            EmitValue (call.Arguments[2].Value, call.Arguments[2].Type);
+                            Emit (il.Create (OpCodes.Initblk));
+                            return;
+                        // declare void @llvm.memset.p0i8.i64 (i8 * < dest >, i8<val>,
+                        //                                     i64<len>, i1<isvolatile>)
+                        case "@llvm.memset.p0i8.i64" when call.Arguments.Length >= 3:
+                            EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                            EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                            EmitValue (call.Arguments[2].Value, call.Arguments[2].Type);
+                            Emit (il.Create (OpCodes.Conv_U4));
+                            Emit (il.Create (OpCodes.Initblk));
+                            return;
+                    }
+                }
+                throw new NotSupportedException (call.ToString ());
             }
 
             CecilInstruction GetLabel (IR.LabelValue label)

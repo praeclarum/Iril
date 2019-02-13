@@ -41,6 +41,8 @@ namespace Repil.IR
         {
             IsTrue = isTrue;
         }
+
+        public override string ToString () => IsTrue ? "true" : "false";
     }
 
     public class IntegerConstant : SimpleConstant
@@ -51,6 +53,8 @@ namespace Repil.IR
         {
             Value = value;
         }
+
+        public override string ToString () => Value.ToString ();
     }
 
     public class FloatConstant : SimpleConstant
@@ -61,6 +65,8 @@ namespace Repil.IR
         {
             Value = value;
         }
+
+        public override string ToString () => Value.ToString (System.Globalization.CultureInfo.InvariantCulture);
     }
 
     public class NullConstant : SimpleConstant
@@ -70,6 +76,8 @@ namespace Repil.IR
         NullConstant ()
         {
         }
+
+        public override string ToString () => "null";
     }
 
     public class VectorConstant : ComplexConstant

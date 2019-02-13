@@ -137,6 +137,11 @@ namespace Repil.IR
         }
 
         public override LType ResultType => ReturnType;
+
+        public override string ToString ()
+        {
+            return $"{ReturnType} {Pointer}({String.Join (", ", (object[])Arguments)})";
+        }
     }
 
     public class Argument
@@ -150,6 +155,11 @@ namespace Repil.IR
             Type = type;
             Value = value;
             Attributes = attributes;
+        }
+
+        public override string ToString ()
+        {
+            return $"{Type} {Value}";
         }
     }
 
