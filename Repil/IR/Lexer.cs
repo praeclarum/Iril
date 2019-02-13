@@ -114,6 +114,7 @@ namespace Repil.IR
             { Symbol.Intern ("fptosi"), Token.FPTOSI },
             { Symbol.Intern ("fptoui"), Token.FPTOUI },
             { Symbol.Intern ("distinct"), Token.DISTINCT },
+            { Symbol.Intern ("noalias"), Token.NOALIAS },
         };
 
         public Lexer (string llvm)

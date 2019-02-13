@@ -20,7 +20,7 @@ namespace Repil.IR
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
 %token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL DISTINCT
 %token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64
-%token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR
+%token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR NOALIAS
 %token NONNULL NOCAPTURE WRITEONLY
 %token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND SSP UWTABLE ARGMEMONLY
 %token RET BR SWITCH INDIRECTBR INVOKE RESUME CATCHSWITCH CATCHRET CLEANUPRET UNREACHABLE
@@ -163,6 +163,10 @@ function_definition
     : DEFINE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs '{' blocks '}'
     {
         $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (List<Parameter>)$5, (List<Block>)$10);
+    }
+    | DEFINE NOALIAS type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs '{' blocks '}'
+    {
+        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (List<Parameter>)$6, (List<Block>)$11);
     }
     ;
     
@@ -560,6 +564,10 @@ instruction
     | OR type value ',' value
     {
         $$ = new OrInstruction ((LType)$2, (Value)$3, (Value)$5);
+    }
+    | MUL type value ',' value
+    {
+        $$ = new MultiplyInstruction ((LType)$2, (Value)$3, (Value)$5);
     }
     | MUL wrappings type value ',' value
     {

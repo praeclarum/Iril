@@ -31,5 +31,11 @@ namespace Tests
         {
             Parse ("SuiteSparse.klu_analyze.ll");
         }
+
+        [Test]
+        public void KluMemory ()
+        {
+            Parse ("SuiteSparse.klu_memory.ll");
+        }
     }
 }
