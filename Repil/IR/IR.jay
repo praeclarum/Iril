@@ -17,7 +17,7 @@ namespace Repil.IR
 
 %token INTEGER FLOAT_LITERAL STRING TRUE FALSE UNDEF VOID NULL LABEL X
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
-%token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL
+%token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL DISTINCT
 %token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64
 %token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR
 %token NONNULL NOCAPTURE WRITEONLY
@@ -78,6 +78,7 @@ module_part
     }
     | ATTRIBUTES ATTRIBUTE_GROUP_REF '=' '{' attributes '}'
     | META_SYMBOL '=' '!' '{' metadata '}'
+    | META_SYMBOL '=' DISTINCT '!' '{' metadata '}'
     ;
     
 attributes
@@ -169,6 +170,10 @@ function_declaration
     {
         $$ = new FunctionDeclaration ((LType)$2, (GlobalSymbol)$3, (List<Parameter>)$5);
     }
+    | DECLARE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs
+    {
+        $$ = new FunctionDeclaration ((LType)$2, (GlobalSymbol)$3, (List<Parameter>)$5);
+    }
     ;
     
 parameter_list
@@ -234,6 +239,25 @@ icmp_condition
     | SLE { $$ = IcmpCondition.SignedLessThanOrEqual; }
     ;
     
+fcmp_condition
+    : TRUE   { $$ = FcmpCondition.True; }
+    | FALSE  { $$ = FcmpCondition.False; }
+    | ORD    { $$ = FcmpCondition.Ordered; }
+    | OEQ    { $$ = FcmpCondition.OrderedEqual; }
+    | ONE    { $$ = FcmpCondition.OrderedNotEqual; }
+    | OGT    { $$ = FcmpCondition.OrderedGreaterThan; }
+    | OGE    { $$ = FcmpCondition.OrderedGreaterThanOrEqual; }
+    | OLT    { $$ = FcmpCondition.OrderedLessThan; }
+    | OLE    { $$ = FcmpCondition.OrderedLessThanOrEqual; }
+    | UNO    { $$ = FcmpCondition.Unordered; }
+    | UEQ    { $$ = FcmpCondition.UnorderedEqual; }
+    | UNE    { $$ = FcmpCondition.UnorderedNotEqual; }
+    | UGT    { $$ = FcmpCondition.UnorderedGreaterThan; }
+    | UGE    { $$ = FcmpCondition.UnorderedGreaterThanOrEqual; }
+    | ULT    { $$ = FcmpCondition.UnorderedLessThan; }
+    | ULE    { $$ = FcmpCondition.UnorderedLessThanOrEqual; }
+    ;
+    
 value
     : constant 
     | LOCAL_SYMBOL  { $$ = new LocalValue ((LocalSymbol)$1); }
@@ -246,6 +270,7 @@ constant
     | INTEGER         { $$ = new IntegerConstant ((BigInteger)$1); }
     | TRUE            { $$ = BooleanConstant.True; }
     | FALSE           { $$ = BooleanConstant.False; }
+    | UNDEF           { $$ = UndefinedConstant.Undefined; }
     | '<' typed_constants '>'
     {
         $$ = new VectorConstant ((List<TypedConstant>)$2);
@@ -284,8 +309,13 @@ typed_constants
     }
     ;
 
-tbaa
+metadata_kv
     : META_SYMBOL META_SYMBOL
+    ;
+    
+metadata_kvs
+    : metadata_kv
+    | metadata_kvs ',' metadata_kv
     ;
     
 element_index
@@ -320,6 +350,10 @@ block
         var l = (List<Assignment>)$1;
         l.Add ((Assignment)$2);
         $$ = new Block (LocalSymbol.None, l);
+    }
+    | terminator_assignment
+    {
+        $$ = new Block (LocalSymbol.None, NewList ((Assignment)$1));
     }
     ;
     
@@ -432,6 +466,10 @@ terminator_instruction
     {
         $$ = new ConditionalBrInstruction ((Value)$3, (LabelValue)$5, (LabelValue)$7);
     }
+    | BR I1 value ',' label_value ',' label_value ',' META_SYMBOL META_SYMBOL
+    {
+        $$ = new ConditionalBrInstruction ((Value)$3, (LabelValue)$5, (LabelValue)$7);
+    }
     | RET typed_value
     {
         $$ = new RetInstruction ((TypedValue)$2);
@@ -443,7 +481,11 @@ terminator_instruction
     ;
     
 instruction
-    : ADD wrappings type value ',' value
+    : ADD type value ',' value
+    {
+        $$ = new AddInstruction ((LType)$2, (Value)$3, (Value)$5);
+    }
+    | ADD wrappings type value ',' value
     {
         $$ = new AddInstruction ((LType)$3, (Value)$4, (Value)$6);
     }
@@ -471,13 +513,29 @@ instruction
     {
         $$ = new CallInstruction ((LType)$3, (Value)$4, (List<Argument>)$6, true);
     }
+    | EXTRACTELEMENT typed_value ',' typed_value
+    {
+        $$ = new ExtractElementInstruction ((TypedValue)$2, (TypedValue)$4);
+    }
     | FADD type value ',' value
     {
         $$ = new FloatAddInstruction ((LType)$2, (Value)$3, (Value)$5);
     }
+    | FCMP fcmp_condition type value ',' value
+    {
+        $$ = new FcmpInstruction ((FcmpCondition)$2, (LType)$3, (Value)$4, (Value)$6);
+    }
     | FMUL type value ',' value
     {
         $$ = new FloatMultiplyInstruction ((LType)$2, (Value)$3, (Value)$5);
+    }
+    | FPTOUI typed_value TO type
+    {
+        $$ = new FptouiInstruction ((TypedValue)$2, (LType)$4);
+    }
+    | FPTOSI typed_value TO type
+    {
+        $$ = new FptosiInstruction ((TypedValue)$2, (LType)$4);
     }
     | GETELEMENTPTR type ',' typed_value ',' element_indices
     {
@@ -491,13 +549,25 @@ instruction
     {
         $$ = new IcmpInstruction ((IcmpCondition)$2, (LType)$3, (Value)$4, (Value)$6);
     }
-    | LOAD type ',' typed_value ',' ALIGN INTEGER ',' tbaa
+    | INSERTELEMENT typed_value ',' typed_value ',' typed_value
+    {
+        $$ = new InsertElementInstruction ((TypedValue)$2, (TypedValue)$4, (TypedValue)$6);
+    }
+    | LOAD type ',' typed_value ',' ALIGN INTEGER ',' metadata_kvs
     {
         $$ = new LoadInstruction ((LType)$2, (TypedValue)$4);
+    }
+    | LSHR type value ',' value
+    {
+        $$ = new LshrInstruction ((LType)$2, (Value)$3, (Value)$5, false);
     }
     | LSHR EXACT type value ',' value
     {
         $$ = new LshrInstruction ((LType)$3, (Value)$4, (Value)$6, true);
+    }
+    | OR type value ',' value
+    {
+        $$ = new OrInstruction ((LType)$2, (Value)$3, (Value)$5);
     }
     | MUL wrappings type value ',' value
     {
@@ -507,11 +577,35 @@ instruction
     {
         $$ = new PhiInstruction ((LType)$2, (List<PhiValue>)$3);
     }
+    | SDIV type value ',' value
+    {
+        $$ = new SdivInstruction ((LType)$2, (Value)$3, (Value)$5);
+    }
+    | SELECT type value ',' typed_value ',' typed_value
+    {
+        $$ = new SelectInstruction ((LType)$2, (Value)$3, (TypedValue)$5, (TypedValue)$7);
+    }
     | SEXT typed_value TO type
     {
         $$ = new SextInstruction ((TypedValue)$2, (LType)$4);
     }
-    | STORE typed_value ',' typed_value ',' ALIGN INTEGER ',' tbaa
+    | SHL type value ',' value
+    {
+        $$ = new ShlInstruction ((LType)$2, (Value)$3, (Value)$5);
+    }
+    | SHL wrappings type value ',' value
+    {
+        $$ = new ShlInstruction ((LType)$3, (Value)$4, (Value)$6);
+    }
+    | SHUFFLEVECTOR typed_value ',' typed_value ',' typed_value
+    {
+        $$ = new ShuffleVectorInstruction ((TypedValue)$2, (TypedValue)$4, (TypedValue)$6);
+    }
+    | SITOFP typed_value TO type
+    {
+        $$ = new SitofpInstruction ((TypedValue)$2, (LType)$4);
+    }
+    | STORE typed_value ',' typed_value ',' ALIGN INTEGER ',' metadata_kvs
     {
         $$ = new StoreInstruction ((TypedValue)$2, (TypedValue)$4);
     }
@@ -526,6 +620,14 @@ instruction
     | TRUNC typed_value TO type
     {
         $$ = new TruncInstruction ((TypedValue)$2, (LType)$4);
+    }
+    | UITOFP typed_value TO type
+    {
+        $$ = new UitofpInstruction ((TypedValue)$2, (LType)$4);
+    }
+    | XOR type value ',' value
+    {
+        $$ = new XorInstruction ((LType)$2, (Value)$3, (Value)$5);
     }
     | ZEXT typed_value TO type
     {

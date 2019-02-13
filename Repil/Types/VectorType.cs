@@ -12,5 +12,10 @@ namespace Repil.Types
             Length = length;
             ElementType = elementType;
         }
+
+        public override string ToString ()
+        {
+            return $"<{Length} x {ElementType}>";
+        }
     }
 }

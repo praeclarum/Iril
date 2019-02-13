@@ -88,5 +88,10 @@ namespace Repil.IR
         }
 
         public IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
+
+        public override string ToString ()
+        {
+            return $"{Type} {Value}";
+        }
     }
 }

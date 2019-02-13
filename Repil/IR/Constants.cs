@@ -85,4 +85,11 @@ namespace Repil.IR
             Constants = constants.ToArray ();
         }
     }
+
+    public class UndefinedConstant : SimpleConstant
+    {
+        public static UndefinedConstant Undefined = new UndefinedConstant ();
+
+        public override string ToString () => "undef";
+    }
 }

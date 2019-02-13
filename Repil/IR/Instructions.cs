@@ -56,21 +56,12 @@ namespace Repil.IR
         public override LType ResultType => Type;
     }
 
-    public class AndInstruction : Instruction
+    public class AndInstruction : BinaryInstruction
     {
-        public readonly LType Type;
-        public readonly Value Op1;
-        public readonly Value Op2;
-
         public AndInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
         {
-            Type = type;
-            Op1 = op1;
-            Op2 = op2;
         }
-
-        public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
-        public override LType ResultType => Type;
     }
 
     public class BitcastInstruction : Instruction
@@ -162,6 +153,23 @@ namespace Repil.IR
         }
     }
 
+    public class ExtractElementInstruction : Instruction
+    {
+        public readonly TypedValue Value;
+        public readonly TypedValue Index;
+
+        public ExtractElementInstruction (TypedValue value, TypedValue index)
+        {
+            Value = value ?? throw new ArgumentNullException (nameof (value));
+            Index = index ?? throw new ArgumentNullException (nameof (index));
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals =>
+            Value.ReferencedLocals.Concat (Index.ReferencedLocals);
+
+        public override LType ResultType => ((VectorType)Value.Type).ElementType;
+    }
+
     public class FloatAddInstruction : Instruction
     {
         public readonly LType Type;
@@ -177,6 +185,45 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
         public override LType ResultType => Type;
+    }
+
+    public class FcmpInstruction : Instruction
+    {
+        public readonly FcmpCondition Condition;
+        public readonly LType Type;
+        public readonly Value Op1;
+        public readonly Value Op2;
+
+        public FcmpInstruction (FcmpCondition condition, LType type, Value op1, Value op2)
+        {
+            Condition = condition;
+            Type = type;
+            Op1 = op1;
+            Op2 = op2;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
+        public override LType ResultType => IntegerType.I1;
+    }
+
+    public enum FcmpCondition
+    {
+        False,
+        True,
+        Ordered,
+        OrderedEqual,
+        OrderedNotEqual,
+        OrderedGreaterThan,
+        OrderedGreaterThanOrEqual,
+        OrderedLessThan,
+        OrderedLessThanOrEqual,
+        Unordered,
+        UnorderedEqual,
+        UnorderedNotEqual,
+        UnorderedGreaterThan,
+        UnorderedGreaterThanOrEqual,
+        UnorderedLessThan,
+        UnorderedLessThanOrEqual,
     }
 
     public class FloatMultiplyInstruction : Instruction
@@ -202,6 +249,36 @@ namespace Repil.IR
             : base (type, op1, op2)
         {
         }
+    }
+
+    public class FptosiInstruction : Instruction
+    {
+        public readonly TypedValue Input;
+        public readonly LType OutputType;
+
+        public FptosiInstruction (TypedValue input, LType outputType)
+        {
+            Input = input;
+            OutputType = outputType;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Input.ReferencedLocals;
+        public override LType ResultType => OutputType;
+    }
+
+    public class FptouiInstruction : Instruction
+    {
+        public readonly TypedValue Input;
+        public readonly LType OutputType;
+
+        public FptouiInstruction (TypedValue input, LType outputType)
+        {
+            Input = input;
+            OutputType = outputType;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Input.ReferencedLocals;
+        public override LType ResultType => OutputType;
     }
 
     public class GetElementPointerInstruction : Instruction
@@ -255,6 +332,25 @@ namespace Repil.IR
         SignedLessThanOrEqual,
     }
 
+    public class InsertElementInstruction : Instruction
+    {
+        public readonly TypedValue Value;
+        public readonly TypedValue Element;
+        public readonly TypedValue Index;
+
+        public InsertElementInstruction (TypedValue value, TypedValue element, TypedValue index)
+        {
+            Value = value ?? throw new ArgumentNullException (nameof (value));
+            Element = element ?? throw new ArgumentNullException (nameof (element));
+            Index = index ?? throw new ArgumentNullException (nameof (index));
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals =>
+            Value.ReferencedLocals.Concat (Element.ReferencedLocals).Concat (Index.ReferencedLocals);
+
+        public override LType ResultType => Value.Type;
+    }
+
     public class LoadInstruction : Instruction
     {
         public readonly LType Type;
@@ -278,21 +374,20 @@ namespace Repil.IR
         }
     }
 
-    public class MultiplyInstruction : Instruction
+    public class MultiplyInstruction : BinaryInstruction
     {
-        public readonly LType Type;
-        public readonly Value Op1;
-        public readonly Value Op2;
-
         public MultiplyInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
         {
-            Type = type;
-            Op1 = op1;
-            Op2 = op2;
         }
+    }
 
-        public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
-        public override LType ResultType => Type;
+    public class OrInstruction : BinaryInstruction
+    {
+        public OrInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
+        {
+        }
     }
 
     public class PhiInstruction : Instruction
@@ -343,6 +438,33 @@ namespace Repil.IR
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
     }
 
+    public class SdivInstruction : BinaryInstruction
+    {
+        public SdivInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
+        {
+        }
+    }
+
+    public class SelectInstruction : Instruction
+    {
+        public readonly LType Type;
+        public readonly Value Condition;
+        public readonly TypedValue Value1;
+        public readonly TypedValue Value2;
+
+        public SelectInstruction (LType type, Value condition, TypedValue value1, TypedValue value2)
+        {
+            Type = type;
+            Condition = condition;
+            Value1 = value1;
+            Value2 = value2;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Condition.ReferencedLocals.Concat (Value1.ReferencedLocals).Concat (Value2.ReferencedLocals);
+        public override LType ResultType => Type;
+    }
+
     public class SextInstruction : Instruction
     {
         public readonly TypedValue Value;
@@ -356,6 +478,52 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
         public override LType ResultType => Type;
+    }
+
+    public class ShlInstruction : BinaryInstruction
+    {
+        public ShlInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
+        {
+        }
+    }
+
+    public class ShuffleVectorInstruction : Instruction
+    {
+        public readonly TypedValue Value1;
+        public readonly TypedValue Value2;
+        public readonly TypedValue Mask;
+
+        public readonly LType Type;
+
+        public ShuffleVectorInstruction (TypedValue value1, TypedValue value2, TypedValue mask)
+        {
+            Value1 = value1 ?? throw new ArgumentNullException (nameof (value1));
+            Value2 = value2 ?? throw new ArgumentNullException (nameof (value2));
+            Mask = mask ?? throw new ArgumentNullException (nameof (mask));
+
+            Type = new VectorType (((VectorType)Mask.Type).Length, ((VectorType)Value1.Type).ElementType);
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals =>
+            Value1.ReferencedLocals.Concat (Value2.ReferencedLocals).Concat (Mask.ReferencedLocals);
+
+        public override LType ResultType => Type;
+    }
+
+    public class SitofpInstruction : Instruction
+    {
+        public readonly TypedValue Input;
+        public readonly LType OutputType;
+
+        public SitofpInstruction (TypedValue input, LType outputType)
+        {
+            Input = input;
+            OutputType = outputType;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Input.ReferencedLocals;
+        public override LType ResultType => OutputType;
     }
 
     public class StoreInstruction : Instruction
@@ -423,6 +591,29 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
         public override LType ResultType => Type;
+    }
+
+    public class UitofpInstruction : Instruction
+    {
+        public readonly TypedValue Input;
+        public readonly LType OutputType;
+
+        public UitofpInstruction (TypedValue input, LType outputType)
+        {
+            Input = input;
+            OutputType = outputType;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Input.ReferencedLocals;
+        public override LType ResultType => OutputType;
+    }
+
+    public class XorInstruction : BinaryInstruction
+    {
+        public XorInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
+        {
+        }
     }
 
     public class ZextInstruction : Instruction
