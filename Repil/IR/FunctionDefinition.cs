@@ -93,25 +93,26 @@ namespace Repil.IR
     {
         public readonly Symbol Symbol;
         public readonly Assignment[] Assignments;
+        public readonly TerminatorInstruction Terminator;
 
-        public Block (Symbol symbol, IEnumerable<Assignment> assignments)
+        public Block (Symbol symbol, IEnumerable<Assignment> assignments, TerminatorInstruction terminator)
         {
             if (assignments == null) {
                 throw new ArgumentNullException (nameof (assignments));
             }
-
             Symbol = symbol ?? throw new ArgumentNullException (nameof (symbol));
             Assignments = assignments.ToArray ();
+            Terminator = terminator ?? throw new ArgumentNullException (nameof (terminator));
         }
 
         public override string ToString ()
         {
-            return $"{Symbol} = {{ {Assignments.Length} instructions }}";
+            return $"{Symbol} = {{ {Assignments.Length} assignments }}";
         }
 
         public Block WithSymbol (LocalSymbol newSymbol)
         {
-            return new Block (newSymbol, Assignments);
+            return new Block (newSymbol, Assignments, Terminator);
         }
     }
 

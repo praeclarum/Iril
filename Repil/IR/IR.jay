@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
 using System.Text;
+using System.Linq;
 
 using Repil.Types;
 
@@ -345,15 +346,13 @@ blocks
     ;
 
 block
-    : assignments terminator_assignment
+    : assignments terminator_instruction
     {
-        var l = (List<Assignment>)$1;
-        l.Add ((Assignment)$2);
-        $$ = new Block (LocalSymbol.None, l);
+        $$ = new Block (LocalSymbol.None, (List<Assignment>)$1, (TerminatorInstruction)$2);
     }
-    | terminator_assignment
+    | terminator_instruction
     {
-        $$ = new Block (LocalSymbol.None, NewList ((Assignment)$1));
+        $$ = new Block (LocalSymbol.None, Enumerable.Empty<Assignment>(), (TerminatorInstruction)$1);
     }
     ;
     
@@ -365,13 +364,6 @@ assignments
     | assignments assignment
     {
         $$ = ListAdd ($1, (Assignment)$2);
-    }
-    ;
-    
-terminator_assignment
-    : terminator_instruction
-    {
-        $$ = new Assignment ((Instruction)$1);
     }
     ;
     

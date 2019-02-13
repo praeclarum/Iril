@@ -37,6 +37,8 @@ namespace Repil
         TypeReference sysDouble;
         TypeReference sysNotImpl;
         MethodReference sysNotImplCtor;
+        TypeReference sysNotSupp;
+        MethodReference sysNotSuppCtor;
 
         readonly Dictionary<(int, string), (TypeReference, MethodReference)> vectorTypes =
             new Dictionary<(int, string), (TypeReference, MethodReference)> ();
@@ -126,12 +128,18 @@ namespace Repil
             sysVoid = Import ("System.Void");
             sysNotImpl = Import ("System.NotImplementedException");
             sysNotImplCtor = new MethodReference (".ctor", sysVoid, sysNotImpl);
+            sysNotSupp = Import ("System.NotSupportedException");
+            sysNotSuppCtor = new MethodReference (".ctor", sysVoid, sysNotSupp);
         }
 
         void CompileStructures ()
         {
             foreach (var m in Modules) {
                 foreach (var iskv in m.IdentifiedStructures) {
+
+                    if (structs.ContainsKey (iskv.Key))
+                        continue;
+
                     if (iskv.Value is LiteralStructureType l) {
 
                         var tname = iskv.Key.Text.Substring (1).Split ('.').Last ();
@@ -204,6 +212,8 @@ namespace Repil
 
             foreach (var m in Modules) {
                 foreach (var iskv in m.FunctionDeclarations) {
+                    if (iskv.Key.Text.StartsWith ("@llvm.", StringComparison.Ordinal))
+                        continue;
                     if (methodDefs.ContainsKey (iskv.Key))
                         continue;
 
@@ -240,17 +250,35 @@ namespace Repil
 
         void CompileFunctions ()
         {
-            var funcstd = new TypeDefinition (namespac, "Functions", TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, sysObj);
-            mod.Types.Add (funcstd);
-
             foreach (var m in methodDefs) {
                 if (m.Value.IRDefinition != null) {
-                    CompileFunction (m.Value);
+                    try {
+                        CompileFunction (m.Value);
+                    }
+                    catch (Exception ex) {
+                        CompileFailedFunction (m.Value, ex);
+                    }
                 }
                 else {
                     CompileMissingFunction (m.Value);
                 }
             }
+        }
+
+        void CompileFailedFunction (DefinedFunction function, Exception ex)
+        {
+            var f = function.IRDefinition;
+
+            var md = function.ILDefinition;
+            md.Body = null;
+            var body = new MethodBody (md);
+            var il = body.GetILProcessor ();
+
+            il.Append (il.Create (OpCodes.Newobj, sysNotSuppCtor));
+            il.Append (il.Create (OpCodes.Throw));
+
+            body.Optimize ();
+            md.Body = body;
         }
 
         void CompileMissingFunction (DefinedFunction function)
@@ -296,8 +324,9 @@ namespace Repil
             //
             var localCounts = new SymbolTable<int> ();
             foreach (var b in f.Blocks) {
-                foreach (var a in b.Assignments) {
-                    foreach (var l in a.Instruction.ReferencedLocals) {
+                var insts = b.Assignments.Select (x => x.Instruction).Concat (new IR.Instruction[] { b.Terminator });
+                foreach (var i in insts) {
+                    foreach (var l in i.ReferencedLocals) {
                         if (localCounts.ContainsKey (l)) {
                             localCounts[l]++;
                         }
@@ -341,12 +370,14 @@ namespace Repil
             var prev = default (CecilInstruction);
             for (var i = 0; i < f.Blocks.Length; i++) {
                 var b = f.Blocks[i];
+                var nextBlock = i + 1 < f.Blocks.Length ? f.Blocks[i + 1] : null;
                 prev = blockFirstInstr[b.Symbol];
                 foreach (var a in b.Assignments) {
                     if (!ShouldInline (a.Result)) {
-                        EmitInstruction (a, i + 1 < f.Blocks.Length ? f.Blocks[i + 1] : null);
+                        EmitInstruction (a.Result, a.Instruction, nextBlock);
                     }
                 }
+                EmitInstruction (LocalSymbol.None, b.Terminator, nextBlock);
             }
 
             body.Optimize ();
@@ -363,14 +394,14 @@ namespace Repil
                 return symbol != null && localCounts.ContainsKey (symbol) && localCounts[symbol] == 1;
             }
 
-            VariableDefinition GetPhiLocal (IR.Assignment assignment)
+            VariableDefinition GetPhiLocal (Symbol assignment)
             {
-                return phiLocals[assignment.Result];
+                return phiLocals[assignment];
             }
 
-            void EmitInstruction (IR.Assignment assignment, IR.Block nextBlock)
+            void EmitInstruction (LocalSymbol assignedSymbol, IR.Instruction instruction, IR.Block nextBlock)
             {
-                switch (assignment.Instruction) {
+                switch (instruction) {
                     case IR.BitcastInstruction bitcast:
                         EmitTypedValue (bitcast.Input);
                         break;
@@ -428,7 +459,7 @@ namespace Repil
                         }
                         break;
                     case IR.PhiInstruction phi:
-                        Emit (il.Create (OpCodes.Ldloc, GetPhiLocal (assignment)));
+                        Emit (il.Create (OpCodes.Ldloc, GetPhiLocal (assignedSymbol)));
                         break;
                     case IR.RetInstruction ret:
                         EmitTypedValue (ret.Value);
@@ -521,7 +552,8 @@ namespace Repil
                                 Emit (il.Create (OpCodes.Ldarg, pd));
                             }
                             else {
-                                EmitInstruction (f.GetAssignment (local), null);
+                                var a = f.GetAssignment (local);
+                                EmitInstruction (a.Result, a.Instruction, null);
                             }
                         }
                         break;
