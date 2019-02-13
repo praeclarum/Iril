@@ -35,6 +35,9 @@ namespace Repil
             return true;
         }
 
+        public static bool operator == (Symbol x, Symbol y) => ReferenceEquals (x, y);
+        public static bool operator != (Symbol x, Symbol y) => !ReferenceEquals (x, y);
+
         public static Symbol Intern (char prefix, int value)
         {
             return Intern (prefix + value.ToString ());

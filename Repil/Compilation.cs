@@ -371,12 +371,35 @@ namespace Repil
             for (var i = 0; i < f.Blocks.Length; i++) {
                 var b = f.Blocks[i];
                 var nextBlock = i + 1 < f.Blocks.Length ? f.Blocks[i + 1] : null;
+
+                //
+                // Emit the assignments
+                //
                 prev = blockFirstInstr[b.Symbol];
                 foreach (var a in b.Assignments) {
                     if (!ShouldInline (a.Result)) {
                         EmitInstruction (a.Result, a.Instruction, nextBlock);
                     }
                 }
+
+                //
+                // Emit phi variables
+                //
+                foreach (var ob in f.Blocks) {
+                    foreach (var oa in ob.Assignments) {
+                        if (oa.Result != LocalSymbol.None && oa.Instruction is IR.PhiInstruction phi) {
+                            var phiV = phi.Values.FirstOrDefault (x => x.Label is IR.LocalValue l && l.Symbol == b.Symbol);
+                            if (phiV != null) {
+                                EmitValue (phiV.Value, phi.Type);
+                                Emit (il.Create (OpCodes.Stloc, GetPhiLocal (oa.Result)));
+                            }
+                        }
+                    }
+                }
+
+                //
+                // Emit terminator
+                //
                 EmitInstruction (LocalSymbol.None, b.Terminator, nextBlock);
             }
 
@@ -391,7 +414,7 @@ namespace Repil
 
             bool ShouldInline (LocalSymbol symbol)
             {
-                return symbol != null && localCounts.ContainsKey (symbol) && localCounts[symbol] == 1;
+                return symbol != null && localCounts.ContainsKey (symbol) && localCounts[symbol] <= 1;
             }
 
             VariableDefinition GetPhiLocal (Symbol assignment)
@@ -558,7 +581,7 @@ namespace Repil
                         }
                         break;
                     case IR.NullConstant nll:
-                        Emit (il.Create (OpCodes.Ldnull));
+                        Emit (il.Create (OpCodes.Ldc_I4_0));
                         break;
                     case IR.VectorConstant vec:
                         foreach (var c in vec.Constants) {

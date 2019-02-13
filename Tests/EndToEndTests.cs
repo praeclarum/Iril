@@ -5,11 +5,13 @@ using System.IO;
 using System.Reflection;
 using System.Diagnostics;
 using System.Text;
+using System;
+using System.Runtime.InteropServices;
 
 namespace Tests
 {
     [TestFixture]
-    public class EndToEndTests : TestsBase
+    public unsafe class EndToEndTests : TestsBase
     {
         // clang -g -O3 -S -emit-llvm -fpic *.c
 
@@ -57,6 +59,24 @@ namespace Tests
 
             var types = asm.GetTypes ();
             Assert.Greater (types.Length, 0);
+
+            var funcs = asm.GetType ("SuiteSparse.Functions");
+            Assert.NotNull (funcs);
+            var defs = funcs.GetMethod ("klu_defaults");
+            Assert.NotNull (defs);
+            var rnull = defs.Invoke (null, new object[] { IntPtr.Zero });
+            Assert.AreEqual (0, rnull);
+
+            var commont = asm.GetType ("SuiteSparse.klu_common_struct");
+            Assert.NotNull (commont);
+            var common = Activator.CreateInstance (commont);
+            Assert.NotNull (common);
+            var h = GCHandle.Alloc (common, GCHandleType.Pinned);
+            var rcommon = defs.Invoke (null, new object[] { h.AddrOfPinnedObject() });
+            h.Free ();
+            Assert.AreEqual (1, rcommon);
+            var tol = commont.GetField ("F0").GetValue (common);
+            Assert.AreEqual (0.001, tol);
         }
     }
 }
