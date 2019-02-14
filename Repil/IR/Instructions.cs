@@ -236,6 +236,14 @@ namespace Repil.IR
         UnorderedLessThanOrEqual,
     }
 
+    public class FdivInstruction : BinaryInstruction
+    {
+        public FdivInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
+        {
+        }
+    }
+
     public class FloatMultiplyInstruction : Instruction
     {
         public readonly LType Type;
@@ -251,14 +259,6 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
         public override LType ResultType (Module module) => Type;
-    }
-
-    public class FloatSubInstruction : BinaryInstruction
-    {
-        public FloatSubInstruction (LType type, Value op1, Value op2)
-            : base (type, op1, op2)
-        {
-        }
     }
 
     public class FptosiInstruction : Instruction
@@ -289,6 +289,14 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Input.ReferencedLocals;
         public override LType ResultType (Module module) => OutputType;
+    }
+
+    public class FsubInstruction : BinaryInstruction
+    {
+        public FsubInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
+        {
+        }
     }
 
     public class GetElementPointerInstruction : Instruction

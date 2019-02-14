@@ -108,4 +108,26 @@ namespace Repil.IR
             return $"{Type} {Value}";
         }
     }
+
+    public class GetElementPointerValue : Value
+    {
+        public readonly LType Type;
+        public readonly TypedValue Pointer;
+        public readonly TypedValue[] Indices;
+
+        public GetElementPointerValue (LType type, TypedValue pointer, IEnumerable<TypedValue> indices)
+        {
+            Type = type;
+            Pointer = pointer;
+            Indices = indices.ToArray ();
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals =>
+            Pointer.ReferencedLocals.Concat (Indices.SelectMany (x => x.Value.ReferencedLocals));
+    }
+
+    public class VoidValue : Value
+    {
+        public static readonly VoidValue Void = new VoidValue ();
+    }
 }

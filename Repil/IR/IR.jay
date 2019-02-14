@@ -18,10 +18,10 @@ namespace Repil.IR
 
 %token INTEGER FLOAT_LITERAL STRING TRUE FALSE UNDEF VOID NULL LABEL X
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
-%token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL SYMBOL DISTINCT METADATA
-%token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64
-%token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR NOALIAS
-%token NONNULL NOCAPTURE WRITEONLY
+%token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL META_SYMBOL_DEF SYMBOL DISTINCT METADATA
+%token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64 ZEROINITIALIZER
+%token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR NOALIAS ELLIPSIS GLOBAL CONSTANT
+%token NONNULL NOCAPTURE WRITEONLY READONLY
 %token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND READNONE SPECULATABLE SSP UWTABLE ARGMEMONLY
 %token RET BR SWITCH INDIRECTBR INVOKE RESUME CATCHSWITCH CATCHRET CLEANUPRET UNREACHABLE
 %token FNEG
@@ -39,6 +39,7 @@ namespace Repil.IR
 %token LANDINGPAD CATCHPAD CLEANUPPAD
 
 %start module
+
 %%
 
 module
@@ -77,28 +78,40 @@ module_part
         var f = (FunctionDeclaration)$1;
         module.FunctionDeclarations[f.Symbol] = f;
     }
+    | global_variable
+    {
+        var g = (GlobalVariable)$1;
+        module.GlobalVariables[g.Symbol] = g;
+    }
     | ATTRIBUTES ATTRIBUTE_GROUP_REF '=' '{' attributes '}'
-    | META_SYMBOL '=' '!' '{' '}'
+    | META_SYMBOL_DEF '=' '!' '{' '}'
     {
         module.Metadata[(Symbol)$1] = new List<object> (0);
     }
-    | META_SYMBOL '=' '!' '{' metadata '}'
+    | META_SYMBOL_DEF '=' '!' '{' metadata '}'
     {
         module.Metadata[(Symbol)$1] = $5;
     }
-    | META_SYMBOL '=' META_SYMBOL '(' metadata_args ')'
+    | META_SYMBOL_DEF '=' META_SYMBOL '(' metadata_args ')'
     {
         var m = SymsAdd ($5, Symbol.Intern("_f"), $3);
         module.Metadata[(Symbol)$1] = m;
     }
-    | META_SYMBOL '=' DISTINCT '!' '{' metadata '}'
+    | META_SYMBOL_DEF '=' DISTINCT '!' '{' metadata '}'
     {
         module.Metadata[(Symbol)$1] = $6;
     }
-    | META_SYMBOL '=' DISTINCT META_SYMBOL '(' metadata_args ')'
+    | META_SYMBOL_DEF '=' DISTINCT META_SYMBOL '(' metadata_args ')'
     {
         var m = SymsAdd ($6, Symbol.Intern("_f"), $4);
         module.Metadata[(Symbol)$1] = m;
+    }
+    ;
+    
+global_variable
+    : GLOBAL_SYMBOL '=' function_addr GLOBAL type constant ',' ALIGN INTEGER metadata_kvs
+    {
+        $$ = new GlobalVariable ((GlobalSymbol)$1, false, (LType)$5, (Constant)$6);
     }
     ;
     
@@ -121,10 +134,14 @@ metadata_arg
     | SYMBOL ':' STRING       { $$ = Tuple.Create ($1, $3); }
     | SYMBOL ':' constant     { $$ = Tuple.Create ($1, $3); }
     | TYPE ':' META_SYMBOL    { $$ = Tuple.Create ($1, $3); }
-    ;
-    
-metadata_kv
-    : META_SYMBOL META_SYMBOL
+    | SYMBOL ':' META_SYMBOL '(' metadata_value_args ')'
+    {
+        $$ = Tuple.Create ($1, $3);
+    }
+    | SYMBOL ':' META_SYMBOL '(' ')'
+    {
+        $$ = Tuple.Create ($1, $3);
+    }
     ;
     
 metadata_kvs
@@ -155,11 +172,16 @@ metadata
     {
         $$ = ListAdd ($1, $3);
     }
+    | metadata ',' NULL
+    {
+        $$ = ListAdd ($1, $3);
+    }
     ;
     
 metadatum
     : typed_value
     | META_SYMBOL
+    | NULL
     ;
     
 attributes
@@ -177,6 +199,9 @@ attribute
     | ARGMEMONLY
     | STRING '=' STRING
     | STRING
+    | SYMBOL
+    | READONLY
+    | SYMBOL '(' metadata_value_args ')'
     ;
     
 literal_structure
@@ -198,9 +223,13 @@ type_list
     }
     ;
     
+return_type
+    : type
+    | VOID { $$ = VoidType.Void; }
+    ;
+    
 type
     : literal_structure
-    | VOID   { $$ = VoidType.Void; }
     | HALF   { $$ = FloatType.Half; }
     | FLOAT  { $$ = FloatType.Float; }
     | DOUBLE { $$ = FloatType.Double; }
@@ -209,7 +238,7 @@ type
     | I16    { $$ = IntegerType.I16; }
     | I32    { $$ = IntegerType.I32; }
     | I64    { $$ = IntegerType.I64; }
-    | type '(' type_list ')'
+    | return_type '(' function_type_args ')'
     {
         $$ = new FunctionType ((LType)$1, (List<LType>)$3);
     }
@@ -231,27 +260,66 @@ type
     }
     ;
     
+function_type_args
+    : function_type_arg
+    {
+        $$ = NewList ((LType)$1);
+    }
+    | function_type_args ',' function_type_arg
+    {
+        $$ = ListAdd ($1, (LType)$3);
+    }
+    ;
+    
+function_type_arg
+    : type
+    | ELLIPSIS
+    {
+        $$ = VarArgsType.VarArgs;
+    }
+    ;
+    
 function_definition
-    : DEFINE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs '{' blocks '}'
+    : DEFINE return_type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs '{' blocks '}'
     {
         $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (List<Parameter>)$5, (List<Block>)$10);
     }
-    | DEFINE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs metadata_kvs '{' blocks '}'
+    | DEFINE return_type GLOBAL_SYMBOL '(' parameter_list ')' attribute_group_refs metadata_kvs '{' blocks '}'
+    {
+        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (List<Parameter>)$5, (List<Block>)$10, (SymbolTable<MetaSymbol>)$8);
+    }
+    | DEFINE return_type GLOBAL_SYMBOL '(' ')' function_addr attribute_group_refs metadata_kvs '{' blocks '}'
+    {
+        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, Enumerable.Empty<Parameter> (), (List<Block>)$10, (SymbolTable<MetaSymbol>)$8);
+    }
+    | DEFINE return_type GLOBAL_SYMBOL '(' ')' attribute_group_refs metadata_kvs '{' blocks '}'
+    {
+        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, Enumerable.Empty<Parameter> (), (List<Block>)$9, (SymbolTable<MetaSymbol>)$7);
+    }
+    | DEFINE return_type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs metadata_kvs '{' blocks '}'
     {
         $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (List<Parameter>)$5, (List<Block>)$11, (SymbolTable<MetaSymbol>)$9);
     }
-    | DEFINE NOALIAS type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs '{' blocks '}'
+    | DEFINE NOALIAS return_type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs '{' blocks '}'
     {
         $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (List<Parameter>)$6, (List<Block>)$11);
+    }
+    | DEFINE NOALIAS return_type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs metadata_kvs '{' blocks '}'
+    {
+        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (List<Parameter>)$6, (List<Block>)$12, (SymbolTable<MetaSymbol>)$10);
     }
     ;
     
 function_declaration
-    : DECLARE type GLOBAL_SYMBOL '(' parameter_list ')' attribute_group_refs
+    : DECLARE return_type GLOBAL_SYMBOL '(' parameter_list ')' attribute_group_refs
     {
         $$ = new FunctionDeclaration ((LType)$2, (GlobalSymbol)$3, (List<Parameter>)$5);
     }
-    | DECLARE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs
+    | DECLARE NOALIAS return_type GLOBAL_SYMBOL '(' parameter_list ')' attribute_group_refs
+    {
+        $$ = new FunctionDeclaration ((LType)$3, (GlobalSymbol)$4, (List<Parameter>)$6);
+    }
+    | DECLARE return_type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs
     {
         $$ = new FunctionDeclaration ((LType)$2, (GlobalSymbol)$3, (List<Parameter>)$5);
     }
@@ -281,6 +349,10 @@ parameter
     {
         $$ = new Parameter (LocalSymbol.None, IntegerType.I32);
     }
+    | ELLIPSIS
+    {
+        $$ = new Parameter (LocalSymbol.None, VarArgsType.VarArgs);
+    }
     ;
     
 parameter_attributes
@@ -294,6 +366,7 @@ parameter_attributes
 parameter_attribute
     : NONNULL   { $$ = ParameterAttributes.NonNull; }
     | NOCAPTURE { $$ = ParameterAttributes.NoCapture; }
+    | READONLY  { $$ = ParameterAttributes.ReadOnly; }
     | WRITEONLY { $$ = ParameterAttributes.WriteOnly; }
     ;
     
@@ -348,6 +421,14 @@ value
     | LOCAL_SYMBOL  { $$ = new LocalValue ((LocalSymbol)$1); }
     | GLOBAL_SYMBOL { $$ = new GlobalValue ((GlobalSymbol)$1); }
     ;
+    
+pointer_value
+    : value
+    | GETELEMENTPTR INBOUNDS '(' type ',' typed_value ',' element_indices ')'
+    {
+        $$ = new GetElementPointerValue ((LType)$4, (TypedValue)$6, (List<TypedValue>)$8);
+    }
+    ;
 
 constant
     : NULL            { $$ = NullConstant.Null; }
@@ -356,9 +437,14 @@ constant
     | TRUE            { $$ = BooleanConstant.True; }
     | FALSE           { $$ = BooleanConstant.False; }
     | UNDEF           { $$ = UndefinedConstant.Undefined; }
+    | ZEROINITIALIZER { $$ = ZeroConstant.Zero; }
     | '<' typed_constants '>'
     {
         $$ = new VectorConstant ((List<TypedConstant>)$2);
+    }
+    | '{' typed_values '}'
+    {
+        $$ = new StructureConstant ((List<TypedValue>)$2);
     }
     ;
     
@@ -374,8 +460,30 @@ typed_value
     {
         $$ = new TypedValue ((LType)$1, (Value)$2);
     }
+    | VOID
+    {
+        $$ = new TypedValue (VoidType.Void, VoidValue.Void);
+    }
     ;
             
+typed_pointer_value
+    : type pointer_value
+    {
+        $$ = new TypedValue ((LType)$1, (Value)$2);
+    }
+    ;
+            
+typed_values
+    : typed_value
+    {
+        $$ = NewList ((TypedValue)$1);
+    }
+    | typed_values ',' typed_value
+    {
+        $$ = ListAdd ($1, (TypedValue)$3);
+    }
+    ;
+
 typed_constant
     : type constant
     {
@@ -497,6 +605,10 @@ function_arg
     {
         $$ = new Argument ((LType)$2, new LocalValue ((LocalSymbol)$3), (ParameterAttributes)0);
     }
+    | METADATA type constant
+    {
+        $$ = new Argument ((LType)$2, (Value)$3, (ParameterAttributes)0);
+    }
     | METADATA META_SYMBOL
     {
         $$ = new Argument (IntegerType.I32, new MetaValue ((MetaSymbol)$2), (ParameterAttributes)0);
@@ -505,6 +617,20 @@ function_arg
     {
         $$ = new Argument (IntegerType.I32, new MetaValue ((MetaSymbol)$2), (ParameterAttributes)0);
     }
+    | METADATA META_SYMBOL '(' metadata_value_args ')'
+    {
+        $$ = new Argument (IntegerType.I32, new MetaValue ((MetaSymbol)$2), (ParameterAttributes)0);
+    }
+    ;
+    
+metadata_value_args
+    : metadata_value_arg
+    | metadata_value_args ',' metadata_value_arg
+    ;
+    
+metadata_value_arg
+    : constant
+    | SYMBOL
     ;
     
 phi_vals
@@ -592,15 +718,19 @@ instruction
     {
         $$ = new BitcastInstruction ((TypedValue)$2, (LType)$4);
     }
-    | CALL type function_pointer '(' function_args ')'
+    | CALL return_type function_pointer '(' function_args ')'
     {
         $$ = new CallInstruction ((LType)$2, (Value)$3, (List<Argument>)$5, false);
     }
-    | CALL type function_pointer '(' function_args ')' attribute_group_refs
+    | CALL return_type function_pointer '(' function_args ')' attribute_group_refs
     {
         $$ = new CallInstruction ((LType)$2, (Value)$3, (List<Argument>)$5, false);
     }
-    | TAIL CALL type function_pointer '(' function_args ')' attribute_group_refs
+    | TAIL CALL return_type function_pointer '(' function_args ')' attribute_group_refs
+    {
+        $$ = new CallInstruction ((LType)$3, (Value)$4, (List<Argument>)$6, true);
+    }
+    | TAIL CALL return_type function_pointer '(' function_args ')'
     {
         $$ = new CallInstruction ((LType)$3, (Value)$4, (List<Argument>)$6, true);
     }
@@ -616,6 +746,10 @@ instruction
     {
         $$ = new FcmpInstruction ((FcmpCondition)$2, (LType)$3, (Value)$4, (Value)$6);
     }
+    | FDIV type value ',' value
+    {
+        $$ = new FdivInstruction ((LType)$2, (Value)$3, (Value)$5);
+    }
     | FMUL type value ',' value
     {
         $$ = new FloatMultiplyInstruction ((LType)$2, (Value)$3, (Value)$5);
@@ -627,6 +761,10 @@ instruction
     | FPTOSI typed_value TO type
     {
         $$ = new FptosiInstruction ((TypedValue)$2, (LType)$4);
+    }
+    | FSUB type value ',' value
+    {
+        $$ = new FsubInstruction ((LType)$2, (Value)$3, (Value)$5);
     }
     | GETELEMENTPTR type ',' typed_value ',' element_indices
     {
@@ -644,7 +782,7 @@ instruction
     {
         $$ = new InsertElementInstruction ((TypedValue)$2, (TypedValue)$4, (TypedValue)$6);
     }
-    | LOAD type ',' typed_value ',' ALIGN INTEGER
+    | LOAD type ',' typed_pointer_value ',' ALIGN INTEGER
     {
         $$ = new LoadInstruction ((LType)$2, (TypedValue)$4);
     }
@@ -700,9 +838,9 @@ instruction
     {
         $$ = new SitofpInstruction ((TypedValue)$2, (LType)$4);
     }
-    | STORE typed_value ',' typed_value ',' ALIGN INTEGER
+    | STORE typed_value ',' typed_pointer_value ',' ALIGN INTEGER
     {
-        $$ = new StoreInstruction ((TypedValue)$2, (TypedValue)$4);
+        $$ = new StoreInstruction (value: (TypedValue)$2, pointer: (TypedValue)$4);
     }
     | SUB type value ',' value
     {

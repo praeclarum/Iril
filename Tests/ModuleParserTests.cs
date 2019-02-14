@@ -37,5 +37,11 @@ namespace Tests
         {
             Parse ("SuiteSparse.klu_memory.ll");
         }
+
+        [Test]
+        public void SuiteSparseConfig ()
+        {
+            Parse ("SuiteSparse.SuiteSparse_config.ll");
+        }
     }
 }

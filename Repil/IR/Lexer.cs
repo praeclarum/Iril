@@ -16,6 +16,10 @@ namespace Repil.IR
         {
         }
         static readonly SingleCharToken singleCharToken = new SingleCharToken ();
+        class MultiCharToken
+        {
+        }
+        static readonly MultiCharToken multiCharToken = new MultiCharToken ();
 
         static readonly Dictionary<Symbol, int> keywords = new Dictionary<Symbol, int> () {
             { Symbol.Intern ("source_filename"), Token.SOURCE_FILENAME },
@@ -66,6 +70,7 @@ namespace Repil.IR
             { Symbol.Intern ("ret"), Token.RET },
             { Symbol.Intern ("nocapture"), Token.NOCAPTURE },
             { Symbol.Intern ("writeonly"), Token.WRITEONLY },
+            { Symbol.Intern ("readonly"), Token.READONLY },
             { Symbol.Intern ("attributes"), Token.ATTRIBUTES },
             { Symbol.Intern ("norecurse"), Token.NORECURSE },
             { Symbol.Intern ("nounwind"), Token.NOUNWIND },
@@ -91,7 +96,6 @@ namespace Repil.IR
             { Symbol.Intern ("lshr"), Token.LSHR },
             { Symbol.Intern ("exact"), Token.EXACT },
             { Symbol.Intern ("sub"), Token.SUB },
-            { Symbol.Intern ("fsub"), Token.FSUB },
             { Symbol.Intern ("select"), Token.SELECT },
             { Symbol.Intern ("or"), Token.OR },
             { Symbol.Intern ("insertelement"), Token.INSERTELEMENT },
@@ -99,6 +103,8 @@ namespace Repil.IR
             { Symbol.Intern ("extractelement"), Token.EXTRACTELEMENT },
             { Symbol.Intern ("shl"), Token.SHL },
             { Symbol.Intern ("sdiv"), Token.SDIV },
+            { Symbol.Intern ("fdiv"), Token.FDIV },
+            { Symbol.Intern ("fsub"), Token.FSUB },
             { Symbol.Intern ("sitofp"), Token.SITOFP },
             { Symbol.Intern ("uitofp"), Token.UITOFP },
             { Symbol.Intern ("xor"), Token.XOR },
@@ -118,6 +124,10 @@ namespace Repil.IR
             { Symbol.Intern ("distinct"), Token.DISTINCT },
             { Symbol.Intern ("noalias"), Token.NOALIAS },
             { Symbol.Intern ("metadata"), Token.METADATA },
+            { Symbol.Intern ("global"), Token.GLOBAL },
+            { Symbol.Intern ("constant"), Token.CONSTANT },
+            { Symbol.Intern ("zeroinitializer"), Token.ZEROINITIALIZER },
+
         };
 
         public Lexer (string llvm)
@@ -139,6 +149,17 @@ namespace Repil.IR
                 var arrow = new String ('~', lastP - min - 1) + "^";
                 return line + "\n" + arrow;
             }
+        }
+
+        char NextTokenChar ()
+        {
+            var s = code;
+            var n = s.Length;
+            var np = p;
+            while (np < n && char.IsWhiteSpace (s[np])) {
+                np++;
+            }
+            return (np < n) ? s[np] : (char)0;
         }
 
         public bool advance ()
@@ -193,6 +214,11 @@ namespace Repil.IR
                             (s[p] == '!' ? Token.META_SYMBOL : Token.ATTRIBUTE_GROUP_REF));
                         val = sym;
                         p = ep;
+
+                        if (tok == Token.META_SYMBOL) {
+                            if (NextTokenChar () == '=')
+                                tok = Token.META_SYMBOL_DEF;
+                        }
                     }
                     break;
                 case ',' when p + 3 < n && s[p + 2] == '!' && IsNamedStart (s[p + 3]):
@@ -211,6 +237,11 @@ namespace Repil.IR
                             (s[p] == '!' ? Token.META_SYMBOL : Token.ATTRIBUTE_GROUP_REF));
                         val = sym;
                         p = ep;
+
+                        if (tok == Token.META_SYMBOL) {
+                            if (NextTokenChar () == '=')
+                                tok = Token.META_SYMBOL_DEF;
+                        }
                     }
                     break;
                 case '!' when p + 1 < n && s[p + 1] == '\"':
@@ -228,6 +259,11 @@ namespace Repil.IR
                             (s[p] == '!' ? Token.META_SYMBOL : Token.ATTRIBUTE_GROUP_REF));
                         val = sym;
                         p = ep;
+
+                        if (tok == Token.META_SYMBOL) {
+                            if (NextTokenChar () == '=')
+                                tok = Token.META_SYMBOL_DEF;
+                        }
                     }
                     break;
                 case var ch when char.IsLetter (ch): {
@@ -263,6 +299,11 @@ namespace Repil.IR
                             tok = Token.INTEGER;
                         }
                     }
+                    break;
+                case '.' when p + 2 < n && s[p + 1] == '.' && s[p + 2] == '.':
+                    tok = Token.ELLIPSIS;
+                    val = multiCharToken;
+                    p += 3;
                     break;
                 case '=':
                 case ',':

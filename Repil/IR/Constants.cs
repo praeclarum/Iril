@@ -50,6 +50,8 @@ namespace Repil.IR
 
     public class IntegerConstant : SimpleConstant
     {
+        public static readonly IntegerConstant Zero = new IntegerConstant (BigInteger.Zero);
+
         public readonly BigInteger Value;
 
         public IntegerConstant (BigInteger value)
@@ -89,6 +91,22 @@ namespace Repil.IR
         public override string ToString () => "null";
     }
 
+    public class StructureConstant : ComplexConstant
+    {
+        public readonly TypedValue[] Elements;
+
+        public StructureConstant (IEnumerable<TypedValue> elements)
+        {
+            if (elements == null) {
+                throw new ArgumentNullException (nameof (elements));
+            }
+
+            Elements = elements.ToArray ();
+        }
+
+        public override int Int32Value => 0;
+    }
+
     public class VectorConstant : ComplexConstant
     {
         public readonly TypedConstant[] Constants;
@@ -110,6 +128,15 @@ namespace Repil.IR
         public static UndefinedConstant Undefined = new UndefinedConstant ();
 
         public override string ToString () => "undef";
+
+        public override int Int32Value => 0;
+    }
+
+    public class ZeroConstant : Constant
+    {
+        public static ZeroConstant Zero = new ZeroConstant ();
+
+        public override string ToString () => "zeroinitializer";
 
         public override int Int32Value => 0;
     }

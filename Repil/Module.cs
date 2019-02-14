@@ -38,6 +38,8 @@ namespace Repil
 
         public SymbolTable<AttributeGroup> AttributeGroups = new SymbolTable<AttributeGroup> ();
 
+        public SymbolTable<GlobalVariable> GlobalVariables = new SymbolTable<GlobalVariable> ();
+
         public SymbolTable<object> Metadata = new SymbolTable<object> ();
 
         public static Module Parse (string llvm)

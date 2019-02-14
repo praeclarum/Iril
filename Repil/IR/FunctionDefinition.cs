@@ -89,6 +89,7 @@ namespace Repil.IR
         NonNull   = 1 << 0,
         NoCapture = 1 << 1,
         WriteOnly = 1 << 2,
+        ReadOnly  = 1 << 3,
     }
 
     public class Block
