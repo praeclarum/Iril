@@ -11,8 +11,9 @@ namespace Repil.IR
         public readonly GlobalSymbol Symbol;
         public readonly Parameter[] Parameters;
         public readonly Block[] Blocks;
+        public readonly SymbolTable<MetaSymbol> MetaRefs;
 
-        public FunctionDefinition (LType returnType, GlobalSymbol symbol, IEnumerable<Parameter> parameters, IEnumerable<Block> blocks)
+        public FunctionDefinition (LType returnType, GlobalSymbol symbol, IEnumerable<Parameter> parameters, IEnumerable<Block> blocks, SymbolTable<MetaSymbol> metaRefs = null)
         {
             ReturnType = returnType;
             Symbol = symbol;
@@ -44,6 +45,7 @@ namespace Repil.IR
 
             Parameters = ps.ToArray ();
             Blocks = bs.ToArray ();
+            MetaRefs = metaRefs ?? new SymbolTable<MetaSymbol> ();
         }
 
         public override string ToString () =>

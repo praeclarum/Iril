@@ -7,6 +7,10 @@ namespace Repil
 {
     public class Symbol
     {
+        public static readonly Symbol Name = Intern ("name");
+        public static readonly Symbol Variables = Intern ("variables");
+        public static readonly Symbol Type = Intern ("type");
+
         public readonly uint Hash;
         public readonly string Text;
 
@@ -122,6 +126,8 @@ namespace Repil
 
     public class MetaSymbol : Symbol
     {
+        public static readonly MetaSymbol Dbg = (MetaSymbol)Intern ("!dbg");
+
         public MetaSymbol (uint hash, string text) : base (hash, text)
         {
         }

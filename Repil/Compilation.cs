@@ -186,17 +186,51 @@ namespace Repil
             foreach (var m in Modules) {
                 foreach (var iskv in m.FunctionDefinitions) {
                     var f = iskv.Value;
+
+                    //
+                    // Load debug info
+                    //
+                    var dbgMeth = new SymbolTable<object> ();
+                    if (f.MetaRefs.TryGetValue (MetaSymbol.Dbg, out var dbgSym)) {
+                        if (m.Metadata.TryGetValue (dbgSym, out var d) && d is SymbolTable<object> s) {
+                            dbgMeth = s;
+                        }
+                    }
+
+                    //
+                    // Create the method
+                    //
                     var tname = iskv.Key.Text.Substring (1).Split ('.').Last ();
+                    if (dbgMeth.TryGetValue (Symbol.Name, out var o)) {
+                        tname = o.ToString ();
+                    }
 
                     var md = new MethodDefinition (tname, MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.Static, GetClrType (f.ReturnType));
 
                     //
                     // Create parameters
                     //
+                    var dbgVars = Array.Empty<object> ();
+                    if (dbgMeth.TryGetValue (Symbol.Variables, out o) && o is MetaSymbol) {
+                        if (m.Metadata.TryGetValue ((Symbol)o, out o)) {
+                            dbgVars = ((IEnumerable<object>)o).ToArray ();
+                        }
+                    }
                     var paramSyms = new SymbolTable<ParameterDefinition> ();
                     for (var i = 0; i < f.Parameters.Length; i++) {
                         var fp = f.Parameters[i];
+
                         var pname = "p" + i;
+
+                        if (i < dbgVars.Length && dbgVars[i] is MetaSymbol pdm) {
+                            if (m.Metadata.TryGetValue (pdm, out o) && o is SymbolTable<object>) {
+                                var pd = (SymbolTable<object>)o;
+                                if (pd.TryGetValue (Symbol.Name, out o) && o is string) {
+                                    pname = o.ToString ();
+                                }
+                            }
+                        }
+
                         var pt = GetClrType (fp.ParameterType);
                         var p = new ParameterDefinition (pname, ParameterAttributes.None, pt);
                         md.Parameters.Add (p);

@@ -79,23 +79,48 @@ module_part
     }
     | ATTRIBUTES ATTRIBUTE_GROUP_REF '=' '{' attributes '}'
     | META_SYMBOL '=' '!' '{' '}'
+    {
+        module.Metadata[(Symbol)$1] = new List<object> (0);
+    }
     | META_SYMBOL '=' '!' '{' metadata '}'
+    {
+        module.Metadata[(Symbol)$1] = $5;
+    }
     | META_SYMBOL '=' META_SYMBOL '(' metadata_args ')'
+    {
+        var m = SymsAdd ($5, Symbol.Intern("_f"), $3);
+        module.Metadata[(Symbol)$1] = m;
+    }
     | META_SYMBOL '=' DISTINCT '!' '{' metadata '}'
+    {
+        module.Metadata[(Symbol)$1] = $6;
+    }
     | META_SYMBOL '=' DISTINCT META_SYMBOL '(' metadata_args ')'
+    {
+        var m = SymsAdd ($6, Symbol.Intern("_f"), $4);
+        module.Metadata[(Symbol)$1] = m;
+    }
     ;
     
 metadata_args
     : metadata_arg
+    {
+        var t = (Tuple<object, object>)$1;
+        $$ = NewSyms (t.Item1, t.Item2);
+    }
     | metadata_args ',' metadata_arg
+    {
+        var t = (Tuple<object, object>)$3;
+        $$ = SymsAdd ($1, t.Item1, t.Item2);
+    }
     ;
     
 metadata_arg
-    : SYMBOL ':' SYMBOL
-    | SYMBOL ':' META_SYMBOL
-    | SYMBOL ':' STRING
-    | SYMBOL ':' constant
-    | TYPE ':' META_SYMBOL
+    : SYMBOL ':' SYMBOL       { $$ = Tuple.Create ($1, $3); }
+    | SYMBOL ':' META_SYMBOL  { $$ = Tuple.Create ($1, $3); }
+    | SYMBOL ':' STRING       { $$ = Tuple.Create ($1, $3); }
+    | SYMBOL ':' constant     { $$ = Tuple.Create ($1, $3); }
+    | TYPE ':' META_SYMBOL    { $$ = Tuple.Create ($1, $3); }
     ;
     
 metadata_kv
@@ -103,15 +128,33 @@ metadata_kv
     ;
     
 metadata_kvs
-    : metadata_kv
-    | metadata_kvs metadata_kv
+    : META_SYMBOL META_SYMBOL
+    {
+        $$ = NewSyms ($1, (MetaSymbol)$2);
+    }
+    | metadata_kvs META_SYMBOL META_SYMBOL
+    {
+        $$ = SymsAdd ($1, $2, (MetaSymbol)$3);
+    }
     ;
     
 metadata
     : metadatum
+    {
+        $$ = NewList ($1);
+    }
     | metadata META_SYMBOL
+    {
+        $$ = ListAdd ($1, $2);
+    }
     | metadata ',' typed_value
+    {
+        $$ = ListAdd ($1, $3);
+    }
     | metadata ',' META_SYMBOL
+    {
+        $$ = ListAdd ($1, $3);
+    }
     ;
     
 metadatum
@@ -195,7 +238,7 @@ function_definition
     }
     | DEFINE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs metadata_kvs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (List<Parameter>)$5, (List<Block>)$11);
+        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (List<Parameter>)$5, (List<Block>)$11, (SymbolTable<MetaSymbol>)$9);
     }
     | DEFINE NOALIAS type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs '{' blocks '}'
     {

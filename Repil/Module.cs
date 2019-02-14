@@ -38,6 +38,8 @@ namespace Repil
 
         public SymbolTable<AttributeGroup> AttributeGroups = new SymbolTable<AttributeGroup> ();
 
+        public SymbolTable<object> Metadata = new SymbolTable<object> ();
+
         public static Module Parse (string llvm)
         {
             var module = new Module ();
@@ -75,6 +77,18 @@ namespace Repil.IR
             var l = (List<T>)list;
             l.Add (item);
             return l;
+        }
+        static SymbolTable<T> NewSyms<T> (object firstSymbol, T firstItem)
+        {
+            var s = new SymbolTable<T> ();
+            s.Add ((Symbol)firstSymbol, firstItem);
+            return s;
+        }
+        static SymbolTable<T> SymsAdd<T> (object syms, object symbol, T item)
+        {
+            var s = (SymbolTable<T>)syms;
+            s[(Symbol)symbol] = item;
+            return s;
         }
     }
 }
