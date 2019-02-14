@@ -34,6 +34,7 @@ namespace Repil
         TypeReference sysInt16;
         TypeReference sysInt32;
         TypeReference sysInt64;
+        TypeReference sysIntPtr;
         TypeReference sysSingle;
         TypeReference sysDouble;
         TypeReference sysString;
@@ -126,6 +127,7 @@ namespace Repil
             sysInt16 = Import ("System.Int16");
             sysInt32 = Import ("System.Int32");
             sysInt64 = Import ("System.Int64");
+            sysIntPtr = Import ("System.IntPtr");
             sysSingle = Import ("System.Single");
             sysDouble = Import ("System.Double");
             sysVoid = Import ("System.Void");
@@ -907,6 +909,8 @@ namespace Repil
                             Emit (il.Create (OpCodes.Newobj, ctor));
                         }
                         break;
+                    case IR.VoidValue vv:
+                        break;
                     default:
                         throw new NotImplementedException (value.ToString ());
                 }
@@ -1005,27 +1009,39 @@ namespace Repil
                 var t = gep.Pointer.Type;
                 EmitTypedValue (gep.Pointer);
                 var n = gep.Indices.Length;
-                for (var i = 1; i < n; i++) {
+                for (var i = 0; i < n; i++) {
                     var index = gep.Indices[i];
-                    if (t is Types.PointerType pt && Resolve (pt.ElementType) is Types.StructureType st && index.Value is IR.IntegerConstant iconst) {
-                        var cst = GetClrType (pt).GetElementType ().Resolve ();
-                        var field = cst.Fields[(int)iconst.Value];
-                        if (i == n - 1) {
-                            Emit (il.Create (OpCodes.Ldflda, field));
-                            Emit (il.Create (OpCodes.Conv_U));
+                    if (t is Types.PointerType pt) {
+                        if (Resolve (pt.ElementType) is Types.LiteralStructureType st && index.Value is IR.IntegerConstant iconst) {
+                            if (i > 0) {
+                                var cst = GetClrType (pt).GetElementType ().Resolve ();
+                                var field = cst.Fields[(int)iconst.Value];
+                                Emit (il.Create (OpCodes.Ldflda, field));
+                                Emit (il.Create (OpCodes.Conv_U));
+                                t = st.Elements[i];
+                            }
+                            else {
+                                // Skip the first index for structures
+                            }
                         }
                         else {
-                            throw new NotSupportedException (gep.ToString ());
+                            var esize = pt.ElementType.GetByteSize (function.IRModule);
+                            EmitValue (index.Value, index.Type);
+                            EmitValue (new IR.IntegerConstant (esize), index.Type);
+                            Emit (il.Create (OpCodes.Mul));
+                            Emit (il.Create (OpCodes.Conv_U));
+                            Emit (il.Create (OpCodes.Add));
+                            t = pt.ElementType;
                         }
                     }
-                    else if (t is Types.ArrayType && index.Value is IR.IntegerConstant aconst) {
-                        var artt = (Types.ArrayType)t;
-                        var cst = GetClrType (artt).GetElementType ().Resolve ();
-                        if (i == n - 1) {
-                        }
-                        else {
-                            throw new NotSupportedException (gep.ToString ());
-                        }
+                    else if (t is Types.ArrayType artt) {
+                        var esize = artt.ElementType.GetByteSize (function.IRModule);
+                        EmitValue (index.Value, index.Type);
+                        EmitValue (new IR.IntegerConstant (esize), index.Type);
+                        Emit (il.Create (OpCodes.Mul));
+                        Emit (il.Create (OpCodes.Conv_U));
+                        Emit (il.Create (OpCodes.Add));
+                        t = artt.ElementType;
                     }
                     else {
                         throw new NotSupportedException (gep.ToString ());
@@ -1135,6 +1151,8 @@ namespace Repil
                     }
                 case VoidType vdt:
                     return sysVoid;
+                case VarArgsType vat:
+                    return sysIntPtr;
                 default:
                     throw new NotSupportedException ($"{irType} not supported");
             }
