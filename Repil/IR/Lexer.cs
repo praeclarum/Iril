@@ -69,6 +69,8 @@ namespace Repil.IR
             { Symbol.Intern ("attributes"), Token.ATTRIBUTES },
             { Symbol.Intern ("norecurse"), Token.NORECURSE },
             { Symbol.Intern ("nounwind"), Token.NOUNWIND },
+            { Symbol.Intern ("readnone"), Token.READNONE },
+            { Symbol.Intern ("speculatable"), Token.SPECULATABLE },
             { Symbol.Intern ("ssp"), Token.SSP },
             { Symbol.Intern ("uwtable"), Token.UWTABLE },
             { Symbol.Intern ("argmemonly"), Token.ARGMEMONLY },
@@ -115,6 +117,7 @@ namespace Repil.IR
             { Symbol.Intern ("fptoui"), Token.FPTOUI },
             { Symbol.Intern ("distinct"), Token.DISTINCT },
             { Symbol.Intern ("noalias"), Token.NOALIAS },
+            { Symbol.Intern ("metadata"), Token.METADATA },
         };
 
         public Lexer (string llvm)
@@ -192,10 +195,13 @@ namespace Repil.IR
                         p = ep;
                     }
                     break;
+                case ',' when p + 3 < n && s[p + 2] == '!' && IsNamedStart (s[p + 3]):
                 case '!' when p + 1 < n && IsNamedStart (s[p + 1]):
                 case '@' when p + 1 < n && IsNamedStart (s[p + 1]):
                 case '%' when p + 1 < n && IsNamedStart (s[p + 1]):
                 case '#' when p + 1 < n && IsNamedStart (s[p + 1]): {
+                        if (s[p] == ',')
+                            p += 2;
                         var ep = p + 1;
                         while (ep < n && (char.IsLetterOrDigit (s[ep]) || s[ep] == '_' || s[ep] == '.' || s[ep] == '-'))
                             ep++;
@@ -224,7 +230,7 @@ namespace Repil.IR
                         p = ep;
                     }
                     break;
-                case var ch when char.IsLetter (ch) && char.IsLower (ch): {
+                case var ch when char.IsLetter (ch): {
                         var ep = p + 1;
                         while (ep < n && (char.IsLetterOrDigit (s[ep]) || s[ep] == '_'))
                             ep++;
@@ -235,7 +241,7 @@ namespace Repil.IR
                             tok = t;
                         }
                         else {
-                            throw new InvalidOperationException ($"Unknown keyword '{sym}'");
+                            tok = Token.SYMBOL;
                         }
                     }
                     break;
@@ -272,6 +278,7 @@ namespace Repil.IR
                 case '[':
                 case ']':
                 case '!':
+                case ':':
                     tok = s[p];
                     val = singleCharToken;
                     p++;

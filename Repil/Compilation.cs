@@ -927,6 +927,7 @@ namespace Repil
                     switch (gv.Symbol.Text) {
                         case "@llvm.lifetime.start.p0i8":
                         case "@llvm.lifetime.end.p0i8":
+                        case "@llvm.dbg.value":
                             return;
                         // declare void @llvm.memset.p0i8.i32(i8* <dest>, i8 <val>,
                         //                                    i32<len>, i1<isvolatile>)

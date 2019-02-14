@@ -18,11 +18,11 @@ namespace Repil.IR
 
 %token INTEGER FLOAT_LITERAL STRING TRUE FALSE UNDEF VOID NULL LABEL X
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
-%token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL DISTINCT
+%token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL SYMBOL DISTINCT METADATA
 %token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64
 %token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR NOALIAS
 %token NONNULL NOCAPTURE WRITEONLY
-%token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND SSP UWTABLE ARGMEMONLY
+%token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND READNONE SPECULATABLE SSP UWTABLE ARGMEMONLY
 %token RET BR SWITCH INDIRECTBR INVOKE RESUME CATCHSWITCH CATCHRET CLEANUPRET UNREACHABLE
 %token FNEG
 %token ADD NUW NSW FADD SUB FSUB MUL FMUL UDIV SDIV FDIV UREM SREM FREM
@@ -78,8 +78,45 @@ module_part
         module.FunctionDeclarations[f.Symbol] = f;
     }
     | ATTRIBUTES ATTRIBUTE_GROUP_REF '=' '{' attributes '}'
+    | META_SYMBOL '=' '!' '{' '}'
     | META_SYMBOL '=' '!' '{' metadata '}'
+    | META_SYMBOL '=' META_SYMBOL '(' metadata_args ')'
     | META_SYMBOL '=' DISTINCT '!' '{' metadata '}'
+    | META_SYMBOL '=' DISTINCT META_SYMBOL '(' metadata_args ')'
+    ;
+    
+metadata_args
+    : metadata_arg
+    | metadata_args ',' metadata_arg
+    ;
+    
+metadata_arg
+    : SYMBOL ':' SYMBOL
+    | SYMBOL ':' META_SYMBOL
+    | SYMBOL ':' STRING
+    | SYMBOL ':' constant
+    | TYPE ':' META_SYMBOL
+    ;
+    
+metadata_kv
+    : META_SYMBOL META_SYMBOL
+    ;
+    
+metadata_kvs
+    : metadata_kv
+    | metadata_kvs metadata_kv
+    ;
+    
+metadata
+    : metadatum
+    | metadata META_SYMBOL
+    | metadata ',' typed_value
+    | metadata ',' META_SYMBOL
+    ;
+    
+metadatum
+    : typed_value
+    | META_SYMBOL
     ;
     
 attributes
@@ -90,21 +127,13 @@ attributes
 attribute
     : NORECURSE
     | NOUNWIND
+    | READNONE
+    | SPECULATABLE
     | SSP
     | UWTABLE
     | ARGMEMONLY
     | STRING '=' STRING
     | STRING
-    ;
-    
-metadata
-    : metadatum
-    | metadata ',' metadatum
-    ;
-    
-metadatum
-    : typed_value
-    | META_SYMBOL
     ;
     
 literal_structure
@@ -164,6 +193,10 @@ function_definition
     {
         $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (List<Parameter>)$5, (List<Block>)$10);
     }
+    | DEFINE type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs metadata_kvs '{' blocks '}'
+    {
+        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (List<Parameter>)$5, (List<Block>)$11);
+    }
     | DEFINE NOALIAS type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs '{' blocks '}'
     {
         $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (List<Parameter>)$6, (List<Block>)$11);
@@ -200,6 +233,10 @@ parameter
     | type parameter_attributes
     {
         $$ = new Parameter (LocalSymbol.None, (LType)$1);
+    }
+    | METADATA
+    {
+        $$ = new Parameter (LocalSymbol.None, IntegerType.I32);
     }
     ;
     
@@ -314,15 +351,6 @@ typed_constants
     }
     ;
 
-metadata_kv
-    : META_SYMBOL META_SYMBOL
-    ;
-    
-metadata_kvs
-    : metadata_kv
-    | metadata_kvs ',' metadata_kv
-    ;
-    
 element_index
     : typed_value
     ;
@@ -354,7 +382,15 @@ block
     {
         $$ = new Block (LocalSymbol.None, (List<Assignment>)$1, (TerminatorInstruction)$2);
     }
+    | assignments terminator_instruction metadata_kvs
+    {
+        $$ = new Block (LocalSymbol.None, (List<Assignment>)$1, (TerminatorInstruction)$2);
+    }
     | terminator_instruction
+    {
+        $$ = new Block (LocalSymbol.None, Enumerable.Empty<Assignment>(), (TerminatorInstruction)$1);
+    }
+    | terminator_instruction metadata_kvs
     {
         $$ = new Block (LocalSymbol.None, Enumerable.Empty<Assignment>(), (TerminatorInstruction)$1);
     }
@@ -376,7 +412,15 @@ assignment
     {
         $$ = new Assignment ((Instruction)$1);
     }
+    | instruction metadata_kvs
+    {
+        $$ = new Assignment ((Instruction)$1);
+    }
     | LOCAL_SYMBOL '=' instruction
+    {
+        $$ = new Assignment ((LocalSymbol)$1, (Instruction)$3);
+    }
+    | LOCAL_SYMBOL '=' instruction metadata_kvs
     {
         $$ = new Assignment ((LocalSymbol)$1, (Instruction)$3);
     }
@@ -405,6 +449,18 @@ function_arg
     | type parameter_attributes value
     {
         $$ = new Argument ((LType)$1, (Value)$3, ParameterAttributes.NonNull);
+    }
+    | METADATA type LOCAL_SYMBOL
+    {
+        $$ = new Argument ((LType)$2, new LocalValue ((LocalSymbol)$3), (ParameterAttributes)0);
+    }
+    | METADATA META_SYMBOL
+    {
+        $$ = new Argument (IntegerType.I32, new MetaValue ((MetaSymbol)$2), (ParameterAttributes)0);
+    }
+    | METADATA META_SYMBOL '(' ')'
+    {
+        $$ = new Argument (IntegerType.I32, new MetaValue ((MetaSymbol)$2), (ParameterAttributes)0);
     }
     ;
     
@@ -459,10 +515,6 @@ terminator_instruction
         $$ = new UnconditionalBrInstruction ((LabelValue)$2);
     }
     | BR I1 value ',' label_value ',' label_value
-    {
-        $$ = new ConditionalBrInstruction ((Value)$3, (LabelValue)$5, (LabelValue)$7);
-    }
-    | BR I1 value ',' label_value ',' label_value ',' META_SYMBOL META_SYMBOL
     {
         $$ = new ConditionalBrInstruction ((Value)$3, (LabelValue)$5, (LabelValue)$7);
     }
@@ -549,7 +601,7 @@ instruction
     {
         $$ = new InsertElementInstruction ((TypedValue)$2, (TypedValue)$4, (TypedValue)$6);
     }
-    | LOAD type ',' typed_value ',' ALIGN INTEGER ',' metadata_kvs
+    | LOAD type ',' typed_value ',' ALIGN INTEGER
     {
         $$ = new LoadInstruction ((LType)$2, (TypedValue)$4);
     }
@@ -605,7 +657,7 @@ instruction
     {
         $$ = new SitofpInstruction ((TypedValue)$2, (LType)$4);
     }
-    | STORE typed_value ',' typed_value ',' ALIGN INTEGER ',' metadata_kvs
+    | STORE typed_value ',' typed_value ',' ALIGN INTEGER
     {
         $$ = new StoreInstruction ((TypedValue)$2, (TypedValue)$4);
     }

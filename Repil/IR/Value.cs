@@ -40,6 +40,20 @@ namespace Repil.IR
         public override string ToString () => Symbol.ToString ();
     }
 
+    public class MetaValue : Value
+    {
+        public readonly MetaSymbol Symbol;
+
+        public MetaValue (MetaSymbol symbol)
+        {
+            Symbol = symbol ?? throw new ArgumentNullException (nameof (symbol));
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
+
+        public override string ToString () => Symbol.ToString ();
+    }
+
     public class GlobalValue : Value
     {
         public readonly GlobalSymbol Symbol;

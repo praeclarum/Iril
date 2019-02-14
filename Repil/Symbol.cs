@@ -95,7 +95,9 @@ namespace Repil
                         ? new GlobalSymbol (hash, text)
                         : (text[0] == '%'
                            ? new LocalSymbol (hash, text)
-                           : new Symbol (hash, text));
+                           : (text[0] == '!'
+                              ? new MetaSymbol (hash, text)
+                              : new Symbol (hash, text)));
                     e = new Entry {
                         Next = bucket.Head,
                         Symbol = symbol,
@@ -114,6 +116,13 @@ namespace Repil
     public class GlobalSymbol : Symbol
     {
         public GlobalSymbol (uint hash, string text) : base (hash, text)
+        {
+        }
+    }
+
+    public class MetaSymbol : Symbol
+    {
+        public MetaSymbol (uint hash, string text) : base (hash, text)
         {
         }
     }
