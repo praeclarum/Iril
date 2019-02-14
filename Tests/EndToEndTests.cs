@@ -66,7 +66,7 @@ namespace Tests
             var rnull = defs.Invoke (null, new object[] { IntPtr.Zero });
             Assert.AreEqual (0, rnull);
 
-            var commont = asm.GetType ("SuiteSparse.klu_common_struct");
+            var commont = asm.GetType ("SuiteSparse.klu_common");
             Assert.NotNull (commont);
             var common = Activator.CreateInstance (commont);
             Assert.NotNull (common);
@@ -74,7 +74,7 @@ namespace Tests
             var rcommon = defs.Invoke (null, new object[] { h.AddrOfPinnedObject() });
             h.Free ();
             Assert.AreEqual (1, rcommon);
-            var tol = commont.GetField ("F0").GetValue (common);
+            var tol = commont.GetField ("tol").GetValue (common);
             Assert.AreEqual (0.001, tol);
         }
     }

@@ -222,16 +222,22 @@ namespace Repil
 
                         var pname = "p" + i;
 
+                        SymbolTable<object> dbgType = null;
                         if (i < dbgVars.Length && dbgVars[i] is MetaSymbol pdm) {
                             if (m.Metadata.TryGetValue (pdm, out o) && o is SymbolTable<object>) {
                                 var pd = (SymbolTable<object>)o;
                                 if (pd.TryGetValue (Symbol.Name, out o) && o is string) {
                                     pname = o.ToString ();
                                 }
+                                if (pd.TryGetValue (Symbol.Type, out o) && o is Symbol) {
+                                    if (m.Metadata.TryGetValue ((Symbol)o, out o) && o is SymbolTable<object>) {
+                                        dbgType = (SymbolTable<object>)o;
+                                    }
+                                }
                             }
                         }
 
-                        var pt = GetClrType (fp.ParameterType);
+                        var pt = GetParameterType (fp.ParameterType, m, dbgType);
                         var p = new ParameterDefinition (pname, ParameterAttributes.None, pt);
                         md.Parameters.Add (p);
                         paramSyms[fp.Symbol] = p;
@@ -1041,9 +1047,57 @@ namespace Repil
             return elementType;
         }
 
-        TypeReference GetClrType (LType e)
+        void AddDebugInfoToStruct (Symbol symbol, SymbolTable<object> debugInfo, Module module)
         {
-            switch (e) {
+            var td = structs[symbol].Item2;
+            if (debugInfo.TryGetValue (Symbol.BaseType, out var o) && o is MetaSymbol) {
+                if (module.Metadata.TryGetValue ((Symbol)o, out o) && o is SymbolTable<object>) {
+                    var typedefDbg = (SymbolTable<object>)o;
+                    if (typedefDbg.TryGetValue (Symbol.Name, out o) && o is string) {
+                        td.Name = o.ToString ();
+                    }
+                    if (typedefDbg.TryGetValue (Symbol.BaseType, out o) && o is MetaSymbol) {
+                        if (module.Metadata.TryGetValue ((Symbol)o, out o) && o is SymbolTable<object>) {
+                            var structDbg = (SymbolTable<object>)o;
+                            if (structDbg.TryGetValue (Symbol.Elements, out o) && o is MetaSymbol) {
+                                if (module.Metadata.TryGetValue ((Symbol)o, out o) && o is IEnumerable<object>) {
+                                    var elementDbgs = ((IEnumerable<object>)o).Cast<MetaSymbol> ().Select (x => {
+                                        module.Metadata.TryGetValue (x, out var oo);
+                                        return (oo as SymbolTable<object>) ?? new SymbolTable<object> ();
+                                    }).ToArray ();
+                                    if (elementDbgs.Length == td.Fields.Count) {
+                                        for (int i = 0; i < td.Fields.Count; i++) {
+                                            var f = td.Fields[i];
+                                            var d = elementDbgs[i];
+                                            if (d.TryGetValue (Symbol.Name, out var ooo) && ooo is string) {
+                                                f.Name = ooo.ToString ();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        TypeReference GetParameterType (LType irType, Module module, SymbolTable<object> debugInfo)
+        {
+            bool? unsigned = null;
+
+            if (debugInfo != null) {
+                if (irType is Types.PointerType pt && pt.ElementType is NamedType nt && nt.Resolve (module) is LiteralStructureType st) {
+                    AddDebugInfoToStruct (nt.Symbol, debugInfo, module);
+                }
+            }
+
+            return GetClrType (irType, unsigned: unsigned);
+        }
+
+        TypeReference GetClrType (LType irType, bool? unsigned = false)
+        {
+            switch (irType) {
                 case FloatType floatt:
                     switch (floatt.Bits) {
                         case 32:
@@ -1082,7 +1136,7 @@ namespace Repil
                 case VoidType vdt:
                     return sysVoid;
                 default:
-                    throw new NotSupportedException ($"{e} not supported");
+                    throw new NotSupportedException ($"{irType} not supported");
             }
         }
 
