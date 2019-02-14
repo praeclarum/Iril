@@ -310,20 +310,6 @@ namespace Repil
             var il = body.GetILProcessor ();
 
             //
-            // Create phi locals
-            //
-            var phiLocals = new SymbolTable<VariableDefinition> ();
-            foreach (var b in f.Blocks) {
-                foreach (var a in b.Assignments) {
-                    if (a.HasResult && a.Instruction is IR.PhiInstruction phi) {
-                        var local = new VariableDefinition (GetClrType (phi.Type));
-                        phiLocals[a.Result] = local;
-                        body.Variables.Add (local);
-                    }
-                }
-            }
-
-            //
             // Get local usage count
             //
             var localCounts = new SymbolTable<int> ();
@@ -331,7 +317,6 @@ namespace Repil
                 localCounts.Add (p.Key, 0);
             }
             foreach (var b in f.Blocks) {
-                var insts = b.Assignments.Select (x => x.Instruction).Concat (new IR.Instruction[] { b.Terminator });
                 foreach (var i in b.Assignments) {
                     if (i.Result != LocalSymbol.None)
                         localCounts.Add (i.Result, 0);
@@ -347,19 +332,60 @@ namespace Repil
             }
 
             //
-            // Create variables for locals referenced multiple times
+            // Determine whether assignments can be inlined
+            //
+            var shouldInline = new SymbolTable<bool> ();
+            foreach (var b in f.Blocks) {
+                for (var i = 0; i < b.Assignments.Length; i++) {
+                    var a = b.Assignments[i];
+                    var symbol = a.Result;
+                    if (symbol == LocalSymbol.None)
+                        continue;
+
+                    // Make sure it's used only once
+                    var referencedOnce = symbol != LocalSymbol.None && localCounts.ContainsKey (symbol) && localCounts[symbol] == 1;
+
+                    // Make sure it's used as the next variable referenced
+                    // by the next instruction
+                    var should = false;
+                    if (referencedOnce && i + 1 < b.Assignments.Length) {
+                        var fv = b.Assignments[i + 1].Instruction.ReferencedLocals.FirstOrDefault ();
+                        should = fv == symbol;
+                    }
+                    shouldInline.Add (symbol, should);
+                }
+            }
+
+            //
+            // Create variables for non-inlined assignments
             //
             var locals = new SymbolTable<VariableDefinition> ();
             foreach (var b in f.Blocks) {
                 foreach (var a in b.Assignments) {
                     if (a.Result != LocalSymbol.None) {
                         var l = a.Result;
-                        if (localCounts[l] > 1) {
+                        if (!ShouldInline (l)) {
                             var irtype = a.Instruction.ResultType (function.IRModule);
                             var local = new VariableDefinition (GetClrType (irtype));
                             locals[a.Result] = local;
                             body.Variables.Add (local);
                         }
+                    }
+                }
+            }
+
+            //
+            // Create phi locals
+            //
+            var phiLocals = new SymbolTable<VariableDefinition> ();
+            foreach (var b in f.Blocks) {
+                foreach (var a in b.Assignments) {
+                    if (a.HasResult && a.Instruction is IR.PhiInstruction phi) {
+                        if (locals.TryGetValue (a.Result, out var local)) {
+                            local = new VariableDefinition (GetClrType (phi.Type));
+                            body.Variables.Add (local);
+                        }
+                        phiLocals[a.Result] = local;
                     }
                 }
             }
@@ -436,7 +462,7 @@ namespace Repil
 
             bool ShouldInline (LocalSymbol symbol)
             {
-                return symbol != null && localCounts.ContainsKey (symbol) && localCounts[symbol] == 1;
+                return shouldInline.TryGetValue (symbol, out var s) && s;
             }
 
             VariableDefinition GetPhiLocal (Symbol assignment)
