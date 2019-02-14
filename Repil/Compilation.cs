@@ -500,20 +500,10 @@ namespace Repil
                         Emit (il.Create (OpCodes.Conv_U));
                         Emit (il.Create (OpCodes.Localloc));
                         break;
-                    case IR.AndInstruction and: {
-                            var falseV = il.Create (OpCodes.Ldc_I4_0);
-
-                            EmitBrfalse (and.Op1, and.Type, falseV);
-
-                            EmitBrfalse (and.Op2, and.Type, falseV);
-
-                            Emit (il.Create (OpCodes.Ldc_I4_1));
-                            var end = il.Create (OpCodes.Nop);
-                            Emit (il.Create (OpCodes.Br, end));
-
-                            Emit (falseV);
-                            Emit (end);
-                        }
+                    case IR.AndInstruction and:
+                        EmitValue (and.Op1, and.Type);
+                        EmitValue (and.Op2, and.Type);
+                        Emit (il.Create (OpCodes.And));
                         break;
                     case IR.BitcastInstruction bitcast:
                         EmitTypedValue (bitcast.Input);
@@ -525,6 +515,11 @@ namespace Repil
                         EmitBrtrue (cbr.Condition, Types.IntegerType.I1, GetLabel (cbr.IfTrue));
                         if (cbr.IfFalse.Symbol != nextBlock?.Symbol)
                             Emit (il.Create (OpCodes.Br, GetLabel (cbr.IfFalse)));
+                        break;
+                    case IR.FloatAddInstruction add:
+                        EmitValue (add.Op1, add.Type);
+                        EmitValue (add.Op2, add.Type);
+                        Emit (il.Create (OpCodes.Add));
                         break;
                     case IR.GetElementPointerInstruction gep:
                         EmitGetElementPointer (gep);
@@ -575,6 +570,9 @@ namespace Repil
                                 break;
                         }
                         break;
+                    case IR.InsertElementInstruction insertElement:
+                        EmitTypedValue (insertElement.Value);
+                        break;
                     case IR.LoadInstruction load: {
 
                             EmitTypedValue (load.Pointer);
@@ -614,10 +612,20 @@ namespace Repil
                             }
                         }
                         break;
+                    case IR.LshrInstruction lshr:
+                        EmitValue (lshr.Op1, lshr.Type);
+                        EmitValue (lshr.Op2, lshr.Type);
+                        Emit (il.Create (OpCodes.Shr_Un));
+                        break;
                     case IR.MultiplyInstruction mul:
                         EmitValue (mul.Op1, mul.Type);
                         EmitValue (mul.Op2, mul.Type);
                         Emit (il.Create (OpCodes.Mul));
+                        break;
+                    case IR.OrInstruction or:
+                        EmitValue (or.Op1, or.Type);
+                        EmitValue (or.Op2, or.Type);
+                        Emit (il.Create (OpCodes.Or));
                         break;
                     case IR.PhiInstruction phi:
                         Emit (il.Create (OpCodes.Ldloc, GetPhiLocal (assignedSymbol)));
@@ -625,6 +633,30 @@ namespace Repil
                     case IR.RetInstruction ret:
                         EmitTypedValue (ret.Value);
                         Emit (il.Create (OpCodes.Ret));
+                        break;
+                    case IR.SextInstruction sext:
+                        EmitTypedValue (sext.Value);
+                        switch (sext.Type) {
+                            case Types.IntegerType intt:
+                                switch (intt.Bits) {
+                                    case 1:
+                                    case 8:
+                                        Emit (il.Create (OpCodes.Conv_I1));
+                                        break;
+                                    case 16:
+                                        Emit (il.Create (OpCodes.Conv_I2));
+                                        break;
+                                    case 32:
+                                        Emit (il.Create (OpCodes.Conv_I4));
+                                        break;
+                                    default:
+                                        Emit (il.Create (OpCodes.Conv_I8));
+                                        break;
+                                }
+                                break;
+                            default:
+                                throw new NotSupportedException ($"Cannot sext {sext.Type}");
+                        }
                         break;
                     case IR.SelectInstruction sel: {
                             var end = il.Create (OpCodes.Nop);
@@ -685,12 +717,46 @@ namespace Repil
                         EmitValue (sub.Op2, sub.Type);
                         Emit (il.Create (OpCodes.Sub));
                         break;
+                    case IR.SwitchInstruction sw: {
+                            EmitTypedValue (sw.Value);
+                            foreach (var c in sw.Cases) {
+                                Emit (il.Create (OpCodes.Dup));
+                                EmitValue (c.Value.Constant, c.Value.Type);
+                                Emit (il.Create (OpCodes.Beq, GetLabel (c.Label)));
+                            }
+                            Emit (il.Create (OpCodes.Br, GetLabel (sw.DefaultLabel)));
+                        }
+                        break;
+                    case IR.TruncInstruction trunc:
+                        EmitTypedValue (trunc.Value);
+                        switch (trunc.Type) {
+                            case Types.IntegerType intt:
+                                switch (intt.Bits) {
+                                    case 1:
+                                    case 8:
+                                        Emit (il.Create (OpCodes.Conv_I1));
+                                        break;
+                                    case 16:
+                                        Emit (il.Create (OpCodes.Conv_I2));
+                                        break;
+                                    case 32:
+                                        Emit (il.Create (OpCodes.Conv_I4));
+                                        break;
+                                    default:
+                                        Emit (il.Create (OpCodes.Conv_I8));
+                                        break;
+                                }
+                                break;
+                            default:
+                                throw new NotSupportedException ($"Cannot trunc {trunc.Type}");
+                        }
+                        break;
                     case IR.UnconditionalBrInstruction br:
                         Emit (il.Create (OpCodes.Br, GetLabel (br.Destination)));
                         break;
-                    case IR.ZextInstruction mul:
-                        EmitTypedValue (mul.Value);
-                        switch (mul.Type) {
+                    case IR.ZextInstruction zext:
+                        EmitTypedValue (zext.Value);
+                        switch (zext.Type) {
                             case Types.IntegerType intt:
                                 switch (intt.Bits) {
                                     case 1:
@@ -709,7 +775,7 @@ namespace Repil
                                 }
                                 break;
                             default:
-                                throw new NotSupportedException ($"Cannot zext {mul.Type}");
+                                throw new NotSupportedException ($"Cannot zext {zext.Type}");
                         }
                         break;
                     default:
@@ -811,7 +877,7 @@ namespace Repil
                 if (condition is IR.LocalValue local && ShouldInline (local.Symbol)) {
                     var a = function.IRDefinition.GetAssignment (local);
                     if (a.Instruction is IR.IcmpInstruction icmp) {
-                        var op = OpCodes.Brfalse;
+                        var op = OpCodes.Brtrue;
                         switch (icmp.Condition) {
                             case IR.IcmpCondition.Equal:
                                 op = OpCodes.Beq;
@@ -853,55 +919,6 @@ namespace Repil
 
                 EmitValue (condition, conditionType);
                 Emit (il.Create (OpCodes.Brtrue, trueTarget));
-            }
-
-            void EmitBrfalse (IR.Value condition, LType conditionType, Instruction falseTarget)
-            {
-                if (condition is IR.LocalValue local && ShouldInline (local.Symbol)) {
-                    var a = function.IRDefinition.GetAssignment (local);
-                    if (a.Instruction is IR.IcmpInstruction icmp) {
-                        var op = OpCodes.Brfalse;
-                        switch (icmp.Condition) {
-                            case IR.IcmpCondition.Equal:
-                                op = OpCodes.Bne_Un;
-                                break;
-                            case IR.IcmpCondition.NotEqual:
-                                op = OpCodes.Beq;
-                                break;
-                            case IR.IcmpCondition.UnsignedGreaterThan:
-                                op = OpCodes.Ble_Un;
-                                break;
-                            case IR.IcmpCondition.UnsignedGreaterThanOrEqual:
-                                op = OpCodes.Blt_Un;
-                                break;
-                            case IR.IcmpCondition.UnsignedLessThan:
-                                op = OpCodes.Bge_Un;
-                                break;
-                            case IR.IcmpCondition.UnsignedLessThanOrEqual:
-                                op = OpCodes.Bgt_Un;
-                                break;
-                            case IR.IcmpCondition.SignedGreaterThan:
-                                op = OpCodes.Ble;
-                                break;
-                            case IR.IcmpCondition.SignedGreaterThanOrEqual:
-                                op = OpCodes.Blt;
-                                break;
-                            case IR.IcmpCondition.SignedLessThan:
-                                op = OpCodes.Bge;
-                                break;
-                            case IR.IcmpCondition.SignedLessThanOrEqual:
-                                op = OpCodes.Bgt;
-                                break;
-                        }
-                        EmitValue (icmp.Op1, icmp.Type);
-                        EmitValue (icmp.Op2, icmp.Type);
-                        Emit (il.Create (op, falseTarget));
-                        return;
-                    }
-                }
-
-                EmitValue (condition, conditionType);
-                Emit (il.Create (OpCodes.Brfalse, falseTarget));
             }
 
             void EmitCall (IR.CallInstruction call)
