@@ -16,5 +16,7 @@ namespace Repil.Types
         }
 
         public override string ToString () => $"{ElementType}*";
+
+        public override long GetByteSize (Module module) => module.PointerByteSize;
     }
 }

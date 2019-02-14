@@ -53,7 +53,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
-        public override LType ResultType (Module module) => Type;
+        public override LType ResultType (Module module) => new PointerType (Type, 0);
     }
 
     public class AndInstruction : BinaryInstruction

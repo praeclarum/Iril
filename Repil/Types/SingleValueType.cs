@@ -2,7 +2,7 @@
 
 namespace Repil.Types
 {
-    public class SingleValueType : FirstClassType
+    public abstract class SingleValueType : FirstClassType
     {
     }
 }

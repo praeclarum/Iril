@@ -10,5 +10,7 @@ namespace Repil.Types
         }
 
         public override string ToString () => "void";
+
+        public override long GetByteSize (Module module) => 0;
     }
 }

@@ -20,5 +20,7 @@ namespace Repil.Types
         }
 
         public override string ToString () => Symbol.ToString ();
+
+        public override long GetByteSize (Module module) => Bits < 8 ? 1 : Bits / 8;
     }
 }

@@ -12,5 +12,7 @@ namespace Repil.Types
             Length = length;
             ElementType = elementType;
         }
+
+        public override long GetByteSize (Module module) => Length * ElementType.GetByteSize (module);
     }
 }

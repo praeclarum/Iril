@@ -19,5 +19,7 @@ namespace Repil.Types
                 return s;
             return this;
         }
+
+        public override long GetByteSize (Module module) => Resolve (module).GetByteSize (module);
     }
 }

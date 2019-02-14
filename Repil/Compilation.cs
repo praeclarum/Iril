@@ -327,16 +327,21 @@ namespace Repil
             // Get local usage count
             //
             var localCounts = new SymbolTable<int> ();
+            foreach (var p in paramSyms) {
+                localCounts.Add (p.Key, 0);
+            }
+            foreach (var b in f.Blocks) {
+                var insts = b.Assignments.Select (x => x.Instruction).Concat (new IR.Instruction[] { b.Terminator });
+                foreach (var i in b.Assignments) {
+                    if (i.Result != LocalSymbol.None)
+                        localCounts.Add (i.Result, 0);
+                }
+            }
             foreach (var b in f.Blocks) {
                 var insts = b.Assignments.Select (x => x.Instruction).Concat (new IR.Instruction[] { b.Terminator });
                 foreach (var i in insts) {
                     foreach (var l in i.ReferencedLocals) {
-                        if (localCounts.ContainsKey (l)) {
-                            localCounts[l]++;
-                        }
-                        else {
-                            localCounts[l] = 1;
-                        }
+                        localCounts[l]++;
                     }
                 }
             }
@@ -347,9 +352,9 @@ namespace Repil
             var locals = new SymbolTable<VariableDefinition> ();
             foreach (var b in f.Blocks) {
                 foreach (var a in b.Assignments) {
-                    if (a.Result != null) {
+                    if (a.Result != LocalSymbol.None) {
                         var l = a.Result;
-                        if (localCounts.ContainsKey (l) && localCounts[l] > 1) {
+                        if (localCounts[l] > 1) {
                             var irtype = a.Instruction.ResultType (function.IRModule);
                             var local = new VariableDefinition (GetClrType (irtype));
                             locals[a.Result] = local;
@@ -383,9 +388,18 @@ namespace Repil
                 prev = blockFirstInstr[b.Symbol];
                 foreach (var a in b.Assignments) {
                     if (!ShouldInline (a.Result)) {
+
                         EmitInstruction (a.Result, a.Instruction, nextBlock);
+
+                        // If we need to assign it, do so
                         if (locals.TryGetValue (a.Result, out var vd)) {
                             Emit (il.Create (OpCodes.Stloc, vd));
+                        }
+                        else {
+                            // If it produced a value but it's discarded, pop it
+                            if (a.Result != LocalSymbol.None && localCounts[a.Result] == 0) {
+                                Emit (il.Create (OpCodes.Pop));
+                            }
                         }
                     }
                 }
@@ -438,6 +452,11 @@ namespace Repil
                         EmitValue (add.Op2, add.Type);
                         Emit (il.Create (OpCodes.Add));
                         break;
+                    case IR.AllocaInstruction add:
+                        Emit (il.Create (OpCodes.Ldc_I4, (int)add.Type.GetByteSize (function.IRModule)));
+                        Emit (il.Create (OpCodes.Conv_U));
+                        Emit (il.Create (OpCodes.Localloc));
+                        break;
                     case IR.AndInstruction and: {
                             var falseV = il.Create (OpCodes.Ldc_I4_0);
 
@@ -484,28 +503,32 @@ namespace Repil
                                 break;
                             case IR.IcmpCondition.UnsignedGreaterThanOrEqual:
                                 Emit (il.Create (OpCodes.Clt_Un));
-                                Emit (il.Create (OpCodes.Not));
+                                Emit (il.Create (OpCodes.Ldc_I4_0));
+                                Emit (il.Create (OpCodes.Ceq));
                                 break;
                             case IR.IcmpCondition.UnsignedLessThan:
                                 Emit (il.Create (OpCodes.Clt_Un));
                                 break;
                             case IR.IcmpCondition.UnsignedLessThanOrEqual:
                                 Emit (il.Create (OpCodes.Cgt_Un));
-                                Emit (il.Create (OpCodes.Not));
+                                Emit (il.Create (OpCodes.Ldc_I4_0));
+                                Emit (il.Create (OpCodes.Ceq));
                                 break;
                             case IR.IcmpCondition.SignedGreaterThan:
                                 Emit (il.Create (OpCodes.Cgt));
                                 break;
                             case IR.IcmpCondition.SignedGreaterThanOrEqual:
                                 Emit (il.Create (OpCodes.Clt));
-                                Emit (il.Create (OpCodes.Not));
+                                Emit (il.Create (OpCodes.Ldc_I4_0));
+                                Emit (il.Create (OpCodes.Ceq));
                                 break;
                             case IR.IcmpCondition.SignedLessThan:
                                 Emit (il.Create (OpCodes.Clt));
                                 break;
                             case IR.IcmpCondition.SignedLessThanOrEqual:
                                 Emit (il.Create (OpCodes.Cgt));
-                                Emit (il.Create (OpCodes.Not));
+                                Emit (il.Create (OpCodes.Ldc_I4_0));
+                                Emit (il.Create (OpCodes.Ceq));
                                 break;
                         }
                         break;
@@ -622,6 +645,30 @@ namespace Repil
                     case IR.UnconditionalBrInstruction br:
                         Emit (il.Create (OpCodes.Br, GetLabel (br.Destination)));
                         break;
+                    case IR.ZextInstruction mul:
+                        EmitTypedValue (mul.Value);
+                        switch (mul.Type) {
+                            case Types.IntegerType intt:
+                                switch (intt.Bits) {
+                                    case 1:
+                                    case 8:
+                                        Emit (il.Create (OpCodes.Conv_U1));
+                                        break;
+                                    case 16:
+                                        Emit (il.Create (OpCodes.Conv_U2));
+                                        break;
+                                    case 32:
+                                        Emit (il.Create (OpCodes.Conv_U4));
+                                        break;
+                                    default:
+                                        Emit (il.Create (OpCodes.Conv_U8));
+                                        break;
+                                }
+                                break;
+                            default:
+                                throw new NotSupportedException ($"Cannot zext {mul.Type}");
+                        }
+                        break;
                     default:
                         throw new NotImplementedException (instruction.ToString ());
                 }
@@ -675,6 +722,33 @@ namespace Repil
                     case IR.NullConstant nll:
                         Emit (il.Create (OpCodes.Ldc_I4_0));
                         Emit (il.Create (OpCodes.Conv_U));
+                        break;
+                    case IR.UndefinedConstant und:
+                        switch (type) {
+                            case Types.IntegerType intt:
+                                Emit (il.Create (OpCodes.Ldc_I4_0));
+                                switch (intt.Bits) {
+                                    case 1:
+                                        Emit (il.Create (OpCodes.Conv_I1));
+                                        break;
+                                    case 8:
+                                        Emit (il.Create (OpCodes.Conv_I1));
+                                        break;
+                                    case 16:
+                                        Emit (il.Create (OpCodes.Conv_I2));
+                                        break;
+                                    case 32:
+                                        break;
+                                    case 64:
+                                        Emit (il.Create (OpCodes.Conv_I8));
+                                        break;
+                                    default:
+                                        throw new NotSupportedException ("Undefined " + type);
+                                }
+                                break;
+                            default:
+                                throw new NotSupportedException ("Undefined " + type);
+                        }
                         break;
                     case IR.VectorConstant vec:
                         foreach (var c in vec.Constants) {

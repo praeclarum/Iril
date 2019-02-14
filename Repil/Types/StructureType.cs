@@ -10,6 +10,7 @@ namespace Repil.Types
 
     public class OpaqueStructureType : StructureType
     {
+        public override long GetByteSize (Module module) => 0;
     }
 
     public class LiteralStructureType : StructureType
@@ -23,6 +24,8 @@ namespace Repil.Types
 
         public override string ToString () =>
             $"{{{string.Join(", ", (object[])Elements)}}}";
+
+        public override long GetByteSize (Module module) => Elements.Sum (x => x.GetByteSize (module));
     }
 
     public class PackedStructureType : LiteralStructureType
