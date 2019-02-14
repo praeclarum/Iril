@@ -29,6 +29,7 @@ namespace Repil
         TypeReference sysVoid;
         TypeReference sysObj;
         TypeReference sysVal;
+        TypeReference sysBoolean;
         TypeReference sysByte;
         TypeReference sysInt16;
         TypeReference sysInt32;
@@ -121,6 +122,7 @@ namespace Repil
             sysObj = Import ("System.Object");
             sysVal = Import ("System.ValueType");
             sysByte = Import ("System.Byte");
+            sysBoolean = Import ("System.Boolean");
             sysInt16 = Import ("System.Int16");
             sysInt32 = Import ("System.Int32");
             sysInt64 = Import ("System.Int64");
@@ -348,8 +350,9 @@ namespace Repil
                     // Make sure it's used as the next variable referenced
                     // by the next instruction
                     var should = false;
-                    if (referencedOnce && i + 1 < b.Assignments.Length) {
-                        var fv = b.Assignments[i + 1].Instruction.ReferencedLocals.FirstOrDefault ();
+                    if (referencedOnce) {
+                        var ni = i + 1 < b.Assignments.Length ? b.Assignments[i + 1].Instruction : b.Terminator;
+                        var fv = ni.ReferencedLocals.FirstOrDefault ();
                         should = fv == symbol;
                     }
                     shouldInline.Add (symbol, should);
@@ -359,16 +362,20 @@ namespace Repil
             //
             // Create variables for non-inlined assignments
             //
+            var vdbgs = new List<VariableDebugInformation> ();
             var locals = new SymbolTable<VariableDefinition> ();
             foreach (var b in f.Blocks) {
                 foreach (var a in b.Assignments) {
                     if (a.Result != LocalSymbol.None) {
-                        var l = a.Result;
-                        if (!ShouldInline (l)) {
+                        var symbol = a.Result;
+                        if (!ShouldInline (symbol)) {
                             var irtype = a.Instruction.ResultType (function.IRModule);
                             var local = new VariableDefinition (GetClrType (irtype));
                             locals[a.Result] = local;
                             body.Variables.Add (local);
+                            //var name = "local" + symbol.Text.Substring (1);
+                            //var dbg = new VariableDebugInformation (local, name);
+                            //vdbgs.Add (dbg);
                         }
                     }
                 }
@@ -381,10 +388,13 @@ namespace Repil
             foreach (var b in f.Blocks) {
                 foreach (var a in b.Assignments) {
                     if (a.HasResult && a.Instruction is IR.PhiInstruction phi) {
-                        if (locals.TryGetValue (a.Result, out var local)) {
+                        if (!locals.TryGetValue (a.Result, out var local)) {
                             local = new VariableDefinition (GetClrType (phi.Type));
                             body.Variables.Add (local);
                         }
+                        var name = "phi" + a.Result.Text.Substring (1);
+                        var dbg = new VariableDebugInformation (local, name);
+                        vdbgs.Add (dbg);
                         phiLocals[a.Result] = local;
                     }
                 }
@@ -401,7 +411,7 @@ namespace Repil
             }
 
             //
-            // Emit the instructions
+            // Emit each block
             //
             var prev = default (CecilInstruction);
             for (var i = 0; i < f.Blocks.Length; i++) {
@@ -413,7 +423,7 @@ namespace Repil
                 //
                 prev = blockFirstInstr[b.Symbol];
                 foreach (var a in b.Assignments) {
-                    if (!ShouldInline (a.Result)) {
+                    if (!ShouldInline (a.Result) && !(a.Instruction is IR.PhiInstruction)) {
 
                         EmitInstruction (a.Result, a.Instruction, nextBlock);
 
@@ -452,6 +462,13 @@ namespace Repil
             }
 
             body.Optimize ();
+
+            var scopeDbg = new ScopeDebugInformation (body.Instructions.First (), body.Instructions.Last ());
+            foreach (var d in vdbgs) {
+                scopeDbg.Variables.Add (d);
+            }
+
+            md.DebugInformation.Scope = scopeDbg;
             md.Body = body;
 
             void Emit (CecilInstruction i)
@@ -987,7 +1004,7 @@ namespace Repil
                 case IntegerType intt:
                     switch (intt.Bits) {
                         case 1:
-                            return sysByte;
+                            return sysBoolean;
                         case 8:
                             return sysByte;
                         case 16:
@@ -1062,9 +1079,13 @@ namespace Repil
             return r;
         }
 
-        public void WriteAssembly (Stream output)
+        public void WriteAssembly (string path)
         {
-            asm.Write (output);
+            var ps = new WriterParameters {
+                WriteSymbols = true,
+                SymbolWriterProvider = new PortablePdbWriterProvider (),
+            };
+            asm.Write (path, ps);
         }
     }
 }

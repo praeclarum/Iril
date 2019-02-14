@@ -30,13 +30,11 @@ namespace Tests
                 irmods,
                 assemblyName: asmFileName);
 
-            var asmStream = new MemoryStream ();
-            compilation.WriteAssembly (asmStream);
-            Assert.Greater (asmStream.Length, 1024);
-
-            var asmBytes = asmStream.ToArray ();
             var asmPath = Path.Combine (Path.GetTempPath (), asmFileName);
-            File.WriteAllBytes (asmPath, asmBytes);
+            try { File.Delete (asmPath); }
+            catch { }
+            compilation.WriteAssembly (asmPath);
+
             var disProc = new Process {
                 StartInfo = new ProcessStartInfo {
                     FileName = "ikdasm",
@@ -56,7 +54,7 @@ namespace Tests
             System.Console.WriteLine (disAsm);
             System.Console.WriteLine (asmPath);
 
-            var asm = Assembly.Load (asmBytes);
+            var asm = Assembly.Load (File.ReadAllBytes (asmPath));
 
             var types = asm.GetTypes ();
             Assert.Greater (types.Length, 0);

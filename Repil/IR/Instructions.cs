@@ -493,7 +493,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Condition.ReferencedLocals.Concat (Value1.ReferencedLocals).Concat (Value2.ReferencedLocals);
-        public override LType ResultType (Module module) => Type;
+        public override LType ResultType (Module module) => Value1.Type;
     }
 
     public class SextInstruction : Instruction
