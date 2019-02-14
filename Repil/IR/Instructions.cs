@@ -180,13 +180,13 @@ namespace Repil.IR
         public override LType ResultType (Module module) => ((VectorType)Value.Type).ElementType;
     }
 
-    public class FloatAddInstruction : Instruction
+    public class FaddInstruction : Instruction
     {
         public readonly LType Type;
         public readonly Value Op1;
         public readonly Value Op2;
 
-        public FloatAddInstruction (LType type, Value op1, Value op2)
+        public FaddInstruction (LType type, Value op1, Value op2)
         {
             Type = type;
             Op1 = op1;
@@ -244,13 +244,13 @@ namespace Repil.IR
         }
     }
 
-    public class FloatMultiplyInstruction : Instruction
+    public class FmulInstruction : Instruction
     {
         public readonly LType Type;
         public readonly Value Op1;
         public readonly Value Op2;
 
-        public FloatMultiplyInstruction (LType type, Value op1, Value op2)
+        public FmulInstruction (LType type, Value op1, Value op2)
         {
             Type = type;
             Op1 = op1;
@@ -632,19 +632,27 @@ namespace Repil.IR
         public override LType ResultType (Module module) => Type;
     }
 
-    public class UitofpInstruction : Instruction
+    public abstract class ConversionInstruction : Instruction
     {
-        public readonly TypedValue Input;
-        public readonly LType OutputType;
+        public readonly TypedValue Value;
+        public readonly LType Type;
 
-        public UitofpInstruction (TypedValue input, LType outputType)
+        protected ConversionInstruction (TypedValue value, LType type)
         {
-            Input = input;
-            OutputType = outputType;
+            Value = value;
+            Type = type;
         }
 
-        public override IEnumerable<LocalSymbol> ReferencedLocals => Input.ReferencedLocals;
-        public override LType ResultType (Module module) => OutputType;
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
+        public override LType ResultType (Module module) => Type;
+    }
+
+    public class UitofpInstruction : ConversionInstruction
+    {
+        public UitofpInstruction (TypedValue input, LType outputType)
+            : base (input, outputType)
+        {
+        }
     }
 
     public class XorInstruction : BinaryInstruction

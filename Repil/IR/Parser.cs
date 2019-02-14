@@ -1360,7 +1360,7 @@ case 202:
 case 203:
 #line 744 "Repil/IR/IR.jay"
   {
-        yyVal = new FloatAddInstruction ((LType)yyVals[-3+yyTop], (Value)yyVals[-2+yyTop], (Value)yyVals[0+yyTop]);
+        yyVal = new FaddInstruction ((LType)yyVals[-3+yyTop], (Value)yyVals[-2+yyTop], (Value)yyVals[0+yyTop]);
     }
   break;
 case 204:
@@ -1378,7 +1378,7 @@ case 205:
 case 206:
 #line 756 "Repil/IR/IR.jay"
   {
-        yyVal = new FloatMultiplyInstruction ((LType)yyVals[-3+yyTop], (Value)yyVals[-2+yyTop], (Value)yyVals[0+yyTop]);
+        yyVal = new FmulInstruction ((LType)yyVals[-3+yyTop], (Value)yyVals[-2+yyTop], (Value)yyVals[0+yyTop]);
     }
   break;
 case 207:

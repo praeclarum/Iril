@@ -20,6 +20,7 @@ namespace Repil
         readonly ModuleDefinition mod;
         readonly AssemblyDefinition asm;
         readonly string namespac;
+        readonly Resolver resolver = new Resolver ();
 
         readonly HashSet<string> structNames = new HashSet<string> ();
         readonly SymbolTable<(LiteralStructureType, TypeDefinition)> structs =
@@ -27,6 +28,7 @@ namespace Repil
 
         AssemblyDefinition sysAsm;
         TypeReference sysVoid;
+        TypeReference sysVoidPtr;
         TypeReference sysObj;
         TypeReference sysVal;
         TypeReference sysBoolean;
@@ -42,12 +44,21 @@ namespace Repil
         MethodReference sysNotImplCtor;
         TypeReference sysNotSupp;
         MethodReference sysNotSuppCtor;
+        TypeReference sysMath;
+        MethodReference sysMathAbsD;
+        MethodReference sysMathSqrtD;
+        TypeReference sysEventArgs;
+        TypeReference sysIAsyncResult;
+        TypeReference sysAsyncCallback;
 
         readonly Dictionary<(int, string), (TypeReference, MethodReference)> vectorTypes =
             new Dictionary<(int, string), (TypeReference, MethodReference)> ();
 
         readonly SymbolTable<DefinedFunction> methodDefs =
             new SymbolTable<DefinedFunction> ();
+
+        readonly SymbolTable<FieldDefinition> globals =
+            new SymbolTable<FieldDefinition> ();
 
         public Compilation (IEnumerable<Module> documents, string assemblyName)
         {
@@ -58,9 +69,12 @@ namespace Repil
             var asmName = new AssemblyNameDefinition (Path.GetFileNameWithoutExtension (AssemblyName), version);
             var modName = AssemblyName;
             namespac = asmName.Name;
-            asm = AssemblyDefinition.CreateAssembly (asmName, modName, ModuleKind.Dll);
+            var mps = new ModuleParameters {
+                AssemblyResolver = resolver,
+                Kind = ModuleKind.Dll,
+            };
+            asm = AssemblyDefinition.CreateAssembly (asmName, modName, mps);
             mod = asm.MainModule;
-
             Compile ();
         }
 
@@ -68,6 +82,7 @@ namespace Repil
         {
             FindSystemTypes ();
             CompileStructures ();
+            EmitGlobalVariables ();
             FindFunctions ();
             CompileFunctions ();
         }
@@ -104,7 +119,7 @@ namespace Repil
         {
             var dir = Path.GetDirectoryName (SystemAssemblyPath);
             var netstdPath = Path.Combine (dir, "netstandard.dll");
-            var resolver = new Resolver ();
+
             resolver.Directories.Add (dir);
             var rps = new ReaderParameters (ReadingMode.Deferred) {
                 AssemblyResolver = resolver
@@ -120,6 +135,34 @@ namespace Repil
                 var t = new TypeReference (et.Namespace, et.Name, sysAsm.MainModule, scope);
                 return mod.ImportReference (t);
             }
+            MethodReference ImportMethod (TypeReference declType, string name, params TypeReference[] argTypes)
+            {
+                var td = declType.Resolve ();
+                var ms = td.Methods.Where (x => x.Name == name);
+                foreach (var m in ms) {
+                    if (m.Parameters.Count != argTypes.Length)
+                        continue;
+                    var match = true;
+                    for (var i = 0; match && i < m.Parameters.Count; i++) {
+                        var p = m.Parameters[i];
+                        if (p.ParameterType.FullName != argTypes[i].FullName)
+                            match = false;
+                    }
+                    if (match) {
+                        var mr = new MethodReference (name, Import (m.ReturnType.FullName), declType);
+                        mr.ExplicitThis = m.ExplicitThis;
+                        mr.CallingConvention = m.CallingConvention;
+                        mr.HasThis = m.HasThis;
+                        foreach (var p in m.Parameters) {
+                            mr.Parameters.Add (new ParameterDefinition (Import (p.ParameterType.FullName)));
+                        }
+                        var imr = mod.ImportReference (mr);
+                        Console.WriteLine (imr);
+                        return imr;
+                    }
+                }
+                throw new Exception ($"Cannot find {name} in {declType}");
+            }
             sysObj = Import ("System.Object");
             sysVal = Import ("System.ValueType");
             sysByte = Import ("System.Byte");
@@ -131,12 +174,19 @@ namespace Repil
             sysSingle = Import ("System.Single");
             sysDouble = Import ("System.Double");
             sysVoid = Import ("System.Void");
+            sysVoidPtr = sysVoid.MakePointerType ();
             sysString = Import ("System.String");
             sysNotImpl = Import ("System.NotImplementedException");
             sysNotImplCtor = new MethodReference (".ctor", sysVoid, sysNotImpl);
             sysNotSupp = Import ("System.NotSupportedException");
             sysNotSuppCtor = new MethodReference (".ctor", sysVoid, sysNotSupp);
             sysNotSuppCtor.Parameters.Add (new ParameterDefinition (sysString));
+            sysMath = Import ("System.Math");
+            sysMathAbsD = ImportMethod (sysMath, "Abs", sysDouble);
+            sysMathSqrtD = ImportMethod (sysMath, "Sqrt", sysDouble);
+            sysEventArgs = Import ("System.EventArgs");
+            sysIAsyncResult = Import ("System.IAsyncResult");
+            sysAsyncCallback = Import ("System.AsyncCallback");
         }
 
         void CompileStructures ()
@@ -166,6 +216,31 @@ namespace Repil
                         structNames.Add (tname);
                         structs[iskv.Key] = (l, td);
                     }
+                }
+            }
+        }
+
+        void EmitGlobalVariables ()
+        {
+            if (!Modules.Any (m => m.GlobalVariables.Count > 0))
+                return;
+
+            var gstd = new TypeDefinition (namespac, "Globals", TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, sysObj);
+            mod.Types.Add (gstd);
+
+            foreach (var m in Modules) {
+                foreach (var kv in m.GlobalVariables) {
+
+                    var symbol = kv.Key;
+                    var g = kv.Value;
+
+                    var gname = symbol.Text.Substring (1).Split ('.').Last ();
+
+                    var gtype = GetClrType (g.Type);
+                    var field = new FieldDefinition (gname, FieldAttributes.Static | FieldAttributes.Public, gtype);
+
+                    gstd.Fields.Add (field);
+                    globals.Add (symbol, field);
                 }
             }
         }
@@ -558,13 +633,47 @@ namespace Repil
                         if (cbr.IfFalse.Symbol != nextBlock?.Symbol)
                             Emit (il.Create (OpCodes.Br, GetLabel (cbr.IfFalse)));
                         break;
-                    case IR.FloatAddInstruction add:
+                    case IR.FaddInstruction add:
                         EmitValue (add.Op1, add.Type);
                         EmitValue (add.Op2, add.Type);
                         Emit (il.Create (OpCodes.Add));
                         break;
+                    case IR.FcmpInstruction fcmp:
+                        EmitValue (fcmp.Op1, fcmp.Type);
+                        EmitValue (fcmp.Op2, fcmp.Type);
+                        switch (fcmp.Condition) {
+                            case IR.FcmpCondition.OrderedEqual:
+                                Emit (il.Create (OpCodes.Ceq));
+                                break;
+                            case IR.FcmpCondition.UnorderedNotEqual:
+                                Emit (il.Create (OpCodes.Ceq));
+                                Emit (il.Create (OpCodes.Ldc_I4_0));
+                                Emit (il.Create (OpCodes.Ceq));
+                                break;
+                            case IR.FcmpCondition.UnorderedLessThan:
+                                Emit (il.Create (OpCodes.Clt_Un));
+                                break;
+                            default:
+                                throw new NotSupportedException ("fcmp condition " + fcmp.Condition);
+                        }
+                        break;
+                    case IR.FdivInstruction add:
+                        EmitValue (add.Op1, add.Type);
+                        EmitValue (add.Op2, add.Type);
+                        Emit (il.Create (OpCodes.Div));
+                        break;
+                    case IR.FmulInstruction add:
+                        EmitValue (add.Op1, add.Type);
+                        EmitValue (add.Op2, add.Type);
+                        Emit (il.Create (OpCodes.Mul));
+                        break;
+                    case IR.FsubInstruction add:
+                        EmitValue (add.Op1, add.Type);
+                        EmitValue (add.Op2, add.Type);
+                        Emit (il.Create (OpCodes.Sub));
+                        break;
                     case IR.GetElementPointerInstruction gep:
-                        EmitGetElementPointer (gep);
+                        EmitGetElementPointer (gep.Pointer, gep.Indices);
                         break;
                     case IR.IcmpInstruction icmp:
                         EmitValue (icmp.Op1, icmp.Type);
@@ -793,6 +902,23 @@ namespace Repil
                                 throw new NotSupportedException ($"Cannot trunc {trunc.Type}");
                         }
                         break;
+                    case IR.UitofpInstruction zext:
+                        EmitTypedValue (zext.Value);
+                        switch (zext.Type) {
+                            case Types.FloatType fltt:
+                                switch (fltt.Bits) {
+                                    case 32:
+                                        Emit (il.Create (OpCodes.Conv_R4));
+                                        break;
+                                    default:
+                                        Emit (il.Create (OpCodes.Conv_R8));
+                                        break;
+                                }
+                                break;
+                            default:
+                                throw new NotSupportedException ($"Cannot uitofp {zext.Type}");
+                        }
+                        break;
                     case IR.UnconditionalBrInstruction br:
                         Emit (il.Create (OpCodes.Br, GetLabel (br.Destination)));
                         break;
@@ -830,13 +956,24 @@ namespace Repil
                 EmitValue (value.Value, value.Type);
             }
 
+            void EmitTypedValuePointer (IR.TypedValue value)
+            {
+                EmitValuePointer (value.Value, value.Type);
+            }
+
             void EmitValue (IR.Value value, LType type)
             {
                 switch (value) {
+                    case IR.BooleanConstant b:
+                        Emit (il.Create (b.IsTrue ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0));
+                        break;
                     case IR.FloatConstant flt:
                         Emit (il.Create (
                             ((FloatType)type).Bits == 64 ? OpCodes.Ldc_R8 : OpCodes.Ldc_R4,
                             flt.Value));
+                        break;
+                    case IR.GetElementPointerValue gep:
+                        EmitGetElementPointer (gep.Pointer, gep.Indices);
                         break;
                     case IR.IntegerConstant i:
                         switch (((IntegerType)type).Bits) {
@@ -911,8 +1048,24 @@ namespace Repil
                         break;
                     case IR.VoidValue vv:
                         break;
+                    case IR.GlobalValue g:
+                        if (methodDefs.TryGetValue (g.Symbol, out var ff)) {
+                            Emit (il.Create (OpCodes.Ldftn, ff.ILDefinition));
+                        }
+                        break;
                     default:
-                        throw new NotImplementedException (value.ToString ());
+                        throw new NotImplementedException ("Cannot emit value " + value);
+                }
+            }
+
+            void EmitValuePointer (IR.Value value, LType type)
+            {
+                if (value is IR.GlobalValue g) {
+                    Emit (il.Create (OpCodes.Ldsflda, globals[g.Symbol]));
+                    Emit (il.Create (OpCodes.Conv_U));
+                }
+                else {
+                    EmitValue (value, type);
                 }
             }
 
@@ -969,9 +1122,21 @@ namespace Repil
             {
                 if (call.Pointer is IR.GlobalValue gv) {
                     switch (gv.Symbol.Text) {
+                        case "@malloc":
+                            EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                            Emit (il.Create (OpCodes.Call, sysMathAbsD));
+                            return;
                         case "@llvm.lifetime.start.p0i8":
                         case "@llvm.lifetime.end.p0i8":
                         case "@llvm.dbg.value":
+                            return;
+                        case "@llvm.fabs.f64":
+                            EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                            Emit (il.Create (OpCodes.Call, sysMathAbsD));
+                            return;
+                        case "@llvm.sqrt.f64":
+                            EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                            Emit (il.Create (OpCodes.Call, sysMathSqrtD));
                             return;
                         // declare void @llvm.memset.p0i8.i32(i8* <dest>, i8 <val>,
                         //                                    i32<len>, i1<isvolatile>)
@@ -1001,16 +1166,26 @@ namespace Repil
                             break;
                     }
                 }
-                throw new NotSupportedException (call.ToString ());
+                else if (call.Pointer is IR.LocalValue lv) {
+                    var lva = f.GetAssignment (lv);
+                    var ltype = lva.Instruction.ResultType (function.IRModule);
+                    foreach (var a in call.Arguments) {
+                        EmitValue (a.Value, a.Type);
+                    }
+                    EmitValue (lv, ltype);
+                    Emit (il.Create (OpCodes.Calli, GetCallSite (ltype)));
+                    return;
+                }
+                throw new NotSupportedException ("Cannot call " + call.Pointer);
             }
 
-            void EmitGetElementPointer (IR.GetElementPointerInstruction gep)
+            void EmitGetElementPointer (IR.TypedValue pointer, IR.TypedValue[] indices)
             {
-                var t = gep.Pointer.Type;
-                EmitTypedValue (gep.Pointer);
-                var n = gep.Indices.Length;
+                var t = pointer.Type;
+                EmitTypedValuePointer (pointer);
+                var n = indices.Length;
                 for (var i = 0; i < n; i++) {
-                    var index = gep.Indices[i];
+                    var index = indices[i];
                     if (t is Types.PointerType pt) {
                         if (Resolve (pt.ElementType) is Types.LiteralStructureType st && index.Value is IR.IntegerConstant iconst) {
                             if (i > 0) {
@@ -1044,7 +1219,7 @@ namespace Repil
                         t = artt.ElementType;
                     }
                     else {
-                        throw new NotSupportedException (gep.ToString ());
+                        throw new NotSupportedException ("Element pointer for " + t);
                     }
                 }
             }
@@ -1053,6 +1228,17 @@ namespace Repil
             {
                 return blockFirstInstr[label.Symbol];
             }
+        }
+
+        CallSite GetCallSite (LType ltype)
+        {
+            var ft = (FunctionType)((Types.PointerType)ltype).ElementType;
+            var c = new CallSite (GetClrType (ft.ReturnType));
+            foreach (var p in ft.ParameterTypes) {
+                var pd = new ParameterDefinition (GetClrType (p));
+                c.Parameters.Add (pd);
+            }
+            return c;
         }
 
         LType Resolve (LType elementType)
@@ -1141,7 +1327,7 @@ namespace Repil
                 case Types.ArrayType art:
                     return GetClrType (art.ElementType).MakePointerType ();
                 case Types.PointerType pt when pt.ElementType is FunctionType ft:
-                    return sysInt32.MakePointerType ();
+                    return sysVoidPtr;
                 case Types.PointerType pt:
                     return GetClrType (pt.ElementType).MakePointerType ();
                 case NamedType nt:
