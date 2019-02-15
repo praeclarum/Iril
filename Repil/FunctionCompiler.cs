@@ -37,21 +37,37 @@ namespace Repil
 
     class FunctionCompiler
     {
+        // Input
         readonly Compilation compilation;
+        readonly DefinedFunction function;
 
-        public FunctionCompiler (Compilation compilation)
+        // Created
+        readonly MethodBody body;
+        readonly ILProcessor il;
+
+        // Working Variables
+        bool triedToCompile;
+        CecilInstruction prev;
+
+        public FunctionCompiler (Compilation compilation, DefinedFunction function)
         {
             this.compilation = compilation;
+            this.function = function;
+            body = new MethodBody (function.ILDefinition);
+            il = body.GetILProcessor ();
+            prev = default (CecilInstruction);
         }
 
-        public void CompileFunction (DefinedFunction function)
+        public void CompileFunction ()
         {
+            if (triedToCompile)
+                return;
+            triedToCompile = true;
+
             var f = function.IRDefinition;
 
             var paramSyms = function.ParamSyms;
             var md = function.ILDefinition;
-            var body = new MethodBody (md);
-            var il = body.GetILProcessor ();
             var vectorTemps = new Dictionary<(string, int), VariableDefinition> ();
 
             //
@@ -156,7 +172,7 @@ namespace Repil
             //
             // Emit each block
             //
-            var prev = default (CecilInstruction);
+
             for (var i = 0; i < f.Blocks.Length; i++) {
                 var b = f.Blocks[i];
                 var nextBlock = i + 1 < f.Blocks.Length ? f.Blocks[i + 1] : null;
@@ -214,11 +230,7 @@ namespace Repil
             md.DebugInformation.Scope = scopeDbg;
             md.Body = body;
 
-            void Emit (CecilInstruction i)
-            {
-                il.InsertAfter (prev, i);
-                prev = i;
-            }
+
 
             bool ShouldInline (LocalSymbol symbol)
             {
@@ -860,30 +872,7 @@ namespace Repil
                 }
             }
 
-            void EmitZeroValue (LType type)
-            {
-                if (type is VectorType vt) {
-                    var v = GetVectorType (vt);
-                    for (var i = 0; i < vt.Length; i++) {
-                        EmitZeroValue (vt.ElementType);
-                    }
-                    Emit (il.Create (OpCodes.Newobj, v.Ctor));
-                }
-                else if (type is Types.IntegerType intt) {
-                    Emit (il.Create (OpCodes.Ldc_I4_0));
-                }
-                else if (type is Types.FloatType floatt) {
-                    if (floatt.Bits == 32) {
-                        Emit (il.Create (OpCodes.Ldc_R4, 0.0f));
-                    }
-                    else {
-                        Emit (il.Create (OpCodes.Ldc_R8, 0.0));
-                    }
-                }
-                else {
-                    throw new NotSupportedException ("Cannot get 0 for " + type);
-                }
-            }
+
 
             void EmitBrtrue (IR.Value condition, LType conditionType, Instruction trueTarget)
             {
@@ -1040,6 +1029,37 @@ namespace Repil
             {
                 return blockFirstInstr[label.Symbol];
             }
+        }
+
+        void EmitZeroValue (LType type)
+        {
+            if (type is VectorType vt) {
+                var v = GetVectorType (vt);
+                for (var i = 0; i < vt.Length; i++) {
+                    EmitZeroValue (vt.ElementType);
+                }
+                Emit (il.Create (OpCodes.Newobj, v.Ctor));
+            }
+            else if (type is Types.IntegerType intt) {
+                Emit (il.Create (OpCodes.Ldc_I4_0));
+            }
+            else if (type is Types.FloatType floatt) {
+                if (floatt.Bits == 32) {
+                    Emit (il.Create (OpCodes.Ldc_R4, 0.0f));
+                }
+                else {
+                    Emit (il.Create (OpCodes.Ldc_R8, 0.0));
+                }
+            }
+            else {
+                throw new NotSupportedException ("Cannot get 0 for " + type);
+            }
+        }
+
+        void Emit (CecilInstruction i)
+        {
+            il.InsertAfter (prev, i);
+            prev = i;
         }
 
         CallSite CreateCallSite (LType functionPointerType)

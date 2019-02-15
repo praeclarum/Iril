@@ -372,8 +372,8 @@ namespace Repil
             foreach (var m in methodDefs) {
                 if (m.Value.IRDefinition != null) {
                     try {
-                        var fc = new FunctionCompiler (this);
-                        fc.CompileFunction (m.Value);
+                        var fc = new FunctionCompiler (this, m.Value);
+                        fc.CompileFunction ();
                     }
                     catch (Exception ex) {
                         CompileFailedFunction (m.Value, ex);
