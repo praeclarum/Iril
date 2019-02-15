@@ -7,8 +7,6 @@ namespace Repil.Types
         public virtual LType Resolve (Module module) => this;
 
         public abstract long GetByteSize (Module module);
-
-        public virtual IR.Value Zero => IR.IntegerConstant.Zero;
     }
 
     public class VarArgsType : LType

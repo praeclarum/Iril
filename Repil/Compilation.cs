@@ -51,8 +51,8 @@ namespace Repil
         TypeReference sysIAsyncResult;
         TypeReference sysAsyncCallback;
 
-        readonly Dictionary<(int, string), (TypeReference, MethodReference)> vectorTypes =
-            new Dictionary<(int, string), (TypeReference, MethodReference)> ();
+        readonly Dictionary<(int, string), SimdVector> vectorTypes =
+            new Dictionary<(int, string), SimdVector> ();
 
         readonly SymbolTable<DefinedFunction> methodDefs =
             new SymbolTable<DefinedFunction> ();
@@ -157,7 +157,6 @@ namespace Repil
                             mr.Parameters.Add (new ParameterDefinition (Import (p.ParameterType.FullName)));
                         }
                         var imr = mod.ImportReference (mr);
-                        Console.WriteLine (imr);
                         return imr;
                     }
                 }
@@ -633,10 +632,23 @@ namespace Repil
                         if (cbr.IfFalse.Symbol != nextBlock?.Symbol)
                             Emit (il.Create (OpCodes.Br, GetLabel (cbr.IfFalse)));
                         break;
+                    case IR.ExtractElementInstruction ee: {
+                            EmitTypedValue (ee.Value);
+                            var index = ((IR.Constant)ee.Index.Value).Int32Value;
+                            var v = GetVectorType ((VectorType)ee.Value.Type);
+                            var field = v.ElementFields[index];
+                            Emit (il.Create (OpCodes.Ldfld, field));
+                        }
+                        break;
                     case IR.FaddInstruction add:
-                        EmitValue (add.Op1, add.Type);
-                        EmitValue (add.Op2, add.Type);
-                        Emit (il.Create (OpCodes.Add));
+                        if (add.Type is Types.VectorType) {
+                            EmitVectorOp (OpCodes.Add, add.Op1, add.Op2, (Types.VectorType)add.Type);
+                        }
+                        else {
+                            EmitValue (add.Op1, add.Type);
+                            EmitValue (add.Op2, add.Type);
+                            Emit (il.Create (OpCodes.Add));
+                        }
                         break;
                     case IR.FcmpInstruction fcmp:
                         EmitValue (fcmp.Op1, fcmp.Type);
@@ -658,19 +670,34 @@ namespace Repil
                         }
                         break;
                     case IR.FdivInstruction add:
-                        EmitValue (add.Op1, add.Type);
-                        EmitValue (add.Op2, add.Type);
-                        Emit (il.Create (OpCodes.Div));
+                        if (add.Type is Types.VectorType) {
+                            EmitVectorOp (OpCodes.Div, add.Op1, add.Op2, (Types.VectorType)add.Type);
+                        }
+                        else {
+                            EmitValue (add.Op1, add.Type);
+                            EmitValue (add.Op2, add.Type);
+                            Emit (il.Create (OpCodes.Div));
+                        }
                         break;
-                    case IR.FmulInstruction add:
-                        EmitValue (add.Op1, add.Type);
-                        EmitValue (add.Op2, add.Type);
-                        Emit (il.Create (OpCodes.Mul));
+                    case IR.FmulInstruction fmul:
+                        if (fmul.Type is Types.VectorType) {
+                            EmitVectorOp (OpCodes.Mul, fmul.Op1, fmul.Op2, (Types.VectorType)fmul.Type);
+                        }
+                        else {
+                            EmitValue (fmul.Op1, fmul.Type);
+                            EmitValue (fmul.Op2, fmul.Type);
+                            Emit (il.Create (OpCodes.Mul));
+                        }
                         break;
-                    case IR.FsubInstruction add:
-                        EmitValue (add.Op1, add.Type);
-                        EmitValue (add.Op2, add.Type);
-                        Emit (il.Create (OpCodes.Sub));
+                    case IR.FsubInstruction fsub:
+                        if (fsub.Type is Types.VectorType) {
+                            EmitVectorOp (OpCodes.Sub, fsub.Op1, fsub.Op2, (Types.VectorType)fsub.Type);
+                        }
+                        else {
+                            EmitValue (fsub.Op1, fsub.Type);
+                            EmitValue (fsub.Op2, fsub.Type);
+                            Emit (il.Create (OpCodes.Sub));
+                        }
                         break;
                     case IR.GetElementPointerInstruction gep:
                         EmitGetElementPointer (gep.Pointer, gep.Indices);
@@ -975,6 +1002,11 @@ namespace Repil
                     case IR.GetElementPointerValue gep:
                         EmitGetElementPointer (gep.Pointer, gep.Indices);
                         break;
+                    case IR.GlobalValue g:
+                        if (methodDefs.TryGetValue (g.Symbol, out var ff)) {
+                            Emit (il.Create (OpCodes.Ldftn, ff.ILDefinition));
+                        }
+                        break;
                     case IR.IntegerConstant i:
                         switch (((IntegerType)type).Bits) {
                             case 8:
@@ -1042,16 +1074,14 @@ namespace Repil
                         foreach (var c in vec.Constants) {
                             EmitValue (c.Constant, c.Type);
                         } {
-                            var (vt, ctor) = GetVectorType ((VectorType)type);
-                            Emit (il.Create (OpCodes.Newobj, ctor));
+                            var vt = GetVectorType ((VectorType)type);
+                            Emit (il.Create (OpCodes.Newobj, vt.Ctor));
                         }
                         break;
                     case IR.VoidValue vv:
                         break;
-                    case IR.GlobalValue g:
-                        if (methodDefs.TryGetValue (g.Symbol, out var ff)) {
-                            Emit (il.Create (OpCodes.Ldftn, ff.ILDefinition));
-                        }
+                    case IR.ZeroConstant zero:
+                        EmitZeroValue (type);
                         break;
                     default:
                         throw new NotImplementedException ("Cannot emit value " + value);
@@ -1066,6 +1096,44 @@ namespace Repil
                 }
                 else {
                     EmitValue (value, type);
+                }
+            }
+
+            void EmitVectorOp (OpCode op, IR.Value op1, IR.Value op2, Types.VectorType type)
+            {
+                EmitValue (op1, type);
+                EmitValue (op2, type);
+                var v = GetVectorType (type);
+                if (op.Code == Code.Sub) {
+                    Emit (il.Create (OpCodes.Call, v.Subtract));
+                }
+                else {
+                    throw new NotSupportedException ($"Cannot {op.Code} {type}");
+                }
+            }
+
+            void EmitZeroValue (LType type)
+            {
+                if (type is VectorType vt) {
+                    var v = GetVectorType (vt);
+                    for (var i = 0; i < vt.Length; i++) {
+                        EmitZeroValue (vt.ElementType);
+                    }
+                    Emit (il.Create (OpCodes.Newobj, v.Ctor));
+                }
+                else if (type is Types.IntegerType intt) {
+                    Emit (il.Create (OpCodes.Ldc_I4_0));
+                }
+                else if (type is Types.FloatType floatt) {
+                    if (floatt.Bits == 32) {
+                        Emit (il.Create (OpCodes.Ldc_R4, 0.0f));
+                    }
+                    else {
+                        Emit (il.Create (OpCodes.Ldc_R8, 0.0));
+                    }
+                }
+                else {
+                    throw new NotSupportedException ("Cannot get 0 for " + type);
                 }
             }
 
@@ -1122,10 +1190,6 @@ namespace Repil
             {
                 if (call.Pointer is IR.GlobalValue gv) {
                     switch (gv.Symbol.Text) {
-                        case "@malloc":
-                            EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
-                            Emit (il.Create (OpCodes.Call, sysMathAbsD));
-                            return;
                         case "@llvm.lifetime.start.p0i8":
                         case "@llvm.lifetime.end.p0i8":
                         case "@llvm.dbg.value":
@@ -1333,7 +1397,7 @@ namespace Repil
                 case NamedType nt:
                     return structs[nt.Symbol].Item2;
                 case VectorType vt: {
-                        return GetVectorType (vt).Item1;
+                        return GetVectorType (vt).ClrType;
                     }
                 case VoidType vdt:
                     return sysVoid;
@@ -1344,7 +1408,7 @@ namespace Repil
             }
         }
 
-        private (TypeReference, MethodReference) GetVectorType (VectorType vt)
+        private SimdVector GetVectorType (VectorType vt)
         {
             var et = GetClrType (vt.ElementType);
             var key = (vt.Length, et.FullName);
@@ -1354,7 +1418,7 @@ namespace Repil
             return AddVectorType (key, et);
         }
 
-        (TypeReference, MethodReference) AddVectorType ((int Length, string TypeFullName) key, TypeReference elementType)
+        SimdVector AddVectorType ((int Length, string TypeFullName) key, TypeReference elementType)
         {
             var tname = $"Vector{key.Length}{elementType.Name}";
 
@@ -1366,24 +1430,54 @@ namespace Repil
             }
 
             var ctor = new MethodDefinition (".ctor", MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName, sysVoid);
-            for (var i = 0; i < key.Length; i++) {
-                var p = new ParameterDefinition ("e" + i, ParameterAttributes.None, elementType);
-                ctor.Parameters.Add (p);
+            {
+                for (var i = 0; i < key.Length; i++) {
+                    var p = new ParameterDefinition ("e" + i, ParameterAttributes.None, elementType);
+                    ctor.Parameters.Add (p);
+                }
+                var body = new MethodBody (ctor);
+                var il = body.GetILProcessor ();
+                for (var i = 0; i < key.Length; i++) {
+                    il.Append (il.Create (OpCodes.Ldarg_0));
+                    il.Append (il.Create (OpCodes.Ldarg, i + 1));
+                    il.Append (il.Create (OpCodes.Stfld, td.Fields[i]));
+                }
+                il.Append (il.Create (OpCodes.Ret));
+                body.Optimize ();
+
+                ctor.Body = body;
+                td.Methods.Add (ctor);
             }
-            var cbody = new MethodBody (ctor);
-            var il = cbody.GetILProcessor ();
-            for (var i = 0; i < key.Length; i++) {
-                il.Append (il.Create (OpCodes.Ldarg_0));
-                il.Append (il.Create (OpCodes.Ldarg, i + 1));
-                il.Append (il.Create (OpCodes.Stfld, td.Fields[i]));
+            var sub = new MethodDefinition ("Subtract", MethodAttributes.Public | MethodAttributes.Static, td);
+            {
+                sub.Parameters.Add (new ParameterDefinition (td));
+                sub.Parameters.Add (new ParameterDefinition (td));
+
+                var body = new MethodBody (ctor);
+                var il = body.GetILProcessor ();
+                for (var i = 0; i < key.Length; i++) {
+                    il.Append (il.Create (OpCodes.Ldarg_0));
+                    il.Append (il.Create (OpCodes.Ldfld, td.Fields[i]));
+                    il.Append (il.Create (OpCodes.Ldarg_1));
+                    il.Append (il.Create (OpCodes.Ldfld, td.Fields[i]));
+                    il.Append (il.Create (OpCodes.Sub));
+                }
+                il.Append (il.Create (OpCodes.Newobj, ctor));
+                il.Append (il.Create (OpCodes.Ret));
+                body.Optimize ();
+
+                sub.Body = body;
+                td.Methods.Add (sub);
             }
-            il.Append (il.Create (OpCodes.Ret));
-            cbody.Optimize ();
-            ctor.Body = cbody;
-            td.Methods.Add (ctor);
 
             mod.Types.Add (td);
-            var r = ((TypeReference)td, (MethodReference)ctor);
+            var r = new SimdVector {
+                ElementClrType = elementType,
+                ClrType = td,
+                Ctor = ctor,
+                Subtract = sub,
+                ElementFields = td.Fields.Select (x => (FieldReference)x).ToArray (),
+            };
             vectorTypes[key] = r;
 
             return r;
@@ -1396,6 +1490,22 @@ namespace Repil
                 SymbolWriterProvider = new PortablePdbWriterProvider (),
             };
             asm.Write (path, ps);
+        }
+
+        class SimdVector
+        {
+            //public int Length;
+            //public LType ElementType;
+            public TypeReference ElementClrType;
+
+            public TypeReference ClrType;
+
+            public MethodReference Ctor;
+
+            public FieldReference[] ElementFields;
+
+            //public MethodReference Add;
+            public MethodReference Subtract;
         }
     }
 }
