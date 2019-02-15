@@ -426,6 +426,7 @@ namespace Repil
             var md = function.ILDefinition;
             var body = new MethodBody (md);
             var il = body.GetILProcessor ();
+            var vectorTemps = new Dictionary<(string, int), VariableDefinition> ();
 
             //
             // Get local usage count
@@ -657,6 +658,9 @@ namespace Repil
                             case IR.FcmpCondition.OrderedEqual:
                                 Emit (il.Create (OpCodes.Ceq));
                                 break;
+                            case IR.FcmpCondition.OrderedLessThan:
+                                Emit (il.Create (OpCodes.Clt));
+                                break;
                             case IR.FcmpCondition.UnorderedNotEqual:
                                 Emit (il.Create (OpCodes.Ceq));
                                 Emit (il.Create (OpCodes.Ldc_I4_0));
@@ -687,6 +691,54 @@ namespace Repil
                             EmitValue (fmul.Op1, fmul.Type);
                             EmitValue (fmul.Op2, fmul.Type);
                             Emit (il.Create (OpCodes.Mul));
+                        }
+                        break;
+                    case IR.FptosiInstruction sext:
+                        EmitTypedValue (sext.Value);
+                        switch (sext.Type) {
+                            case Types.IntegerType intt:
+                                switch (intt.Bits) {
+                                    case 1:
+                                    case 8:
+                                        Emit (il.Create (OpCodes.Conv_I1));
+                                        break;
+                                    case 16:
+                                        Emit (il.Create (OpCodes.Conv_I2));
+                                        break;
+                                    case 32:
+                                        Emit (il.Create (OpCodes.Conv_I4));
+                                        break;
+                                    default:
+                                        Emit (il.Create (OpCodes.Conv_I8));
+                                        break;
+                                }
+                                break;
+                            default:
+                                throw new NotSupportedException ($"Cannot fptoui {sext.Type}");
+                        }
+                        break;
+                    case IR.FptouiInstruction sext:
+                        EmitTypedValue (sext.Value);
+                        switch (sext.Type) {
+                            case Types.IntegerType intt:
+                                switch (intt.Bits) {
+                                    case 1:
+                                    case 8:
+                                        Emit (il.Create (OpCodes.Conv_U1));
+                                        break;
+                                    case 16:
+                                        Emit (il.Create (OpCodes.Conv_U2));
+                                        break;
+                                    case 32:
+                                        Emit (il.Create (OpCodes.Conv_U4));
+                                        break;
+                                    default:
+                                        Emit (il.Create (OpCodes.Conv_U8));
+                                        break;
+                                }
+                                break;
+                            default:
+                                throw new NotSupportedException ($"Cannot fptoui {sext.Type}");
                         }
                         break;
                     case IR.FsubInstruction fsub:
@@ -812,6 +864,16 @@ namespace Repil
                         EmitTypedValue (ret.Value);
                         Emit (il.Create (OpCodes.Ret));
                         break;
+                    case IR.SdivInstruction sdiv:
+                        if (sdiv.Type is Types.VectorType) {
+                            EmitVectorOp (OpCodes.Div, sdiv.Op1, sdiv.Op2, (Types.VectorType)sdiv.Type);
+                        }
+                        else {
+                            EmitValue (sdiv.Op1, sdiv.Type);
+                            EmitValue (sdiv.Op2, sdiv.Type);
+                            Emit (il.Create (OpCodes.Div));
+                        }
+                        break;
                     case IR.SextInstruction sext:
                         EmitTypedValue (sext.Value);
                         switch (sext.Type) {
@@ -850,6 +912,48 @@ namespace Repil
                             Emit (il.Create (OpCodes.Br, end));
 
                             Emit (end);
+                        }
+                        break;
+                    case IR.ShlInstruction shl:
+                        EmitValue (shl.Op1, shl.Type);
+                        EmitValue (shl.Op2, shl.Type);
+                        Emit (il.Create (OpCodes.Shl));
+                        break;
+                    case IR.ShuffleVectorInstruction sh: {
+                            var type1 = (VectorType)sh.Value1.Type;
+                            var type2 = (VectorType)sh.Value2.Type;
+                            var len1 = type1.Length;
+                            var ctype1 = GetVectorType (type1);
+                            var ctype2 = GetVectorType (type2);
+                            var crt = GetVectorType (sh.Type);
+                            var local1 = GetVectorTempVariable (ctype1, sh.Value1.Value, 0);
+                            var local2 = GetVectorTempVariable (ctype2, sh.Value2.Value, 0);
+                            foreach (var c in ((IR.VectorConstant)sh.Mask.Value).Constants) {
+                                var index = c.Constant.Int32Value;
+                                var loc = index >= len1 ? local2 : local1;
+                                var loci = index >= len1 ? index - len1 : index;
+                                var typ = index >= len1 ? ctype2 : ctype1;
+                                Emit (il.Create (OpCodes.Ldloc, loc));
+                                Emit (il.Create (OpCodes.Ldfld, typ.ElementFields[loci]));
+                            }
+                            Emit (il.Create (OpCodes.Newobj, crt.Ctor));
+                        }
+                        break;
+                    case IR.SitofpInstruction sitofp:
+                        EmitTypedValue (sitofp.Value);
+                        switch (sitofp.Type) {
+                            case Types.FloatType fltt:
+                                switch (fltt.Bits) {
+                                    case 32:
+                                        Emit (il.Create (OpCodes.Conv_R4));
+                                        break;
+                                    default:
+                                        Emit (il.Create (OpCodes.Conv_R8));
+                                        break;
+                                }
+                                break;
+                            default:
+                                throw new NotSupportedException ($"Cannot sitofp {sitofp.Type}");
                         }
                         break;
                     case IR.StoreInstruction store:
@@ -929,9 +1033,9 @@ namespace Repil
                                 throw new NotSupportedException ($"Cannot trunc {trunc.Type}");
                         }
                         break;
-                    case IR.UitofpInstruction zext:
-                        EmitTypedValue (zext.Value);
-                        switch (zext.Type) {
+                    case IR.UitofpInstruction uitofp:
+                        EmitTypedValue (uitofp.Value);
+                        switch (uitofp.Type) {
                             case Types.FloatType fltt:
                                 switch (fltt.Bits) {
                                     case 32:
@@ -943,11 +1047,21 @@ namespace Repil
                                 }
                                 break;
                             default:
-                                throw new NotSupportedException ($"Cannot uitofp {zext.Type}");
+                                throw new NotSupportedException ($"Cannot uitofp {uitofp.Type}");
                         }
                         break;
                     case IR.UnconditionalBrInstruction br:
                         Emit (il.Create (OpCodes.Br, GetLabel (br.Destination)));
+                        break;
+                    case IR.XorInstruction xor:
+                        if (xor.Type is Types.VectorType) {
+                            EmitVectorOp (OpCodes.Xor, xor.Op1, xor.Op2, (Types.VectorType)xor.Type);
+                        }
+                        else {
+                            EmitValue (xor.Op1, xor.Type);
+                            EmitValue (xor.Op2, xor.Type);
+                            Emit (il.Create (OpCodes.Xor));
+                        }
                         break;
                     case IR.ZextInstruction zext:
                         EmitTypedValue (zext.Value);
@@ -1044,31 +1158,7 @@ namespace Repil
                         Emit (il.Create (OpCodes.Conv_U));
                         break;
                     case IR.UndefinedConstant und:
-                        switch (type) {
-                            case Types.IntegerType intt:
-                                Emit (il.Create (OpCodes.Ldc_I4_0));
-                                switch (intt.Bits) {
-                                    case 1:
-                                        Emit (il.Create (OpCodes.Conv_I1));
-                                        break;
-                                    case 8:
-                                        Emit (il.Create (OpCodes.Conv_I1));
-                                        break;
-                                    case 16:
-                                        Emit (il.Create (OpCodes.Conv_I2));
-                                        break;
-                                    case 32:
-                                        break;
-                                    case 64:
-                                        Emit (il.Create (OpCodes.Conv_I8));
-                                        break;
-                                    default:
-                                        throw new NotSupportedException ("Undefined " + type);
-                                }
-                                break;
-                            default:
-                                throw new NotSupportedException ("Undefined " + type);
-                        }
+                        EmitZeroValue (type);
                         break;
                     case IR.VectorConstant vec:
                         foreach (var c in vec.Constants) {
@@ -1097,6 +1187,34 @@ namespace Repil
                 else {
                     EmitValue (value, type);
                 }
+            }
+
+            VariableDefinition GetVectorTempVariable (SimdVector type, IR.Value value, int uid)
+            {
+                //
+                // First check if this value is already stored into a local
+                // If so, just use that.
+                //
+                if (value is IR.LocalValue lv && locals.TryGetValue (lv.Symbol, out var vd))
+                    return vd;
+
+                //
+                // Ah, the value was inlined. Lookup/Allocate a register for it.
+                //
+                var key = (type.ClrType.FullName, uid);
+                if (vectorTemps.TryGetValue (key, out vd))
+                    return vd;
+
+
+                vd = new VariableDefinition (type.ClrType);
+                vectorTemps[key] = vd;
+                body.Variables.Add (vd);
+
+                var name = $"vectorTemp{vectorTemps.Count}";
+                var dbg = new VariableDebugInformation (vd, name);
+                vdbgs.Add (dbg);
+
+                return vd;
             }
 
             void EmitVectorOp (OpCode op, IR.Value op1, IR.Value op2, Types.VectorType type)

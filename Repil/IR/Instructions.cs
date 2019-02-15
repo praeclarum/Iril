@@ -261,34 +261,20 @@ namespace Repil.IR
         public override LType ResultType (Module module) => Type;
     }
 
-    public class FptosiInstruction : Instruction
+    public class FptosiInstruction : ConversionInstruction
     {
-        public readonly TypedValue Input;
-        public readonly LType OutputType;
-
         public FptosiInstruction (TypedValue input, LType outputType)
+            : base (input, outputType)
         {
-            Input = input;
-            OutputType = outputType;
         }
-
-        public override IEnumerable<LocalSymbol> ReferencedLocals => Input.ReferencedLocals;
-        public override LType ResultType (Module module) => OutputType;
     }
 
-    public class FptouiInstruction : Instruction
+    public class FptouiInstruction : ConversionInstruction
     {
-        public readonly TypedValue Input;
-        public readonly LType OutputType;
-
         public FptouiInstruction (TypedValue input, LType outputType)
+            : base (input, outputType)
         {
-            Input = input;
-            OutputType = outputType;
         }
-
-        public override IEnumerable<LocalSymbol> ReferencedLocals => Input.ReferencedLocals;
-        public override LType ResultType (Module module) => OutputType;
     }
 
     public class FsubInstruction : BinaryInstruction
@@ -533,7 +519,7 @@ namespace Repil.IR
         public readonly TypedValue Value2;
         public readonly TypedValue Mask;
 
-        public readonly LType Type;
+        public readonly VectorType Type;
 
         public ShuffleVectorInstruction (TypedValue value1, TypedValue value2, TypedValue mask)
         {
@@ -545,24 +531,17 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals =>
-            Value1.ReferencedLocals.Concat (Value2.ReferencedLocals).Concat (Mask.ReferencedLocals);
+            Value1.ReferencedLocals.Concat (Value2.ReferencedLocals);
 
         public override LType ResultType (Module module) => Type;
     }
 
-    public class SitofpInstruction : Instruction
+    public class SitofpInstruction : ConversionInstruction
     {
-        public readonly TypedValue Input;
-        public readonly LType OutputType;
-
         public SitofpInstruction (TypedValue input, LType outputType)
+            : base (input, outputType)
         {
-            Input = input;
-            OutputType = outputType;
         }
-
-        public override IEnumerable<LocalSymbol> ReferencedLocals => Input.ReferencedLocals;
-        public override LType ResultType (Module module) => OutputType;
     }
 
     public class StoreInstruction : Instruction

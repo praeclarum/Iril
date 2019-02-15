@@ -29,6 +29,8 @@ namespace Repil.IR
             Type = type;
             Constant = constant ?? throw new ArgumentNullException (nameof (constant));
         }
+
+        public override string ToString () => $"{Type} {Constant}";
     }
 
     public class BooleanConstant : SimpleConstant
@@ -121,6 +123,8 @@ namespace Repil.IR
         }
 
         public override int Int32Value => 0;
+
+        public override string ToString () => $"<{string.Join (", ", (object[])Constants)}>";
     }
 
     public class UndefinedConstant : SimpleConstant
