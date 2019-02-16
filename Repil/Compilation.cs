@@ -205,7 +205,7 @@ namespace Repil
                     if (structs.ContainsKey (iskv.Key))
                         continue;
                     if (iskv.Value is LiteralStructureType l) {
-                        var tname = iskv.Key.Text.Substring (1).Split ('.').Last ();
+                        var tname = GetIdentifierForSymbol (iskv.Key);
                         var td = new TypeDefinition (namespac, tname, TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.Public, sysVal);
                         structNames.Add (tname);
                         mod.Types.Add (td);
@@ -244,7 +244,7 @@ namespace Repil
                     if (globals.ContainsKey (symbol))
                         continue;
 
-                    var gname = symbol.Text.Substring (1).Split ('.').Last ();
+                    var gname = GetIdentifierForSymbol (symbol);
 
                     var gtype = GetClrType (g.Type);
                     var field = new FieldDefinition (gname, FieldAttributes.Static | FieldAttributes.Public, gtype);
@@ -277,7 +277,7 @@ namespace Repil
                     //
                     // Create the method
                     //
-                    var tname = iskv.Key.Text.Substring (1).Split ('.').Last ();
+                    var tname = GetIdentifierForSymbol (iskv.Key);
                     if (dbgMeth.TryGetValue (Symbol.Name, out var o)) {
                         tname = o.ToString ();
                     }
@@ -340,7 +340,7 @@ namespace Repil
                         continue;
 
                     var f = iskv.Value;
-                    var tname = iskv.Key.Text.Substring (1).Split ('.').Last ();
+                    var tname = GetIdentifierForSymbol (iskv.Key);
 
                     var md = new MethodDefinition (tname, MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.Static, GetClrType (f.ReturnType));
 
@@ -466,6 +466,25 @@ namespace Repil
             }
 
             return GetClrType (irType, unsigned: unsigned);
+        }
+
+        static string GetIdentifierForSymbol (Symbol symbol)
+        {
+            var b = new System.Text.StringBuilder ();
+            foreach (var c in symbol.Text.Skip (1)) {
+                if (char.IsDigit (c)) {
+                    if (b.Length == 0)
+                        b.Append ('_');
+                    b.Append (c);
+                }
+                else if (char.IsLetter (c)) {
+                    b.Append (c);
+                }
+                else {
+                    b.Append ('_');
+                }
+            }
+            return b.ToString ();
         }
 
         public TypeReference GetClrType (LType irType, bool? unsigned = false)
