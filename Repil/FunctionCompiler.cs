@@ -107,13 +107,19 @@ namespace Repil
                     // Make sure it's used only once
                     var referencedOnce = symbol != LocalSymbol.None && localCounts.ContainsKey (symbol) && localCounts[symbol] == 1;
 
-                    // Make sure it's used as the next variable referenced
-                    // by the next instruction
                     var should = false;
                     if (referencedOnce) {
-                        var ni = i + 1 < b.Assignments.Length ? b.Assignments[i + 1].Instruction : b.Terminator;
-                        var fv = ni.ReferencedLocals.FirstOrDefault ();
-                        should = fv == symbol;
+                        should = true;
+                        // Make sure its next use is before a memory function
+                        for (var j = i + 1; j < b.Assignments.Length; j++) {
+                            if (b.Assignments[j].Instruction.ReferencedLocals.Contains (symbol)) {
+                                break;
+                            }
+                            if (b.Assignments[j].Instruction.UsesMemory) {
+                                should = false;
+                                break;
+                            }
+                        }
                     }
                     shouldInline.Add (symbol, should);
                 }
@@ -474,6 +480,9 @@ namespace Repil
                                         Emit (il.Create (OpCodes.Ldind_R8));
                                         break;
                                 }
+                            }
+                            else if (load.Type is Types.PointerType pt) {
+                                Emit (il.Create (OpCodes.Ldind_I));
                             }
                             else {
                                 Emit (il.Create (OpCodes.Ldobj, et));

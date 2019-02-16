@@ -8,6 +8,7 @@ namespace Repil.IR
     public abstract class Instruction
     {
         public abstract IEnumerable<LocalSymbol> ReferencedLocals { get; }
+        public virtual bool UsesMemory => true;
         public abstract LType ResultType (Module module);
     }
 
@@ -33,6 +34,7 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
         public override LType ResultType (Module module) => Type;
+        public override bool UsesMemory => false;
     }
 
     public class AddInstruction : BinaryInstruction
@@ -347,6 +349,7 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
         public override LType ResultType (Module module) => IntegerType.I1;
+        public override bool UsesMemory => false;
     }
 
     public enum IcmpCondition
@@ -634,6 +637,7 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
         public override LType ResultType (Module module) => Type;
+        public override bool UsesMemory => false;
     }
 
     public class UitofpInstruction : ConversionInstruction
