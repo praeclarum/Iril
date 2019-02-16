@@ -50,6 +50,20 @@ namespace Repil.IR
         public override string ToString () => IsTrue ? "true" : "false";
     }
 
+    public class BytesConstant : Constant
+    {
+        public readonly Symbol Bytes;
+
+        public BytesConstant (Symbol bytes)
+        {
+            Bytes = bytes ?? throw new ArgumentNullException (nameof (bytes));
+        }
+
+        public override int Int32Value => 0;
+
+        public override string ToString () => $"{Bytes}";
+    }
+
     public class IntegerConstant : SimpleConstant
     {
         public static readonly IntegerConstant Zero = new IntegerConstant (BigInteger.Zero);

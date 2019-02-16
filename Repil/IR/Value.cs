@@ -126,6 +126,20 @@ namespace Repil.IR
             Pointer.ReferencedLocals.Concat (Indices.SelectMany (x => x.Value.ReferencedLocals));
     }
 
+    public class IntToPointerValue : Value
+    {
+        public readonly TypedValue Value;
+        public readonly LType Type;
+
+        public IntToPointerValue (TypedValue value, LType type)
+        {
+            Value = value ?? throw new ArgumentNullException (nameof (value));
+            Type = type ?? throw new ArgumentNullException (nameof (type));
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
+    }
+
     public class VoidValue : Value
     {
         public static readonly VoidValue Void = new VoidValue ();

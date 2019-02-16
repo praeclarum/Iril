@@ -10,12 +10,12 @@ namespace Repil.IR
         public readonly LType Type;
         public readonly Constant Initializer;
 
-        public GlobalVariable (GlobalSymbol symbol, bool isConstant, LType type, Constant initializer)
+        public GlobalVariable (GlobalSymbol symbol, bool isConstant, LType type, Constant initializer, bool isPrivate)
         {
             Symbol = symbol;
             IsConstant = isConstant;
             Type = type ?? throw new ArgumentNullException (nameof (type));
-            Initializer = initializer ?? throw new ArgumentNullException (nameof (initializer));
+            Initializer = initializer;
         }
     }
 }

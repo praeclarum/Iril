@@ -127,7 +127,14 @@ namespace Repil.IR
             { Symbol.Intern ("global"), Token.GLOBAL },
             { Symbol.Intern ("constant"), Token.CONSTANT },
             { Symbol.Intern ("zeroinitializer"), Token.ZEROINITIALIZER },
-
+            { Symbol.Intern ("private"), Token.PRIVATE },
+            { Symbol.Intern ("internal"), Token.INTERNAL },
+            { Symbol.Intern ("external"), Token.EXTERNAL },
+            { Symbol.Intern ("ptrtoint"), Token.PTRTOINT },
+            { Symbol.Intern ("inttoptr"), Token.INTTOPTR },
+            { Symbol.Intern ("urem"), Token.UREM },
+            { Symbol.Intern ("udiv"), Token.UDIV },
+            { Symbol.Intern ("fastcc"), Token.FASTCC },
         };
 
         public Lexer (string llvm)
@@ -244,6 +251,7 @@ namespace Repil.IR
                         }
                     }
                     break;
+                case 'c' when p + 1 < n && s[p + 1] == '\"':
                 case '!' when p + 1 < n && s[p + 1] == '\"':
                 case '@' when p + 1 < n && s[p + 1] == '\"':
                 case '%' when p + 1 < n && s[p + 1] == '\"':
@@ -256,7 +264,9 @@ namespace Repil.IR
                         var sym = Symbol.Intern (s, p, ep - p);
                         tok = s[p] == '@' ? Token.GLOBAL_SYMBOL :
                             (s[p] == '%' ? Token.LOCAL_SYMBOL :
-                            (s[p] == '!' ? Token.META_SYMBOL : Token.ATTRIBUTE_GROUP_REF));
+                            (s[p] == '!' ? Token.META_SYMBOL :
+                            (s[p] == '#' ? Token.ATTRIBUTE_GROUP_REF :
+                            Token.CONSTANT_BYTES)));
                         val = sym;
                         p = ep;
 

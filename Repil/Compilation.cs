@@ -198,31 +198,31 @@ namespace Repil
 
         void CompileStructures ()
         {
+            var todo = new List<(Module, LiteralStructureType, TypeDefinition)> ();
+
             foreach (var m in Modules) {
                 foreach (var iskv in m.IdentifiedStructures) {
-
                     if (structs.ContainsKey (iskv.Key))
                         continue;
-
                     if (iskv.Value is LiteralStructureType l) {
-
                         var tname = iskv.Key.Text.Substring (1).Split ('.').Last ();
-
                         var td = new TypeDefinition (namespac, tname, TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.Public, sysVal);
-
-                        var fields =
-                            from e in l.Elements.Zip(Enumerable.Range(0, l.Elements.Length), (e, i) => (e, i))
-                            let fn = "F" + e.i
-                            select new FieldDefinition (fn, FieldAttributes.Public, GetClrType(e.e));
-
-                        foreach (var f in fields) {
-                            td.Fields.Add (f);
-                        }
-
-                        mod.Types.Add (td);
                         structNames.Add (tname);
+                        mod.Types.Add (td);
                         structs[iskv.Key] = (l, td);
+                        todo.Add ((m, l, td));
                     }
+                }
+            }
+
+            foreach (var (m, l, td) in todo) {
+                var fields =
+                    from e in l.Elements.Zip(Enumerable.Range(0, l.Elements.Length), (e, i) => (e, i))
+                    let fn = "F" + e.i
+                    select new FieldDefinition (fn, FieldAttributes.Public, GetClrType (e.e));
+
+                foreach (var f in fields) {
+                    td.Fields.Add (f);
                 }
             }
         }
@@ -240,6 +240,9 @@ namespace Repil
 
                     var symbol = kv.Key;
                     var g = kv.Value;
+
+                    if (globals.ContainsKey (symbol))
+                        continue;
 
                     var gname = symbol.Text.Substring (1).Split ('.').Last ();
 

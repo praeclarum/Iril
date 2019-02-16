@@ -18,9 +18,10 @@ namespace Repil.IR
 
 %token INTEGER FLOAT_LITERAL STRING TRUE FALSE UNDEF VOID NULL LABEL X
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
-%token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL META_SYMBOL_DEF SYMBOL DISTINCT METADATA
+%token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL META_SYMBOL_DEF SYMBOL DISTINCT METADATA CONSTANT_BYTES
 %token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64 ZEROINITIALIZER
-%token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR NOALIAS ELLIPSIS GLOBAL CONSTANT
+%token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR NOALIAS ELLIPSIS GLOBAL
+%token CONSTANT PRIVATE INTERNAL EXTERNAL FASTCC
 %token NONNULL NOCAPTURE WRITEONLY READONLY
 %token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND READNONE SPECULATABLE SSP UWTABLE ARGMEMONLY
 %token RET BR SWITCH INDIRECTBR INVOKE RESUME CATCHSWITCH CATCHRET CLEANUPRET UNREACHABLE
@@ -109,10 +110,32 @@ module_part
     ;
     
 global_variable
-    : GLOBAL_SYMBOL '=' function_addr GLOBAL type constant ',' ALIGN INTEGER metadata_kvs
+    : GLOBAL_SYMBOL '=' function_addr global_kind type constant ',' ALIGN INTEGER metadata_kvs
     {
-        $$ = new GlobalVariable ((GlobalSymbol)$1, false, (LType)$5, (Constant)$6);
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (bool)$4, (LType)$5, (Constant)$6, isPrivate: false);
     }
+    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type constant ',' ALIGN INTEGER
+    {
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (bool)$5, (LType)$6, (Constant)$7, isPrivate: true);
+    }
+    | GLOBAL_SYMBOL '=' linkage function_addr global_kind type ',' ALIGN INTEGER
+    {
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (bool)$5, (LType)$6, null, isPrivate: true);
+    }
+    ;
+    
+global_kind
+    : GLOBAL { $$ = true; }
+    | CONSTANT { $$ = true; }
+    ;
+    
+linkage
+    : EXTERNAL
+    | INTERNAL
+    ;
+    
+visibility
+    : PRIVATE
     ;
     
 metadata_args
@@ -308,6 +331,10 @@ function_definition
     {
         $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (List<Parameter>)$6, (List<Block>)$12, (SymbolTable<MetaSymbol>)$10);
     }
+    | DEFINE linkage calling_convention return_type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs '{' blocks '}'
+    {
+        $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (List<Parameter>)$7, (List<Block>)$12);
+    }
     ;
     
 function_declaration
@@ -420,14 +447,18 @@ value
     : constant 
     | LOCAL_SYMBOL  { $$ = new LocalValue ((LocalSymbol)$1); }
     | GLOBAL_SYMBOL { $$ = new GlobalValue ((GlobalSymbol)$1); }
-    ;
-    
-pointer_value
-    : value
+    | INTTOPTR '(' typed_value TO type ')'
+    {
+        $$ = new IntToPointerValue ((TypedValue)$3, (LType)$5);
+    }
     | GETELEMENTPTR INBOUNDS '(' type ',' typed_value ',' element_indices ')'
     {
         $$ = new GetElementPointerValue ((LType)$4, (TypedValue)$6, (List<TypedValue>)$8);
     }
+    ;
+    
+pointer_value
+    : value
     ;
 
 constant
@@ -438,6 +469,7 @@ constant
     | FALSE           { $$ = BooleanConstant.False; }
     | UNDEF           { $$ = UndefinedConstant.Undefined; }
     | ZEROINITIALIZER { $$ = ZeroConstant.Zero; }
+    | CONSTANT_BYTES  { $$ = new BytesConstant ((Symbol)$1); }
     | '<' typed_constants '>'
     {
         $$ = new VectorConstant ((List<TypedConstant>)$2);
@@ -678,6 +710,10 @@ wrapping
     | NSW
     ;
     
+calling_convention
+    : FASTCC
+    ;
+    
 terminator_instruction
     : BR label_value
     {
@@ -734,13 +770,17 @@ instruction
     {
         $$ = new CallInstruction ((LType)$3, (Value)$4, (List<Argument>)$6, true);
     }
+    | TAIL CALL calling_convention return_type function_pointer '(' function_args ')'
+    {
+        $$ = new CallInstruction ((LType)$4, (Value)$5, (List<Argument>)$7, true);
+    }
     | EXTRACTELEMENT typed_value ',' typed_value
     {
         $$ = new ExtractElementInstruction ((TypedValue)$2, (TypedValue)$4);
     }
     | FADD type value ',' value
     {
-        $$ = new FloatAddInstruction ((LType)$2, (Value)$3, (Value)$5);
+        $$ = new FaddInstruction ((LType)$2, (Value)$3, (Value)$5);
     }
     | FCMP fcmp_condition type value ',' value
     {
@@ -752,7 +792,7 @@ instruction
     }
     | FMUL type value ',' value
     {
-        $$ = new FloatMultiplyInstruction ((LType)$2, (Value)$3, (Value)$5);
+        $$ = new FmulInstruction ((LType)$2, (Value)$3, (Value)$5);
     }
     | FPTOUI typed_value TO type
     {
@@ -810,6 +850,10 @@ instruction
     {
         $$ = new PhiInstruction ((LType)$2, (List<PhiValue>)$3);
     }
+    | PTRTOINT typed_value TO type
+    {
+        $$ = new PtrtointInstruction ((TypedValue)$2, (LType)$4);
+    }
     | SDIV type value ',' value
     {
         $$ = new SdivInstruction ((LType)$2, (Value)$3, (Value)$5);
@@ -854,9 +898,17 @@ instruction
     {
         $$ = new TruncInstruction ((TypedValue)$2, (LType)$4);
     }
+    | UDIV type value ',' value
+    {
+        $$ = new UdivInstruction ((LType)$2, (Value)$3, (Value)$5);
+    }
     | UITOFP typed_value TO type
     {
         $$ = new UitofpInstruction ((TypedValue)$2, (LType)$4);
+    }
+    | UREM type value ',' value
+    {
+        $$ = new UremInstruction ((LType)$2, (Value)$3, (Value)$5);
     }
     | XOR type value ',' value
     {

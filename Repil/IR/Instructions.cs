@@ -8,7 +8,7 @@ namespace Repil.IR
     public abstract class Instruction
     {
         public abstract IEnumerable<LocalSymbol> ReferencedLocals { get; }
-        public virtual bool UsesMemory => true;
+        public virtual bool IsIdempotent => false;
         public abstract LType ResultType (Module module);
     }
 
@@ -34,7 +34,7 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
         public override LType ResultType (Module module) => Type;
-        public override bool UsesMemory => false;
+        public override bool IsIdempotent => true;
     }
 
     public class AddInstruction : BinaryInstruction
@@ -81,6 +81,7 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Input.ReferencedLocals;
         public override LType ResultType (Module module) => OutputType;
+        public override bool IsIdempotent => true;
     }
 
     public abstract class BrInstruction : TerminatorInstruction
@@ -150,6 +151,20 @@ namespace Repil.IR
         {
             return $"{ReturnType} {Pointer}({String.Join (", ", (object[])Arguments)})";
         }
+
+        public override bool IsIdempotent {
+            get {
+                if (Pointer is GlobalValue g) {
+                    switch (g.Symbol.Text) {
+                        case "@llvm.dbg.value":
+                        case "@llvm.fabs.f64":
+                        case "@llvm.sqrt.f64":
+                            return true;
+                    }
+                }
+                return false;
+            }
+        }
     }
 
     public class Argument
@@ -186,23 +201,16 @@ namespace Repil.IR
             Value.ReferencedLocals.Concat (Index.ReferencedLocals);
 
         public override LType ResultType (Module module) => ((VectorType)Value.Type).ElementType;
+
+        public override bool IsIdempotent => true;
     }
 
-    public class FaddInstruction : Instruction
+    public class FaddInstruction : BinaryInstruction
     {
-        public readonly LType Type;
-        public readonly Value Op1;
-        public readonly Value Op2;
-
         public FaddInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
         {
-            Type = type;
-            Op1 = op1;
-            Op2 = op2;
         }
-
-        public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
-        public override LType ResultType (Module module) => Type;
     }
 
     public class FcmpInstruction : Instruction
@@ -222,6 +230,7 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
         public override LType ResultType (Module module) => IntegerType.I1;
+        public override bool IsIdempotent => true;
     }
 
     public enum FcmpCondition
@@ -252,21 +261,12 @@ namespace Repil.IR
         }
     }
 
-    public class FmulInstruction : Instruction
+    public class FmulInstruction : BinaryInstruction
     {
-        public readonly LType Type;
-        public readonly Value Op1;
-        public readonly Value Op2;
-
         public FmulInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
         {
-            Type = type;
-            Op1 = op1;
-            Op2 = op2;
         }
-
-        public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
-        public override LType ResultType (Module module) => Type;
     }
 
     public class FptosiInstruction : ConversionInstruction
@@ -331,6 +331,7 @@ namespace Repil.IR
             }
             return new PointerType (t, 0);
         }
+        public override bool IsIdempotent => true;
     }
 
     public class IcmpInstruction : Instruction
@@ -350,7 +351,7 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
         public override LType ResultType (Module module) => IntegerType.I1;
-        public override bool UsesMemory => false;
+        public override bool IsIdempotent => true;
     }
 
     public enum IcmpCondition
@@ -461,6 +462,30 @@ namespace Repil.IR
         }
     }
 
+    public class PtrtointInstruction : ConversionInstruction
+    {
+        public PtrtointInstruction (TypedValue input, LType outputType)
+            : base (input, outputType)
+        {
+        }
+    }
+
+    public class UdivInstruction : BinaryInstruction
+    {
+        public UdivInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
+        {
+        }
+    }
+
+    public class UremInstruction : BinaryInstruction
+    {
+        public UremInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
+        {
+        }
+    }
+
     public class RetInstruction : TerminatorInstruction
     {
         public readonly TypedValue Value;
@@ -500,6 +525,7 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Condition.ReferencedLocals.Concat (Value1.ReferencedLocals).Concat (Value2.ReferencedLocals);
         public override LType ResultType (Module module) => Value1.Type;
+        public override bool IsIdempotent => true;
     }
 
     public class SextInstruction : Instruction
@@ -546,6 +572,8 @@ namespace Repil.IR
             Value1.ReferencedLocals.Concat (Value2.ReferencedLocals);
 
         public override LType ResultType (Module module) => Type;
+
+        public override bool IsIdempotent => true;
     }
 
     public class SitofpInstruction : ConversionInstruction
@@ -639,7 +667,7 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
         public override LType ResultType (Module module) => Type;
-        public override bool UsesMemory => false;
+        public override bool IsIdempotent => true;
     }
 
     public class UitofpInstruction : ConversionInstruction

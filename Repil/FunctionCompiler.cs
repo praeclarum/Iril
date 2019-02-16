@@ -113,12 +113,12 @@ namespace Repil
                     var should = false;
                     if (referencedOnce) {
                         should = true;
-                        // Make sure its next use is before a memory function
+                        // Make sure its use is before a state-changing instruction
                         for (var j = i + 1; j < b.Assignments.Length; j++) {
                             if (b.Assignments[j].Instruction.ReferencedLocals.Contains (symbol)) {
                                 break;
                             }
-                            if (b.Assignments[j].Instruction.UsesMemory) {
+                            if (!b.Assignments[j].Instruction.IsIdempotent) {
                                 should = false;
                                 break;
                             }
@@ -128,43 +128,43 @@ namespace Repil
                 }
             }
 
-            //
-            // Create variables for non-inlined assignments
-            //
             var vdbgs = new List<VariableDebugInformation> ();
+            var phiLocals = new SymbolTable<VariableDefinition> ();
             var locals = new SymbolTable<VariableDefinition> ();
+
+            //
+            // Create phi locals
+            //
             foreach (var b in f.Blocks) {
                 foreach (var a in b.Assignments) {
-                    if (a.Result != LocalSymbol.None) {
-                        var symbol = a.Result;
-                        if (!ShouldInline (symbol) && !(a.Instruction is IR.PhiInstruction)) {
-                            var irtype = a.Instruction.ResultType (function.IRModule);
-                            var ctype = GetClrType (irtype);
-                            var local = GetFreeVariable (symbol, ctype);
-                            locals[a.Result] = local;
-                            //var name = "local" + symbol.Text.Substring (1);
-                            //var dbg = new VariableDebugInformation (local, name);
-                            //vdbgs.Add (dbg);
-                        }
+                    var symbol = a.Result;
+                    if (a.HasResult && a.Instruction is IR.PhiInstruction phi) {
+                        var irtype = a.Instruction.ResultType (function.IRModule);
+                        var ctype = GetClrType (irtype);
+                        var local = GetFreeVariable (symbol, ctype, true);
+                        phiLocals[a.Result] = local;
+                        //var name = "phi" + a.Result.Text.Substring (1);
+                        //var dbg = new VariableDebugInformation (local, name);
+                        //vdbgs.Add (dbg);
                     }
                 }
             }
 
             //
-            // Create phi locals
+            // Create variables for non-inlined assignments
             //
-            var phiLocals = new SymbolTable<VariableDefinition> ();
             foreach (var b in f.Blocks) {
                 foreach (var a in b.Assignments) {
-                    if (a.HasResult && a.Instruction is IR.PhiInstruction phi) {
-                        if (!locals.TryGetValue (a.Result, out var local)) {
-                            local = new VariableDefinition (GetClrType (phi.Type));
-                            body.Variables.Add (local);
-                        }
-                        var name = "phi" + a.Result.Text.Substring (1);
-                        var dbg = new VariableDebugInformation (local, name);
-                        vdbgs.Add (dbg);
-                        phiLocals[a.Result] = local;
+                    var symbol = a.Result;
+                    if (a.HasResult && !ShouldInline (symbol) && !(a.Instruction is IR.PhiInstruction)) {
+                        var irtype = a.Instruction.ResultType (function.IRModule);
+                        var ctype = GetClrType (irtype);
+                        var local = GetFreeVariable (symbol, ctype, false);
+                        locals[a.Result] = local;
+                        //var name = "local" + symbol.Text.Substring (1);
+                        //var dbg = new VariableDebugInformation (local, name);
+                        //vdbgs.Add (dbg);
+                    
                     }
                 }
             }
@@ -624,7 +624,8 @@ namespace Repil
                         }
                         break;
                     case IR.UnconditionalBrInstruction br:
-                        Emit (il.Create (OpCodes.Br, GetLabel (br.Destination)));
+                        if (br.Destination.Symbol != nextBlock?.Symbol)
+                            Emit (il.Create (OpCodes.Br, GetLabel (br.Destination)));
                         break;
                     case IR.XorInstruction xor:
                         if (xor.Type is Types.VectorType) {
@@ -1093,17 +1094,20 @@ namespace Repil
             public VariableDefinition Variable;
             public TypeReference ClrType => Variable.VariableType;
         }
+        readonly Dictionary<string, List<SharedVariable>> phiVariablesByType =
+            new Dictionary<string, List<SharedVariable>> ();
         readonly Dictionary<string, List<SharedVariable>> sharedVariablesByType =
             new Dictionary<string, List<SharedVariable>> ();
 
-        VariableDefinition GetFreeVariable (LocalSymbol symbol, TypeReference clrType)
+        VariableDefinition GetFreeVariable (LocalSymbol symbol, TypeReference clrType, bool isPhi)
         {
             //
             // Get the right list
             //
-            if (!sharedVariablesByType.TryGetValue (clrType.FullName, out var variables)) {
+            var types = isPhi ? phiVariablesByType : sharedVariablesByType;
+            if (!types.TryGetValue (clrType.FullName, out var variables)) {
                 variables = new List<SharedVariable> ();
-                sharedVariablesByType[clrType.FullName] = variables;
+                types[clrType.FullName] = variables;
             }
 
             //

@@ -21,6 +21,7 @@ namespace Tests
             var asmFileName = "SuiteSparse.dll";
             var irmods =
                 new[] {
+                    "SuiteSparse.colamd.ll",
                     "SuiteSparse.SuiteSparse_config.ll",
                     "SuiteSparse.klu_memory.ll",
                     "SuiteSparse.klu_defaults.ll",

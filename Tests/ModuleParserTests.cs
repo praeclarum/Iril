@@ -43,5 +43,12 @@ namespace Tests
         {
             Parse ("SuiteSparse.SuiteSparse_config.ll");
         }
+
+        [Test]
+        public void Colamd ()
+        {
+            Parse ("SuiteSparse.colamd.ll");
+        }
+
     }
 }
