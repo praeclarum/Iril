@@ -35,8 +35,9 @@ namespace Repil
         TypeReference sysByte;
         TypeReference sysInt16;
         TypeReference sysInt32;
+        public TypeReference sysUInt32;
         TypeReference sysInt64;
-        TypeReference sysIntPtr;
+        public TypeReference sysIntPtr;
         TypeReference sysSingle;
         TypeReference sysDouble;
         TypeReference sysString;
@@ -50,6 +51,13 @@ namespace Repil
         TypeReference sysEventArgs;
         TypeReference sysIAsyncResult;
         TypeReference sysAsyncCallback;
+        public MethodReference sysPointerFromIntPtr;
+        public MethodReference sysIntPtrFromInt64;
+        public MethodReference sysIntPtrFromPointer;
+        TypeReference sysMarshal;
+        public MethodReference sysAllocHGlobal;
+        public MethodReference sysReAllocHGlobal;
+        public MethodReference sysFreeHGlobal;
 
         readonly Dictionary<(int, string), SimdVector> vectorTypes =
             new Dictionary<(int, string), SimdVector> ();
@@ -67,6 +75,8 @@ namespace Repil
             globals.TryGetValue (symbol, out global);
 
         public FieldDefinition GetGlobal (Symbol symbol) => globals[symbol];
+
+        Syscalls syscalls;
 
         public Compilation (IEnumerable<Module> documents, string assemblyName)
         {
@@ -91,6 +101,7 @@ namespace Repil
             FindSystemTypes ();
             CompileStructures ();
             EmitGlobalVariables ();
+            EmitSyscalls ();
             FindFunctions ();
             CompileFunctions ();
         }
@@ -143,26 +154,26 @@ namespace Repil
                 var t = new TypeReference (et.Namespace, et.Name, sysAsm.MainModule, scope);
                 return mod.ImportReference (t);
             }
-            MethodReference ImportMethod (TypeReference declType, string name, params TypeReference[] argTypes)
+            MethodReference ImportMethod (TypeReference declType, TypeReference returnType, string name, params TypeReference[] argTypes)
             {
                 var td = declType.Resolve ();
                 var ms = td.Methods.Where (x => x.Name == name);
                 foreach (var m in ms) {
                     if (m.Parameters.Count != argTypes.Length)
                         continue;
-                    var match = true;
+                    var match = m.ReturnType.FullName == returnType.FullName;
                     for (var i = 0; match && i < m.Parameters.Count; i++) {
                         var p = m.Parameters[i];
                         if (p.ParameterType.FullName != argTypes[i].FullName)
                             match = false;
                     }
                     if (match) {
-                        var mr = new MethodReference (name, Import (m.ReturnType.FullName), declType);
+                        var mr = new MethodReference (name, returnType, declType);
                         mr.ExplicitThis = m.ExplicitThis;
                         mr.CallingConvention = m.CallingConvention;
                         mr.HasThis = m.HasThis;
-                        foreach (var p in m.Parameters) {
-                            mr.Parameters.Add (new ParameterDefinition (Import (p.ParameterType.FullName)));
+                        foreach (var p in argTypes) {
+                            mr.Parameters.Add (new ParameterDefinition (p));
                         }
                         var imr = mod.ImportReference (mr);
                         return imr;
@@ -176,6 +187,7 @@ namespace Repil
             sysBoolean = Import ("System.Boolean");
             sysInt16 = Import ("System.Int16");
             sysInt32 = Import ("System.Int32");
+            sysUInt32 = Import ("System.UInt32");
             sysInt64 = Import ("System.Int64");
             sysIntPtr = Import ("System.IntPtr");
             sysSingle = Import ("System.Single");
@@ -184,16 +196,23 @@ namespace Repil
             sysVoidPtr = sysVoid.MakePointerType ();
             sysString = Import ("System.String");
             sysNotImpl = Import ("System.NotImplementedException");
-            sysNotImplCtor = new MethodReference (".ctor", sysVoid, sysNotImpl);
+            sysNotImplCtor = ImportMethod (sysNotImpl, sysVoid, ".ctor");
             sysNotSupp = Import ("System.NotSupportedException");
             sysNotSuppCtor = new MethodReference (".ctor", sysVoid, sysNotSupp);
             sysNotSuppCtor.Parameters.Add (new ParameterDefinition (sysString));
             sysMath = Import ("System.Math");
-            sysMathAbsD = ImportMethod (sysMath, "Abs", sysDouble);
-            sysMathSqrtD = ImportMethod (sysMath, "Sqrt", sysDouble);
+            sysMathAbsD = ImportMethod (sysMath, sysDouble, "Abs", sysDouble);
+            sysMathSqrtD = ImportMethod (sysMath, sysDouble, "Sqrt", sysDouble);
             sysEventArgs = Import ("System.EventArgs");
             sysIAsyncResult = Import ("System.IAsyncResult");
             sysAsyncCallback = Import ("System.AsyncCallback");
+            sysIntPtrFromInt64 = ImportMethod (sysIntPtr, sysIntPtr, "op_Explicit", sysInt64);
+            sysIntPtrFromPointer = ImportMethod (sysIntPtr, sysIntPtr, "op_Explicit", sysVoidPtr);
+            sysPointerFromIntPtr = ImportMethod (sysIntPtr, sysVoidPtr, "op_Explicit", sysIntPtr);
+            sysMarshal = Import ("System.Runtime.InteropServices.Marshal");
+            sysAllocHGlobal = ImportMethod (sysMarshal, sysIntPtr, "AllocHGlobal", sysIntPtr);
+            sysReAllocHGlobal = ImportMethod (sysMarshal, sysIntPtr, "ReAllocHGlobal", sysIntPtr, sysIntPtr);
+            sysFreeHGlobal = ImportMethod (sysMarshal, sysVoid, "FreeHGlobal", sysIntPtr);
         }
 
         void CompileStructures ()
@@ -205,7 +224,7 @@ namespace Repil
                     if (structs.ContainsKey (iskv.Key))
                         continue;
                     if (iskv.Value is LiteralStructureType l) {
-                        var tname = GetIdentifierForSymbol (iskv.Key);
+                        var tname = GetIdentifier (iskv.Key);
                         var td = new TypeDefinition (namespac, tname, TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.Public, sysVal);
                         structNames.Add (tname);
                         mod.Types.Add (td);
@@ -244,7 +263,7 @@ namespace Repil
                     if (globals.ContainsKey (symbol))
                         continue;
 
-                    var gname = GetIdentifierForSymbol (symbol);
+                    var gname = GetIdentifier (symbol);
 
                     var gtype = GetClrType (g.Type);
                     var field = new FieldDefinition (gname, FieldAttributes.Static | FieldAttributes.Public, gtype);
@@ -252,6 +271,25 @@ namespace Repil
                     gstd.Fields.Add (field);
                     globals.Add (symbol, field);
                 }
+            }
+        }
+
+        void EmitSyscalls ()
+        {
+            var syscallstd = new TypeDefinition (namespac, "Syscalls", TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, sysObj);
+            mod.Types.Add (syscallstd);
+
+            syscalls = new Syscalls (this, syscallstd);
+            syscalls.Emit ();
+
+            foreach (var iskv in syscalls.Calls) {
+                methodDefs[iskv.Key] = new DefinedFunction {
+                    Symbol = iskv.Key,
+                    IRModule = null,
+                    IRDefinition = null,
+                    ILDefinition = iskv.Value,
+                    ParamSyms = new SymbolTable<ParameterDefinition> (),
+                };
             }
         }
 
@@ -277,12 +315,12 @@ namespace Repil
                     //
                     // Create the method
                     //
-                    var tname = GetIdentifierForSymbol (iskv.Key);
+                    var tname = GetIdentifier (iskv.Key);
                     if (dbgMeth.TryGetValue (Symbol.Name, out var o)) {
                         tname = o.ToString ();
                     }
-
-                    var md = new MethodDefinition (tname, MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.Static, GetClrType (f.ReturnType));
+                    var mattrs = MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.Static;
+                    var md = new MethodDefinition (tname, mattrs, GetClrType (f.ReturnType));
 
                     //
                     // Create parameters
@@ -340,7 +378,7 @@ namespace Repil
                         continue;
 
                     var f = iskv.Value;
-                    var tname = GetIdentifierForSymbol (iskv.Key);
+                    var tname = GetIdentifier (iskv.Key);
 
                     var md = new MethodDefinition (tname, MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.Static, GetClrType (f.ReturnType));
 
@@ -373,6 +411,10 @@ namespace Repil
         void CompileFunctions ()
         {
             foreach (var m in methodDefs) {
+
+                if (m.Value.ILDefinition.HasBody && m.Value.ILDefinition.Body.Instructions.Count > 0)
+                    continue;
+
                 if (m.Value.IRDefinition != null) {
                     try {
                         var fc = new FunctionCompiler (this, m.Value);
@@ -468,7 +510,7 @@ namespace Repil
             return GetClrType (irType, unsigned: unsigned);
         }
 
-        static string GetIdentifierForSymbol (Symbol symbol)
+        public string GetIdentifier (Symbol symbol)
         {
             var b = new System.Text.StringBuilder ();
             foreach (var c in symbol.Text.Skip (1)) {

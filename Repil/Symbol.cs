@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace Repil
 {
@@ -23,6 +24,8 @@ namespace Repil
             Hash = hash;
             Text = text;
         }
+
+        public static implicit operator Symbol (string text) => Intern (text);
 
         public override bool Equals (object obj) => ReferenceEquals (this, obj);
 

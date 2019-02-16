@@ -68,6 +68,15 @@ namespace Tests
             var rnull = defs.Invoke (null, new object[] { IntPtr.Zero });
             Assert.AreEqual (0, rnull);
 
+            funcs.GetMethod ("SuiteSparse_start").Invoke (null, Array.Empty<object> ());
+            var ssmalloc = Pointer.Unbox (funcs.GetMethod ("SuiteSparse_malloc").Invoke (null, new object[] { 2L, 16L }));
+            Assert.NotZero ((int)ssmalloc);
+            int ok = 1;
+            var ssrealloc = Pointer.Unbox (funcs.GetMethod ("SuiteSparse_realloc").Invoke (null, new object[] { 4L, 2L, 16L, Pointer.Box (ssmalloc, typeof (byte*)), Pointer.Box (&ok, typeof (int*)) }));
+            Assert.NotZero ((long)ssrealloc);
+            var ssfree = Pointer.Unbox (funcs.GetMethod ("SuiteSparse_free").Invoke (null, new object[] { Pointer.Box (ssrealloc, typeof(byte*)) }));
+            Assert.AreEqual (0L, (long)ssfree);
+
             var commont = asm.GetType ("SuiteSparse.klu_common");
             Assert.NotNull (commont);
             var common = Activator.CreateInstance (commont);
