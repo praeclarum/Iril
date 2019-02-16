@@ -156,6 +156,7 @@ namespace Repil.IR
             get {
                 if (Pointer is GlobalValue g) {
                     switch (g.Symbol.Text) {
+                        case "@llvm.dbg.declare":
                         case "@llvm.dbg.value":
                         case "@llvm.fabs.f64":
                         case "@llvm.sqrt.f64":

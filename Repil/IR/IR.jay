@@ -335,6 +335,10 @@ function_definition
     {
         $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (List<Parameter>)$7, (List<Block>)$12);
     }
+    | DEFINE linkage calling_convention return_type GLOBAL_SYMBOL '(' parameter_list ')' function_addr attribute_group_refs metadata_kvs '{' blocks '}'
+    {
+        $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (List<Parameter>)$7, (List<Block>)$13);
+    }
     ;
     
 function_declaration
@@ -757,6 +761,10 @@ instruction
     | CALL return_type function_pointer '(' function_args ')'
     {
         $$ = new CallInstruction ((LType)$2, (Value)$3, (List<Argument>)$5, false);
+    }
+    | CALL calling_convention return_type function_pointer '(' function_args ')'
+    {
+        $$ = new CallInstruction ((LType)$3, (Value)$4, (List<Argument>)$6, false);
     }
     | CALL return_type function_pointer '(' function_args ')' attribute_group_refs
     {
