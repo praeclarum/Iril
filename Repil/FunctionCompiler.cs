@@ -97,6 +97,9 @@ namespace Repil
             // Determine whether assignments can be inlined
             //
             var shouldInline = new SymbolTable<bool> ();
+            foreach (var p in paramSyms.Keys) {
+                shouldInline[p] = true;
+            }
             foreach (var b in f.Blocks) {
                 for (var i = 0; i < b.Assignments.Length; i++) {
                     var a = b.Assignments[i];
@@ -235,8 +238,6 @@ namespace Repil
 
             md.DebugInformation.Scope = scopeDbg;
             md.Body = body;
-
-
 
             bool ShouldInline (LocalSymbol symbol)
             {
@@ -447,47 +448,8 @@ namespace Repil
                     case IR.InsertElementInstruction insertElement:
                         EmitTypedValue (insertElement.Value);
                         break;
-                    case IR.LoadInstruction load: {
-
-                            EmitTypedValue (load.Pointer);
-
-                            var et = GetClrType (load.Type);
-                            if (load.Type is IntegerType intt) {
-                                switch (intt.Bits) {
-                                    case 8:
-                                        Emit (il.Create (OpCodes.Ldind_I1));
-                                        break;
-                                    case 16:
-                                        Emit (il.Create (OpCodes.Ldind_I2));
-                                        break;
-                                    case 32:
-                                        Emit (il.Create (OpCodes.Ldind_I4));
-                                        break;
-                                    case 64:
-                                        Emit (il.Create (OpCodes.Ldind_I8));
-                                        break;
-                                    default:
-                                        Emit (il.Create (OpCodes.Ldobj, et));
-                                        break;
-                                }
-                            }
-                            else if (load.Type is FloatType fltt) {
-                                switch (fltt.Bits) {
-                                    case 32:
-                                        Emit (il.Create (OpCodes.Ldind_R4));
-                                        break;
-                                    default:
-                                        Emit (il.Create (OpCodes.Ldind_R8));
-                                        break;
-                                }
-                            }
-                            else if (load.Type is Types.PointerType pt) {
-                                Emit (il.Create (OpCodes.Ldind_I));
-                            }
-                            else {
-                                Emit (il.Create (OpCodes.Ldobj, et));
-                            }
-                        }
+                    case IR.LoadInstruction load:
+                        EmitLoad (load);
                         break;
                     case IR.LshrInstruction lshr:
                         EmitValue (lshr.Op1, lshr.Type);
@@ -556,7 +518,6 @@ namespace Repil
 
                             Emit (trueI);
                             EmitTypedValue (sel.Value1);
-                            Emit (il.Create (OpCodes.Br, end));
 
                             Emit (end);
                         }
@@ -604,42 +565,7 @@ namespace Repil
                         }
                         break;
                     case IR.StoreInstruction store:
-                        EmitTypedValue (store.Pointer);
-                        EmitTypedValue (store.Value); {
-                            var et = GetClrType (store.Value.Type);
-                            if (store.Value.Type is IntegerType intt) {
-                                switch (intt.Bits) {
-                                    case 8:
-                                        Emit (il.Create (OpCodes.Stind_I1));
-                                        break;
-                                    case 16:
-                                        Emit (il.Create (OpCodes.Stind_I2));
-                                        break;
-                                    case 32:
-                                        Emit (il.Create (OpCodes.Stind_I4));
-                                        break;
-                                    case 64:
-                                        Emit (il.Create (OpCodes.Stind_I8));
-                                        break;
-                                    default:
-                                        Emit (il.Create (OpCodes.Stobj, et));
-                                        break;
-                                }
-                            }
-                            else if (store.Value.Type is FloatType fltt) {
-                                switch (fltt.Bits) {
-                                    case 32:
-                                        Emit (il.Create (OpCodes.Stind_R4));
-                                        break;
-                                    default:
-                                        Emit (il.Create (OpCodes.Stind_R8));
-                                        break;
-                                }
-                            }
-                            else {
-                                Emit (il.Create (OpCodes.Stobj, et));
-                            }
-                        }
+                        EmitStore (store);
                         break;
                     case IR.SubInstruction sub:
                         EmitValue (sub.Op1, sub.Type);
@@ -837,6 +763,128 @@ namespace Repil
                 }
                 else {
                     EmitValue (value, type);
+                }
+            }
+
+            void EmitStore (IR.StoreInstruction store)
+            {
+                // Shortcut Store Field
+                if (store.Pointer.Value is IR.LocalValue pointerLocal
+                    && ShouldInline (pointerLocal.Symbol)) {
+
+                    var pointerInst = f.FindAssignment (pointerLocal)?.Instruction;
+                    if (pointerInst is IR.GetElementPointerInstruction gep
+                        && gep.Indices.Length == 2
+                        && gep.Indices[1].Value is IR.Constant indexConst
+                        && gep.Pointer.Type is Types.PointerType gepPointerType
+                        && gepPointerType.ElementType.Resolve (function.IRModule) is LiteralStructureType structType) {
+
+                        var td = GetClrType (gepPointerType.ElementType).Resolve ();
+                        var field = td.Fields[indexConst.Int32Value];
+
+                        EmitTypedValue (gep.Pointer);
+                        EmitTypedValue (store.Value);
+                        Emit (il.Create (OpCodes.Stfld, field));
+                        return;
+                    }
+                }
+
+                EmitTypedValue (store.Pointer);
+                EmitTypedValue (store.Value);
+                var et = GetClrType (store.Value.Type);
+                if (store.Value.Type is IntegerType intt) {
+                    switch (intt.Bits) {
+                        case 8:
+                            Emit (il.Create (OpCodes.Stind_I1));
+                            break;
+                        case 16:
+                            Emit (il.Create (OpCodes.Stind_I2));
+                            break;
+                        case 32:
+                            Emit (il.Create (OpCodes.Stind_I4));
+                            break;
+                        case 64:
+                            Emit (il.Create (OpCodes.Stind_I8));
+                            break;
+                        default:
+                            Emit (il.Create (OpCodes.Stobj, et));
+                            break;
+                    }
+                }
+                else if (store.Value.Type is FloatType fltt) {
+                    switch (fltt.Bits) {
+                        case 32:
+                            Emit (il.Create (OpCodes.Stind_R4));
+                            break;
+                        default:
+                            Emit (il.Create (OpCodes.Stind_R8));
+                            break;
+                    }
+                }
+                else {
+                    Emit (il.Create (OpCodes.Stobj, et));
+                }
+            }
+
+            void EmitLoad (IR.LoadInstruction load)
+            {
+                // Shortcut Load Field
+                if (load.Pointer.Value is IR.LocalValue pointerLocal
+                    && ShouldInline (pointerLocal.Symbol)) {
+
+                    var pointerInst = f.FindAssignment (pointerLocal)?.Instruction;
+                    if (pointerInst is IR.GetElementPointerInstruction gep
+                        && gep.Indices.Length == 2
+                        && gep.Indices[1].Value is IR.Constant indexConst
+                        && gep.Pointer.Type is Types.PointerType gepPointerType
+                        && gepPointerType.ElementType.Resolve (function.IRModule) is LiteralStructureType structType) {
+
+                        var td = GetClrType (gepPointerType.ElementType).Resolve ();
+                        var field = td.Fields[indexConst.Int32Value];
+
+                        EmitTypedValue (gep.Pointer);
+                        Emit (il.Create (OpCodes.Ldfld, field));
+                        return;
+                    }
+                }
+
+                EmitTypedValue (load.Pointer);
+
+                var et = GetClrType (load.Type);
+                if (load.Type is IntegerType intt) {
+                    switch (intt.Bits) {
+                        case 8:
+                            Emit (il.Create (OpCodes.Ldind_I1));
+                            break;
+                        case 16:
+                            Emit (il.Create (OpCodes.Ldind_I2));
+                            break;
+                        case 32:
+                            Emit (il.Create (OpCodes.Ldind_I4));
+                            break;
+                        case 64:
+                            Emit (il.Create (OpCodes.Ldind_I8));
+                            break;
+                        default:
+                            Emit (il.Create (OpCodes.Ldobj, et));
+                            break;
+                    }
+                }
+                else if (load.Type is FloatType fltt) {
+                    switch (fltt.Bits) {
+                        case 32:
+                            Emit (il.Create (OpCodes.Ldind_R4));
+                            break;
+                        default:
+                            Emit (il.Create (OpCodes.Ldind_R8));
+                            break;
+                    }
+                }
+                else if (load.Type is Types.PointerType pt) {
+                    Emit (il.Create (OpCodes.Ldind_I));
+                }
+                else {
+                    Emit (il.Create (OpCodes.Ldobj, et));
                 }
             }
 
@@ -1071,7 +1119,6 @@ namespace Repil
             //
             SharedVariable variable = null;
             foreach (var v in variables) {
-                Console.WriteLine (function.Symbol);
                 var interferes = liveliness.VariablesInterfere (symbol, v.Users);
                 if (!interferes) {
                     variable = v;

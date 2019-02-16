@@ -61,6 +61,17 @@ namespace Repil.IR
             }
             throw new KeyNotFoundException ($"{local}");
         }
+
+        public Assignment FindAssignment (LocalValue local)
+        {
+            foreach (var b in Blocks) {
+                foreach (var a in b.Assignments) {
+                    if (ReferenceEquals (a.Result, local.Symbol))
+                        return a;
+                }
+            }
+            return null;
+        }
     }
 
     public class Parameter

@@ -306,6 +306,7 @@ namespace Repil.IR
             Indices = indices.ToArray ();
         }
 
+        public override string ToString () => $"&{Pointer}[{string.Join (", ", (object[])Indices)}]";
         public override IEnumerable<LocalSymbol> ReferencedLocals =>
             Pointer.ReferencedLocals.Concat (Indices.SelectMany (x => x.Value.ReferencedLocals));
         public override LType ResultType (Module module)
@@ -566,6 +567,7 @@ namespace Repil.IR
             Pointer = pointer;
         }
 
+        public override string ToString () => $"{Pointer} <- {Value}";
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals.Concat (Pointer.ReferencedLocals);
         public override LType ResultType (Module module) => VoidType.Void;
     }
