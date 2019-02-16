@@ -48,6 +48,7 @@ namespace Repil
         // Working Variables
         bool triedToCompile;
         CecilInstruction prev;
+        readonly LivelinessTable liveliness;
 
         public FunctionCompiler (Compilation compilation, DefinedFunction function)
         {
@@ -56,6 +57,7 @@ namespace Repil
             body = new MethodBody (function.ILDefinition);
             il = body.GetILProcessor ();
             prev = default (CecilInstruction);
+            liveliness = new LivelinessTable (function);
         }
 
         public void CompileFunction ()
@@ -65,7 +67,6 @@ namespace Repil
             triedToCompile = true;
 
             var f = function.IRDefinition;
-
             var paramSyms = function.ParamSyms;
             var md = function.ILDefinition;
             var vectorTemps = new Dictionary<(string, int), VariableDefinition> ();
@@ -127,11 +128,11 @@ namespace Repil
                 foreach (var a in b.Assignments) {
                     if (a.Result != LocalSymbol.None) {
                         var symbol = a.Result;
-                        if (!ShouldInline (symbol)) {
+                        if (!ShouldInline (symbol) && !(a.Instruction is IR.PhiInstruction)) {
                             var irtype = a.Instruction.ResultType (function.IRModule);
-                            var local = new VariableDefinition (GetClrType (irtype));
+                            var ctype = GetClrType (irtype);
+                            var local = GetFreeVariable (symbol, ctype);
                             locals[a.Result] = local;
-                            body.Variables.Add (local);
                             //var name = "local" + symbol.Text.Substring (1);
                             //var dbg = new VariableDebugInformation (local, name);
                             //vdbgs.Add (dbg);
@@ -172,7 +173,6 @@ namespace Repil
             //
             // Emit each block
             //
-
             for (var i = 0; i < f.Blocks.Length; i++) {
                 var b = f.Blocks[i];
                 var nextBlock = i + 1 < f.Blocks.Length ? f.Blocks[i + 1] : null;
@@ -872,8 +872,6 @@ namespace Repil
                 }
             }
 
-
-
             void EmitBrtrue (IR.Value condition, LType conditionType, Instruction trueTarget)
             {
                 if (condition is IR.LocalValue local && ShouldInline (local.Symbol)) {
@@ -1029,6 +1027,62 @@ namespace Repil
             {
                 return blockFirstInstr[label.Symbol];
             }
+        }
+
+        class SharedVariable
+        {
+            public readonly HashSet<LocalSymbol> Users =
+                new HashSet<LocalSymbol> ();
+            public VariableDefinition Variable;
+            public TypeReference ClrType => Variable.VariableType;
+        }
+        readonly Dictionary<string, List<SharedVariable>> sharedVariablesByType =
+            new Dictionary<string, List<SharedVariable>> ();
+
+        VariableDefinition GetFreeVariable (LocalSymbol symbol, TypeReference clrType)
+        {
+            //
+            // Get the right list
+            //
+            if (!sharedVariablesByType.TryGetValue (clrType.FullName, out var variables)) {
+                variables = new List<SharedVariable> ();
+                sharedVariablesByType[clrType.FullName] = variables;
+            }
+
+            //
+            // Has it already been assigned?
+            //
+            foreach (var v in variables) {
+                if (v.Users.Contains (symbol))
+                    return v.Variable;
+            }
+
+            //
+            // Find an existing variable with no interference
+            //
+            SharedVariable variable = null;
+            foreach (var v in variables) {
+                Console.WriteLine (function.Symbol);
+                var interferes = liveliness.VariablesInterfere (symbol, v.Users);
+                if (!interferes) {
+                    variable = v;
+                    break;
+                }
+            }
+
+            //
+            // If we didn't find one, create one
+            //
+            if (variable == null) {
+                var vd = new VariableDefinition (clrType);
+                variable = new SharedVariable {
+                    Variable = vd,
+                };
+                body.Variables.Add (vd);
+                variables.Add (variable);
+            }
+            variable.Users.Add (symbol);
+            return variable.Variable;
         }
 
         void EmitZeroValue (LType type)

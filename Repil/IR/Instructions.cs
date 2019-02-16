@@ -13,6 +13,8 @@ namespace Repil.IR
 
     public abstract class TerminatorInstruction : Instruction
     {
+        public abstract IEnumerable<LocalSymbol> NextLabelSymbols { get; }
+
         public override LType ResultType (Module module) => VoidType.Void;
     }
 
@@ -97,6 +99,8 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Condition.ReferencedLocals;
+
+        public override IEnumerable<LocalSymbol> NextLabelSymbols => new[] { IfTrue.Symbol, IfFalse.Symbol };
     }
 
     public class UnconditionalBrInstruction : BrInstruction
@@ -109,6 +113,8 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
+
+        public override IEnumerable<LocalSymbol> NextLabelSymbols => new[] { Destination.Symbol };
     }
 
     public class CallInstruction : Instruction
@@ -461,6 +467,8 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
+
+        public override IEnumerable<LocalSymbol> NextLabelSymbols => Enumerable.Empty<LocalSymbol> ();
     }
 
     public class SdivInstruction : BinaryInstruction
@@ -582,6 +590,8 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals.Concat (DefaultLabel.ReferencedLocals);
         public override LType ResultType (Module module) => VoidType.Void;
+        public override IEnumerable<LocalSymbol> NextLabelSymbols =>
+            Cases.Select (x => x.Label.Symbol).Concat (new[] { DefaultLabel.Symbol });
     }
 
     public class SwitchCase

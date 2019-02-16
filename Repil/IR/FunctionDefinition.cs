@@ -94,11 +94,11 @@ namespace Repil.IR
 
     public class Block
     {
-        public readonly Symbol Symbol;
+        public readonly LocalSymbol Symbol;
         public readonly Assignment[] Assignments;
         public readonly TerminatorInstruction Terminator;
 
-        public Block (Symbol symbol, IEnumerable<Assignment> assignments, TerminatorInstruction terminator)
+        public Block (LocalSymbol symbol, IEnumerable<Assignment> assignments, TerminatorInstruction terminator)
         {
             if (assignments == null) {
                 throw new ArgumentNullException (nameof (assignments));
