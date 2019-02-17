@@ -1023,6 +1023,7 @@ namespace Repil
                     switch (gv.Symbol.Text) {
                         case "@llvm.lifetime.start.p0i8":
                         case "@llvm.lifetime.end.p0i8":
+                        case "@llvm.dbg.declare":
                         case "@llvm.dbg.value":
                             return;
                         case "@llvm.fabs.f64":
