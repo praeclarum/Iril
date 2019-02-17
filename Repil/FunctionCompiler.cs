@@ -306,6 +306,11 @@ namespace Repil
                             case IR.FcmpCondition.OrderedLessThan:
                                 Emit (il.Create (OpCodes.Clt));
                                 break;
+                            case IR.FcmpCondition.OrderedLessThanOrEqual:
+                                Emit (il.Create (OpCodes.Cgt));
+                                Emit (il.Create (OpCodes.Ldc_I4_0));
+                                Emit (il.Create (OpCodes.Ceq));
+                                break;
                             case IR.FcmpCondition.UnorderedNotEqual:
                                 Emit (il.Create (OpCodes.Ceq));
                                 Emit (il.Create (OpCodes.Ldc_I4_0));
@@ -644,6 +649,16 @@ namespace Repil
                         if (br.Destination.Symbol != nextBlock?.Symbol)
                             Emit (il.Create (OpCodes.Br, GetLabel (br.Destination)));
                         break;
+                    case IR.UremInstruction urem:
+                        if (urem.Type is Types.VectorType) {
+                            EmitVectorOp (OpCodes.Rem_Un, urem.Op1, urem.Op2, (Types.VectorType)urem.Type);
+                        }
+                        else {
+                            EmitValue (urem.Op1, urem.Type);
+                            EmitValue (urem.Op2, urem.Type);
+                            Emit (il.Create (OpCodes.Rem_Un));
+                        }
+                        break;
                     case IR.XorInstruction xor:
                         if (xor.Type is Types.VectorType) {
                             EmitVectorOp (OpCodes.Xor, xor.Op1, xor.Op2, (Types.VectorType)xor.Type);
@@ -732,6 +747,10 @@ namespace Repil
                             default:
                                 throw new NotSupportedException ($"{((IntegerType)type).Bits}-bit integers");
                         }
+                        break;
+                    case IR.IntToPointerValue itop:
+                        EmitTypedValue (itop.Value);
+                        Emit (il.Create (OpCodes.Conv_U));
                         break;
                     case IR.LocalValue local:
                         if (locals.TryGetValue (local.Symbol, out var vd)) {
@@ -1107,27 +1126,32 @@ namespace Repil
                 for (var i = 0; i < n; i++) {
                     var index = indices[i];
                     if (t is Types.PointerType pt) {
-                        if (pt.ElementType.Resolve (function.IRModule) is Types.LiteralStructureType st && index.Value is IR.IntegerConstant iconst) {
-                            if (i > 0) {
-                                var cst = GetClrType (pt).GetElementType ().Resolve ();
-                                var field = cst.Fields[(int)iconst.Value];
-                                Emit (il.Create (OpCodes.Ldflda, field));
-                                Emit (il.Create (OpCodes.Conv_U));
-                                t = st.Elements[i];
-                            }
-                            else {
-                                // Skip the first index for structures
-                            }
+                        t = pt.ElementType;
+                        if (index.Value is IR.Constant c && c.Int32Value == 0) {
+                            // Do nothing
                         }
                         else {
-                            var esize = pt.ElementType.GetByteSize (function.IRModule);
-                            EmitValue (index.Value, index.Type);
-                            EmitValue (new IR.IntegerConstant (esize), index.Type);
-                            Emit (il.Create (OpCodes.Mul));
+                            var esize = t.GetByteSize (function.IRModule);
+                            if (index.Value is IR.Constant ic) {
+                                EmitValue (new IR.IntegerConstant (esize * ic.Int32Value), index.Type);
+                            }
+                            else {
+                                EmitValue (index.Value, index.Type);
+                                EmitValue (new IR.IntegerConstant (esize), index.Type);
+                                Emit (il.Create (OpCodes.Mul));
+                            }
                             Emit (il.Create (OpCodes.Conv_U));
                             Emit (il.Create (OpCodes.Add));
-                            t = pt.ElementType;
                         }
+                    }
+                    else if (t is NamedType
+                             && t.Resolve (function.IRModule) is Types.LiteralStructureType st
+                             && index.Value is IR.IntegerConstant iconst) {
+                        var cst = GetClrType (t).Resolve ();
+                        var field = cst.Fields[(int)iconst.Value];
+                        Emit (il.Create (OpCodes.Ldflda, field));
+                        Emit (il.Create (OpCodes.Conv_U));
+                        t = st.Elements[i];
                     }
                     else if (t is Types.ArrayType artt) {
                         var esize = artt.ElementType.GetByteSize (function.IRModule);
@@ -1139,7 +1163,11 @@ namespace Repil
                         t = artt.ElementType;
                     }
                     else {
-                        throw new NotSupportedException ("Element pointer for " + t);
+
+                        if (i + 1 < n) {
+                            throw new NotSupportedException ("Cannot get pointer to " + t);
+                        }
+
                     }
                 }
             }
@@ -1219,6 +1247,10 @@ namespace Repil
             }
             else if (type is Types.IntegerType intt) {
                 Emit (il.Create (OpCodes.Ldc_I4_0));
+            }
+            else if (type is Types.PointerType ptr) {
+                Emit (il.Create (OpCodes.Ldc_I4_0));
+                Emit (il.Create (OpCodes.Conv_U));
             }
             else if (type is Types.FloatType floatt) {
                 if (floatt.Bits == 32) {

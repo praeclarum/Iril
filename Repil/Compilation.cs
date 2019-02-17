@@ -198,8 +198,7 @@ namespace Repil
             sysNotImpl = Import ("System.NotImplementedException");
             sysNotImplCtor = ImportMethod (sysNotImpl, sysVoid, ".ctor");
             sysNotSupp = Import ("System.NotSupportedException");
-            sysNotSuppCtor = new MethodReference (".ctor", sysVoid, sysNotSupp);
-            sysNotSuppCtor.Parameters.Add (new ParameterDefinition (sysString));
+            sysNotSuppCtor = ImportMethod (sysNotSupp, sysVoid, ".ctor", sysString);
             sysMath = Import ("System.Math");
             sysMathAbsD = ImportMethod (sysMath, sysDouble, "Abs", sysDouble);
             sysMathSqrtD = ImportMethod (sysMath, sysDouble, "Sqrt", sysDouble);

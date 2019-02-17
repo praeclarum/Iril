@@ -69,7 +69,7 @@ namespace Tests
             var rnull = defs.Invoke (null, new object[] { IntPtr.Zero });
             Assert.AreEqual (0, rnull);
 
-            var testMemory = false;
+            var testMemory = true;
             if (testMemory) {
 
                 funcs.GetMethod ("SuiteSparse_start").Invoke (null, Array.Empty<object> ());
