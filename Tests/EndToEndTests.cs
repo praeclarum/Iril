@@ -19,14 +19,14 @@ namespace Tests
         public void SuiteSparse ()
         {
             var asmFileName = "SuiteSparse.dll";
-            var irmods =
-                new[] {
-                    "SuiteSparse.colamd.ll",
-                    "SuiteSparse.SuiteSparse_config.ll",
-                    "SuiteSparse.klu_memory.ll",
-                    "SuiteSparse.klu_defaults.ll",
-                    "SuiteSparse.klu_analyze.ll",
-                    "SuiteSparse.klu_analyze_given.ll",
+            var irmods = new[] {
+                "SuiteSparse.colamd.ll",
+                "SuiteSparse.SuiteSparse_config.ll",
+                "SuiteSparse.klu.ll",
+                "SuiteSparse.klu_analyze.ll",
+                "SuiteSparse.klu_analyze_given.ll",
+                "SuiteSparse.klu_memory.ll",
+                "SuiteSparse.klu_defaults.ll",
                 }
                 .Select (x => Repil.Module.Parse (GetCode (x)));
             var compilation = new Compilation (

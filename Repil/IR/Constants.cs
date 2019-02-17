@@ -3,6 +3,7 @@ using System.Numerics;
 using System.Collections.Generic;
 using Repil.Types;
 using System.Linq;
+using System.Globalization;
 
 namespace Repil.IR
 {
@@ -78,6 +79,20 @@ namespace Repil.IR
         public override int Int32Value => (int)Value;
 
         public override string ToString () => Value.ToString ();
+    }
+
+    public class HexIntegerConstant : SimpleConstant
+    {
+        public readonly BigInteger Value;
+
+        public HexIntegerConstant (BigInteger value)
+        {
+            Value = value;
+        }
+
+        public override int Int32Value => (int)Value;
+
+        public override string ToString () => $"0x{Value:X}";
     }
 
     public class FloatConstant : SimpleConstant

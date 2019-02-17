@@ -50,5 +50,11 @@ namespace Tests
             Parse ("SuiteSparse.colamd.ll");
         }
 
+        [Test]
+        public void Klu ()
+        {
+            Parse ("SuiteSparse.klu.ll");
+        }
+
     }
 }

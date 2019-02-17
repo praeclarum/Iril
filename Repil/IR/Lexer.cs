@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System;
 using System.Numerics;
+using System.Globalization;
 
 namespace Repil.IR
 {
@@ -291,6 +292,18 @@ namespace Repil.IR
                         }
                     }
                     break;
+                case '0' when p + 1 < n && s[p + 1] == 'x': {
+                        p += 2;
+                        var ep = p;
+                        while (ep < n && IsHex (s[ep])) {
+                            ep++;
+                        }
+                        var ss = s.Substring (p, ep - p);
+                        p = ep;
+                        val = BigInteger.Parse (ss, NumberStyles.HexNumber);
+                        tok = Token.HEX_INTEGER;
+                    }
+                    break;
                 case var ch when char.IsDigit (ch) || ch == '-': {
                         var ep = p + 1;
                         var isfloat = false;
@@ -339,6 +352,36 @@ namespace Repil.IR
             }
 
             return true;
+        }
+
+        bool IsHex (char c)
+        {
+            switch (c) {
+                case '0':
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                case 'a':
+                case 'b':
+                case 'c':
+                case 'd':
+                case 'e':
+                case 'f':
+                case 'A':
+                case 'B':
+                case 'C':
+                case 'D':
+                case 'E':
+                case 'F':
+                    return true;
+            }
+            return false;
         }
 
         bool IsNamedStart (char c)

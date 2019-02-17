@@ -16,7 +16,7 @@ namespace Repil.IR
 	{
 %}
 
-%token INTEGER FLOAT_LITERAL STRING TRUE FALSE UNDEF VOID NULL LABEL X
+%token INTEGER HEX_INTEGER FLOAT_LITERAL STRING TRUE FALSE UNDEF VOID NULL LABEL X
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
 %token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL META_SYMBOL_DEF SYMBOL DISTINCT METADATA CONSTANT_BYTES
 %token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64 ZEROINITIALIZER
@@ -469,6 +469,7 @@ constant
     : NULL            { $$ = NullConstant.Null; }
     | FLOAT_LITERAL   { $$ = new FloatConstant ((double)$1); }
     | INTEGER         { $$ = new IntegerConstant ((BigInteger)$1); }
+    | HEX_INTEGER     { $$ = new HexIntegerConstant ((BigInteger)$1); }
     | TRUE            { $$ = BooleanConstant.True; }
     | FALSE           { $$ = BooleanConstant.False; }
     | UNDEF           { $$ = UndefinedConstant.Undefined; }

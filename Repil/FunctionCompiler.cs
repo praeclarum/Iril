@@ -6,6 +6,7 @@ using Mono.Cecil.Cil;
 using Mono.Cecil.Rocks;
 using Repil.Types;
 using CecilInstruction = Mono.Cecil.Cil.Instruction;
+using System.Runtime.InteropServices;
 
 namespace Repil
 {
@@ -313,6 +314,14 @@ namespace Repil
                             case IR.FcmpCondition.OrderedEqual:
                                 Emit (il.Create (OpCodes.Ceq));
                                 break;
+                            case IR.FcmpCondition.OrderedGreaterThan:
+                                Emit (il.Create (OpCodes.Cgt));
+                                break;
+                            case IR.FcmpCondition.OrderedGreaterThanOrEqual:
+                                Emit (il.Create (OpCodes.Clt));
+                                Emit (il.Create (OpCodes.Ldc_I4_0));
+                                Emit (il.Create (OpCodes.Ceq));
+                                break;
                             case IR.FcmpCondition.OrderedLessThan:
                                 Emit (il.Create (OpCodes.Clt));
                                 break;
@@ -326,8 +335,21 @@ namespace Repil
                                 Emit (il.Create (OpCodes.Ldc_I4_0));
                                 Emit (il.Create (OpCodes.Ceq));
                                 break;
+                            case IR.FcmpCondition.UnorderedGreaterThan:
+                                Emit (il.Create (OpCodes.Cgt_Un));
+                                break;
+                            case IR.FcmpCondition.UnorderedGreaterThanOrEqual:
+                                Emit (il.Create (OpCodes.Clt_Un));
+                                Emit (il.Create (OpCodes.Ldc_I4_0));
+                                Emit (il.Create (OpCodes.Ceq));
+                                break;
                             case IR.FcmpCondition.UnorderedLessThan:
                                 Emit (il.Create (OpCodes.Clt_Un));
+                                break;
+                            case IR.FcmpCondition.UnorderedLessThanOrEqual:
+                                Emit (il.Create (OpCodes.Cgt_Un));
+                                Emit (il.Create (OpCodes.Ldc_I4_0));
+                                Emit (il.Create (OpCodes.Ceq));
                                 break;
                             default:
                                 throw new NotSupportedException ("fcmp condition " + fcmp.Condition);
@@ -740,6 +762,49 @@ namespace Repil
                             throw new NotSupportedException ($"Cannot emit value {g}");
                         }
                         break;
+                    case IR.HexIntegerConstant i:
+                        if (type is FloatType fltt) {
+                            var ba = new byte[8];
+                            var da = new double[1];
+                            ba[7] = (byte)((i.Value >> 56) & 0xFF);
+                            ba[6] = (byte)((i.Value >> 48) & 0xFF);
+                            ba[5] = (byte)((i.Value >> 40) & 0xFF);
+                            ba[4] = (byte)((i.Value >> 32) & 0xFF);
+                            ba[3] = (byte)((i.Value >> 24) & 0xFF);
+                            ba[2] = (byte)((i.Value >> 16) & 0xFF);
+                            ba[1] = (byte)((i.Value >> 8) & 0xFF);
+                            ba[0] = (byte)((i.Value >> 0) & 0xFF);
+                            Buffer.BlockCopy (ba, 0, da, 0, 8);
+                            switch (fltt.Bits) {
+                                case 32:
+                                    Emit (il.Create (OpCodes.Ldc_R4, (float)da[0]));
+                                    break;
+                                case 64:
+                                    Emit (il.Create (OpCodes.Ldc_R8, da[0]));
+                                    break;
+                                default:
+                                    throw new NotSupportedException ($"{((IntegerType)type).Bits}-bit float integers");
+                            }
+                        }
+                        else {
+                            switch (((IntegerType)type).Bits) {
+                                case 8:
+                                    Emit (il.Create (OpCodes.Ldc_I4, ((int)i.Value) & 0xFF));
+                                    break;
+                                case 16:
+                                    Emit (il.Create (OpCodes.Ldc_I4, ((int)i.Value) & 0xFFFF));
+                                    break;
+                                case 32:
+                                    Emit (il.Create (OpCodes.Ldc_I4, (int)i.Value));
+                                    break;
+                                case 64:
+                                    Emit (il.Create (OpCodes.Ldc_I8, (long)i.Value));
+                                    break;
+                                default:
+                                    throw new NotSupportedException ($"{((IntegerType)type).Bits}-bit integers");
+                            }
+                        }
+                        break;
                     case IR.IntegerConstant i:
                         switch (((IntegerType)type).Bits) {
                             case 8:
@@ -798,7 +863,7 @@ namespace Repil
                         EmitZeroValue (type);
                         break;
                     default:
-                        throw new NotImplementedException ("Cannot emit value " + value);
+                        throw new NotSupportedException ($"Cannot emit value {value} ({value?.GetType()?.Name}) with type {type}");
                 }
             }
 
