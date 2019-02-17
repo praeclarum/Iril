@@ -884,11 +884,45 @@ namespace Repil
 
             void EmitSwitch (IR.SwitchInstruction sw, IR.Block nextBlock)
             {
-                foreach (var c in sw.Cases) {
+                var rem = new List<IR.SwitchCase> (sw.Cases.OrderBy (x => x.Value.Constant.Int32Value));
+
+                while (rem.Count > 0) {
+
+                    var offset = rem[0].Value.Constant.Int32Value;
+
+                    int nextValue = offset + 1;
+                    int endIndex = 1;
+                    while (endIndex < rem.Count && rem[endIndex].Value.Constant.Int32Value == nextValue) {
+                        endIndex++;
+                        nextValue++;
+                    }
+
+                    if (offset != 0) {
+                        EmitValue (rem[0].Value.Constant, rem[0].Value.Type);
+                    }
                     EmitTypedValue (sw.Value);
-                    EmitValue (c.Value.Constant, c.Value.Type);
-                    Emit (il.Create (OpCodes.Beq, GetLabel (c.Label)));
+
+                    if (endIndex > 1) {
+                        var labels =
+                            rem.Take (endIndex)
+                            .Select (x => GetLabel (x.Label))
+                            .ToArray ();
+                        if (offset != 0) {
+                            Emit (il.Create (OpCodes.Sub));
+                        }
+                        Emit (il.Create (OpCodes.Switch, labels));
+                        rem.RemoveRange (0, endIndex);
+                    }
+                    else {
+                        var c = rem[0];
+                        if (offset == 0) {
+                            EmitValue (new IR.IntegerConstant (0), c.Value.Type);
+                        }
+                        Emit (il.Create (OpCodes.Beq, GetLabel (c.Label)));
+                        rem.RemoveAt (0);
+                    }
                 }
+
                 if (nextBlock.Symbol != sw.DefaultLabel.Symbol)
                     Emit (il.Create (OpCodes.Br, GetLabel (sw.DefaultLabel)));
             }
