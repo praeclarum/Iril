@@ -572,15 +572,8 @@ namespace Repil
                         EmitValue (sub.Op2, sub.Type);
                         Emit (il.Create (OpCodes.Sub));
                         break;
-                    case IR.SwitchInstruction sw: {
-                            EmitTypedValue (sw.Value);
-                            foreach (var c in sw.Cases) {
-                                Emit (il.Create (OpCodes.Dup));
-                                EmitValue (c.Value.Constant, c.Value.Type);
-                                Emit (il.Create (OpCodes.Beq, GetLabel (c.Label)));
-                            }
-                            Emit (il.Create (OpCodes.Br, GetLabel (sw.DefaultLabel)));
-                        }
+                    case IR.SwitchInstruction sw:
+                        EmitSwitch (sw, nextBlock);
                         break;
                     case IR.TruncInstruction trunc:
                         EmitTypedValue (trunc.Value);
@@ -887,6 +880,17 @@ namespace Repil
                 else {
                     Emit (il.Create (OpCodes.Ldobj, et));
                 }
+            }
+
+            void EmitSwitch (IR.SwitchInstruction sw, IR.Block nextBlock)
+            {
+                foreach (var c in sw.Cases) {
+                    EmitTypedValue (sw.Value);
+                    EmitValue (c.Value.Constant, c.Value.Type);
+                    Emit (il.Create (OpCodes.Beq, GetLabel (c.Label)));
+                }
+                if (nextBlock.Symbol != sw.DefaultLabel.Symbol)
+                    Emit (il.Create (OpCodes.Br, GetLabel (sw.DefaultLabel)));
             }
 
             VariableDefinition GetVectorTempVariable (SimdVector type, IR.Value value, int uid)
