@@ -11,6 +11,7 @@ namespace Repil
         public static readonly Symbol Name = Intern ("name");
         public static readonly Symbol Variables = Intern ("variables");
         public static readonly Symbol Type = Intern ("type");
+        public static readonly Symbol Types = Intern ("types");
         public static readonly Symbol BaseType = Intern ("baseType");
         public static readonly Symbol Elements = Intern ("elements");
 
