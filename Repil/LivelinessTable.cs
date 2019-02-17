@@ -40,6 +40,7 @@ namespace Repil
                     Block = b,
                     References = new HashSet<LocalSymbol> (
                         b.Assignments.Select (x => x.Instruction)
+                        .Where (x => !(x is PhiInstruction))
                         .Concat (new IR.Instruction[] { b.Terminator })
                         .SelectMany (x => x.ReferencedLocals.Distinct ())
                         .Distinct ()),
@@ -49,6 +50,27 @@ namespace Repil
                     Nexts = new HashSet<LocalSymbol> (b.Terminator.NextLabelSymbols),
                 };
                 infos[b.Symbol] = i;
+
+                //
+                // Add phi variables to liveliness
+                //
+                foreach (var ob in f.Blocks) {
+                    if (ReferenceEquals (ob, b))
+                        continue;
+
+                    foreach (var a in ob.Assignments) {
+                        if (a.Instruction is PhiInstruction phi) {
+                            foreach (var v in phi.Values) {
+                                if (v.Label is LocalValue l
+                                    && l.Symbol == b.Symbol
+                                    && v.Value is LocalValue val) {
+
+                                    i.References.Add (val.Symbol);
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
