@@ -191,7 +191,8 @@ namespace Repil
                 //
                 prev = blockFirstInstr[b.Symbol];
                 foreach (var a in b.Assignments) {
-                    if (!ShouldInline (a.Result) && !(a.Instruction is IR.PhiInstruction)) {
+                    if (!ShouldInline (a.Result)
+                        && !(a.Instruction is IR.PhiInstruction)) {
 
                         EmitInstruction (a.Result, a.Instruction, nextBlock);
 
@@ -216,8 +217,17 @@ namespace Repil
                         if (oa.Result != LocalSymbol.None && oa.Instruction is IR.PhiInstruction phi) {
                             var phiV = phi.Values.FirstOrDefault (x => x.Label is IR.LocalValue l && l.Symbol == b.Symbol);
                             if (phiV != null) {
-                                EmitValue (phiV.Value, phi.Type);
-                                Emit (il.Create (OpCodes.Stloc, GetPhiLocal (oa.Result)));
+                                var phiLocal = GetPhiLocal (oa.Result);
+                                if (phiV.Value is IR.LocalValue lv
+                                    && phiLocals.TryGetValue (lv.Symbol, out var vd)
+                                    && ReferenceEquals (phiLocal, vd)) {
+
+                                    // Redundant assignment
+                                }
+                                else {
+                                    EmitValue (phiV.Value, phi.Type);
+                                    Emit (il.Create (OpCodes.Stloc, phiLocal));
+                                }
                             }
                         }
                     }
