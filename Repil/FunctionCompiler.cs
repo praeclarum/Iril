@@ -1104,6 +1104,23 @@ namespace Repil
                             Emit (il.Create (OpCodes.Conv_U4));
                             Emit (il.Create (OpCodes.Initblk));
                             return;
+                        // declare void @llvm.memcpy.p0i8.p0i8.i32(i8* <dest>, i8* <src>,
+                        //                                         i32 <len>, i1 <isvolatile>)
+                        case "@llvm.memcpy.p0i8.p0i8.i32" when call.Arguments.Length >= 3:
+                            EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                            EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                            EmitValue (call.Arguments[2].Value, call.Arguments[2].Type);
+                            Emit (il.Create (OpCodes.Cpblk));
+                            return;
+                        // declare void @llvm.memcpy.p0i8.p0i8.i64(i8* <dest>, i8* <src>,
+                        //                                         i64 <len>, i1 <isvolatile>)
+                        case "@llvm.memcpy.p0i8.p0i8.i64" when call.Arguments.Length >= 3:
+                            EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                            EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                            EmitValue (call.Arguments[2].Value, call.Arguments[2].Type);
+                            Emit (il.Create (OpCodes.Conv_U4));
+                            Emit (il.Create (OpCodes.Cpblk));
+                            return;
                         default:
                             if (compilation.TryGetFunction (gv.Symbol, out var m)) {
                                 foreach (var a in call.Arguments) {
