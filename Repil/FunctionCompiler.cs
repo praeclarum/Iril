@@ -469,6 +469,30 @@ namespace Repil
                     case IR.PhiInstruction phi:
                         Emit (il.Create (OpCodes.Ldloc, GetPhiLocal (assignedSymbol)));
                         break;
+                    case IR.PtrtointInstruction zext:
+                        EmitTypedValue (zext.Value);
+                        switch (zext.Type) {
+                            case Types.IntegerType intt:
+                                switch (intt.Bits) {
+                                    case 1:
+                                    case 8:
+                                        Emit (il.Create (OpCodes.Conv_I1));
+                                        break;
+                                    case 16:
+                                        Emit (il.Create (OpCodes.Conv_I2));
+                                        break;
+                                    case 32:
+                                        Emit (il.Create (OpCodes.Conv_I4));
+                                        break;
+                                    default:
+                                        Emit (il.Create (OpCodes.Conv_I8));
+                                        break;
+                                }
+                                break;
+                            default:
+                                throw new NotSupportedException ($"Cannot ptrtoint {zext.Type}");
+                        }
+                        break;
                     case IR.RetInstruction ret:
                         EmitTypedValue (ret.Value);
                         Emit (il.Create (OpCodes.Ret));
