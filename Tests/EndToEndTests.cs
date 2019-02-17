@@ -54,7 +54,7 @@ namespace Tests
                 disAsmB.AppendLine (line);
             }
             var disAsm = disAsmB.ToString ();
-            System.Console.WriteLine (disAsm);
+            //System.Console.WriteLine (disAsm);
             System.Console.WriteLine (asmPath);
 
             var asm = Assembly.Load (File.ReadAllBytes (asmPath));

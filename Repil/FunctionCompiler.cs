@@ -1116,8 +1116,14 @@ namespace Repil
                     }
                 }
                 else if (call.Pointer is IR.LocalValue lv) {
-                    var lva = f.GetAssignment (lv);
-                    var ltype = lva.Instruction.ResultType (function.IRModule);
+                    LType ltype;
+                    if (paramSyms.TryGetValue (lv.Symbol, out var p)) {
+                        ltype = f.Parameters.First (x => x.Symbol == lv.Symbol).ParameterType;
+                    }
+                    else {
+                        var lva = f.GetAssignment (lv);
+                        ltype = lva.Instruction.ResultType (function.IRModule);
+                    }
                     foreach (var a in call.Arguments) {
                         EmitValue (a.Value, a.Type);
                     }
