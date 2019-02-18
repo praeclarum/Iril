@@ -47,6 +47,8 @@ namespace Repil
         MethodReference sysNotSuppCtor;
         TypeReference sysMath;
         public MethodReference sysMathAbsD;
+        public MethodReference sysMathCeilD;
+        public MethodReference sysMathFloorD;
         public MethodReference sysMathSqrtD;
         TypeReference sysEventArgs;
         TypeReference sysIAsyncResult;
@@ -201,6 +203,8 @@ namespace Repil
             sysNotSuppCtor = ImportMethod (sysNotSupp, sysVoid, ".ctor", sysString);
             sysMath = Import ("System.Math");
             sysMathAbsD = ImportMethod (sysMath, sysDouble, "Abs", sysDouble);
+            sysMathCeilD = ImportMethod (sysMath, sysDouble, "Ceiling", sysDouble);
+            sysMathFloorD = ImportMethod (sysMath, sysDouble, "Floor", sysDouble);
             sysMathSqrtD = ImportMethod (sysMath, sysDouble, "Sqrt", sysDouble);
             sysEventArgs = Import ("System.EventArgs");
             sysIAsyncResult = Import ("System.IAsyncResult");
