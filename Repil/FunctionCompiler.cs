@@ -377,6 +377,17 @@ namespace Repil
                             Emit (il.Create (OpCodes.Ldc_I4_0));
                             Emit (il.Create (OpCodes.Ceq));
                             break;
+                        case IR.FcmpCondition.Unordered:
+                            if (((FloatType)fcmp.Type).Bits == 32) {
+                                Emit (il.Create (OpCodes.Call, compilation.sysSingleIsNaN));
+                                Emit (il.Create (OpCodes.Call, compilation.sysSingleIsNaN));
+                            }
+                            else {
+                                Emit (il.Create (OpCodes.Call, compilation.sysDoubleIsNaN));
+                                Emit (il.Create (OpCodes.Call, compilation.sysDoubleIsNaN));
+                            }
+                            Emit (il.Create (OpCodes.Or));
+                            break;
                         case IR.FcmpCondition.UnorderedEqual:
                             Emit (il.Create (OpCodes.Ceq));
                             break;
