@@ -29,6 +29,7 @@ namespace Repil
         AssemblyDefinition sysAsm;
         TypeReference sysVoid;
         TypeReference sysVoidPtr;
+        TypeReference sysVoidPtrPtr;
         TypeReference sysObj;
         TypeReference sysVal;
         TypeReference sysBoolean;
@@ -200,6 +201,7 @@ namespace Repil
             sysDoubleIsNaN = ImportMethod (sysDouble, sysBoolean, "IsNaN", sysDouble);
             sysVoid = Import ("System.Void");
             sysVoidPtr = sysVoid.MakePointerType ();
+            sysVoidPtrPtr = sysVoidPtr.MakePointerType ();
             sysString = Import ("System.String");
             sysNotImpl = Import ("System.NotImplementedException");
             sysNotImplCtor = ImportMethod (sysNotImpl, sysVoid, ".ctor");
@@ -575,10 +577,10 @@ namespace Repil
                     }
                 case Types.ArrayType art:
                     return GetClrType (art.ElementType).MakePointerType ();
-                case Types.PointerType pt when pt.ElementType is FunctionType ft:
-                    return sysVoidPtr;
                 case Types.PointerType pt:
                     return GetClrType (pt.ElementType).MakePointerType ();
+                case FunctionType ft:
+                    return sysVoidPtr;
                 case NamedType nt:
                     return structs[nt.Symbol].Item2;
                 case VectorType vt:

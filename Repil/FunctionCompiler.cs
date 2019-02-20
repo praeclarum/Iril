@@ -143,7 +143,7 @@ namespace Repil
                     var symbol = a.Result;
                     if (a.HasResult && a.Instruction is IR.PhiInstruction phi) {
                         var irtype = a.Instruction.ResultType (function.IRModule);
-                        var ctype = GetClrType (irtype);
+                        var ctype = compilation.GetClrType (irtype);
                         var local = GetFreeVariable (symbol, ctype, true);
                         phiLocals[a.Result] = local;
                         //var name = "phi" + a.Result.Text.Substring (1);
@@ -161,7 +161,7 @@ namespace Repil
                     var symbol = a.Result;
                     if (a.HasResult && !ShouldInline (symbol) && !(a.Instruction is IR.PhiInstruction)) {
                         var irtype = a.Instruction.ResultType (function.IRModule);
-                        var ctype = GetClrType (irtype);
+                        var ctype = compilation.GetClrType (irtype);
                         var local = GetFreeVariable (symbol, ctype, false);
                         locals[a.Result] = local;
                         //var name = "local" + symbol.Text.Substring (1);
@@ -947,7 +947,7 @@ namespace Repil
                     && gep.Pointer.Type is Types.PointerType gepPointerType
                     && gepPointerType.ElementType.Resolve (function.IRModule) is LiteralStructureType structType) {
 
-                    var td = GetClrType (gepPointerType.ElementType).Resolve ();
+                    var td = compilation.GetClrType (gepPointerType.ElementType).Resolve ();
                     var field = td.Fields[indexConst.Int32Value];
 
                     EmitTypedValue (gep.Pointer);
@@ -959,7 +959,7 @@ namespace Repil
 
             EmitTypedValue (store.Pointer);
             EmitTypedValue (store.Value);
-            var et = GetClrType (store.Value.Type);
+            var et = compilation.GetClrType (store.Value.Type);
             if (store.Value.Type is IntegerType intt) {
                 switch (intt.Bits) {
                     case 8:
@@ -1007,7 +1007,7 @@ namespace Repil
                     && gep.Pointer.Type is Types.PointerType gepPointerType
                     && gepPointerType.ElementType.Resolve (function.IRModule) is LiteralStructureType structType) {
 
-                    var td = GetClrType (gepPointerType.ElementType).Resolve ();
+                    var td = compilation.GetClrType (gepPointerType.ElementType).Resolve ();
                     var field = td.Fields[indexConst.Int32Value];
 
                     EmitTypedValue (gep.Pointer);
@@ -1018,7 +1018,7 @@ namespace Repil
 
             EmitTypedValue (load.Pointer);
 
-            var et = GetClrType (load.Type);
+            var et = compilation.GetClrType (load.Type);
             if (load.Type is IntegerType intt) {
                 switch (intt.Bits) {
                     case 8:
@@ -1326,7 +1326,7 @@ namespace Repil
                 else if (t is NamedType
                          && t.Resolve (function.IRModule) is Types.LiteralStructureType st
                          && index.Value is IR.IntegerConstant iconst) {
-                    var cst = GetClrType (t).Resolve ();
+                    var cst = compilation.GetClrType (t).Resolve ();
                     var field = cst.Fields[(int)iconst.Value];
                     Emit (il.Create (OpCodes.Ldflda, field));
                     Emit (il.Create (OpCodes.Conv_U));
@@ -1452,16 +1452,14 @@ namespace Repil
         CallSite CreateCallSite (LType functionPointerType)
         {
             var ft = (FunctionType)((Types.PointerType)functionPointerType).ElementType;
-            var c = new CallSite (GetClrType (ft.ReturnType));
+            var c = new CallSite (compilation.GetClrType (ft.ReturnType));
             foreach (var p in ft.ParameterTypes) {
-                var pd = new ParameterDefinition (GetClrType (p));
+                var pd = new ParameterDefinition (compilation.GetClrType (p));
                 c.Parameters.Add (pd);
             }
             return c;
         }
 
         SimdVector GetVectorType (VectorType vt) => compilation.GetVectorType (vt);
-
-        TypeReference GetClrType (LType irType, bool? unsigned = false) => compilation.GetClrType (irType, unsigned);
     }
 }
