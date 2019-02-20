@@ -376,6 +376,9 @@ namespace Repil
                             Emit (il.Create (OpCodes.Ldc_I4_0));
                             Emit (il.Create (OpCodes.Ceq));
                             break;
+                        case IR.FcmpCondition.UnorderedEqual:
+                            Emit (il.Create (OpCodes.Ceq));
+                            break;
                         case IR.FcmpCondition.UnorderedNotEqual:
                             Emit (il.Create (OpCodes.Ceq));
                             Emit (il.Create (OpCodes.Ldc_I4_0));
