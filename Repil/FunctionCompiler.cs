@@ -822,8 +822,11 @@ namespace Repil
                     if (compilation.TryGetFunction (g.Symbol, out var ff)) {
                         Emit (il.Create (OpCodes.Ldftn, ff.ILDefinition));
                     }
+                    else if (compilation.TryGetGlobal (g.Symbol, out var globalVariableField)) {
+                        Emit (il.Create (OpCodes.Ldfld, globalVariableField));
+                    }
                     else {
-                        throw new NotSupportedException ($"Cannot emit value {g}");
+                        throw new NotSupportedException ($"Cannot find global value {g}");
                     }
                     break;
                 case IR.HexIntegerConstant i:
