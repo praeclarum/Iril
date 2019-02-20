@@ -20,6 +20,9 @@ namespace Tests
         {
             var asmFileName = "SuiteSparse.dll";
             var irmods = new[] {
+                "SuiteSparse.amd_1.ll",
+                "SuiteSparse.amd_2.ll",
+                "SuiteSparse.amd_aat.ll",
                 "SuiteSparse.colamd.ll",
                 "SuiteSparse.klu.ll",
                 "SuiteSparse.klu_analyze.ll",

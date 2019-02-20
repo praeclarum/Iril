@@ -33,6 +33,7 @@ namespace Repil
 
         public FieldReference[] ElementFields;
 
+        public MethodReference ToInt8, ToInt16, ToInt32, ToInt64;
         public MethodReference Add, Subtract;
         public MethodReference Multiply, Divide;
     }
@@ -606,9 +607,9 @@ namespace Repil
                     }
                     break;
                 case IR.SextInstruction sext:
-                    EmitTypedValue (sext.Value);
                     switch (sext.Type) {
                         case Types.IntegerType intt:
+                            EmitTypedValue (sext.Value);
                             switch (intt.Bits) {
                                 case 1:
                                 case 8:
@@ -622,6 +623,23 @@ namespace Repil
                                     break;
                                 default:
                                     Emit (il.Create (OpCodes.Conv_I8));
+                                    break;
+                            }
+                            break;
+                        case VectorType vt when vt.ElementType is Types.IntegerType vintt:
+                            switch (vintt.Bits) {
+                                case 1:
+                                case 8:
+                                    EmitVectorUnop (OpCodes.Conv_I1, sext.Value, vt);
+                                    break;
+                                case 16:
+                                    EmitVectorUnop (OpCodes.Conv_I2, sext.Value, vt);
+                                    break;
+                                case 32:
+                                    EmitVectorUnop (OpCodes.Conv_I4, sext.Value, vt);
+                                    break;
+                                default:
+                                    EmitVectorUnop (OpCodes.Conv_I8, sext.Value, vt);
                                     break;
                             }
                             break;
@@ -1149,6 +1167,28 @@ namespace Repil
             //vdbgs.Add (dbg);
 
             return vd;
+        }
+
+        void EmitVectorUnop (OpCode op, IR.TypedValue op1, Types.VectorType type)
+        {
+            EmitTypedValue (op1);
+            var v = GetVectorType (type);
+            switch (op.Code) {
+                case Code.Conv_I1:
+                    Emit (il.Create (OpCodes.Call, v.ToInt8));
+                    break;
+                case Code.Conv_I2:
+                    Emit (il.Create (OpCodes.Call, v.ToInt16));
+                    break;
+                case Code.Conv_I4:
+                    Emit (il.Create (OpCodes.Call, v.ToInt32));
+                    break;
+                case Code.Conv_I8:
+                    Emit (il.Create (OpCodes.Call, v.ToInt64));
+                    break;
+                default:
+                    throw new NotSupportedException ($"Cannot perform vector unop {op.Code} {type}");
+            }
         }
 
         void EmitVectorOp (OpCode op, IR.Value op1, IR.Value op2, Types.VectorType type)

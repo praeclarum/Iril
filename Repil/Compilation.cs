@@ -645,6 +645,31 @@ namespace Repil
             //
             // Generate operations
             //
+            var unopMethods = new[] {
+                ("ToInt8", OpCodes.Conv_I1),
+                ("ToInt16", OpCodes.Conv_I2),
+                ("ToInt32", OpCodes.Conv_I4),
+                ("ToInt64", OpCodes.Conv_I8),
+            };
+            foreach (var (name, opcode) in unopMethods) {
+                var mop = new MethodDefinition (name, MethodAttributes.Public | MethodAttributes.Static, td);
+                mop.Parameters.Add (new ParameterDefinition ("a", ParameterAttributes.None, td));
+
+                var body = new MethodBody (ctor);
+                var il = body.GetILProcessor ();
+                for (var i = 0; i < key.Length; i++) {
+                    il.Append (il.Create (OpCodes.Ldarg_0));
+                    il.Append (il.Create (OpCodes.Ldfld, td.Fields[i]));
+                    il.Append (il.Create (opcode));
+                }
+                il.Append (il.Create (OpCodes.Newobj, ctor));
+                il.Append (il.Create (OpCodes.Ret));
+                body.Optimize ();
+
+                mop.Body = body;
+                td.Methods.Add (mop);
+                typeof (SimdVector).GetField (name).SetValue (r, mop);
+            }
             var opMethods = new[] {
                 ("Add", OpCodes.Add),
                 ("Subtract", OpCodes.Sub),
