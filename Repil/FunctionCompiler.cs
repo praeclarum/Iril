@@ -334,6 +334,16 @@ namespace Repil
                     EmitValue (fcmp.Op1, fcmp.Type);
                     EmitValue (fcmp.Op2, fcmp.Type);
                     switch (fcmp.Condition) {
+                        case IR.FcmpCondition.True:
+                            Emit (il.Create (OpCodes.Pop));
+                            Emit (il.Create (OpCodes.Pop));
+                            Emit (il.Create (OpCodes.Ldc_I4_1));
+                            break;
+                        case IR.FcmpCondition.False:
+                            Emit (il.Create (OpCodes.Pop));
+                            Emit (il.Create (OpCodes.Pop));
+                            Emit (il.Create (OpCodes.Ldc_I4_0));
+                            break;
                         case IR.FcmpCondition.OrderedEqual:
                             Emit (il.Create (OpCodes.Ceq));
                             break;
