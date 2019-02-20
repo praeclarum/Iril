@@ -13,7 +13,7 @@ namespace Tests
     [TestFixture]
     public unsafe class EndToEndTests : TestsBase
     {
-        // clang -g -O3 -S -emit-llvm -fpic *.c
+
 
         [Test]
         public void SuiteSparse ()
