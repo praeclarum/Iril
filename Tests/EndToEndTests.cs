@@ -38,6 +38,8 @@ namespace Tests
             catch { }
             compilation.WriteAssembly (asmPath);
 
+            Assert.IsFalse (compilation.HasErrors, "Errors Found:\n    " + String.Join ("\n    ", compilation.Messages));
+
             var disProc = new Process {
                 StartInfo = new ProcessStartInfo {
                     FileName = "ikdasm",

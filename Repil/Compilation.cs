@@ -424,6 +424,7 @@ namespace Repil
                         fc.CompileFunction ();
                     }
                     catch (Exception ex) {
+                        ErrorMessage ($"Failed to compile {m.Key}: {ex.Message}", ex);
                         CompileFailedFunction (m.Value, ex);
                     }
                 }
@@ -431,6 +432,15 @@ namespace Repil
                     CompileMissingFunction (m.Value);
                 }
             }
+        }
+
+        public readonly List<Message> Messages = new List<Message> ();
+
+        public bool HasErrors => Messages.Exists (m => m.Type == MessageType.Error);
+
+        void ErrorMessage (string message, Exception exception)
+        {
+            Messages.Add (new Message (message, exception));
         }
 
         void CompileFailedFunction (DefinedFunction function, Exception ex)
