@@ -103,10 +103,7 @@ namespace Repil.IR
 
         public IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
 
-        public override string ToString ()
-        {
-            return $"{Type} {Value}";
-        }
+        public override string ToString () => $"{Type} {Value}";
     }
 
     public class GetElementPointerValue : Value

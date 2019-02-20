@@ -600,13 +600,23 @@ namespace Repil
                         var crt = GetVectorType (sh.Type);
                         var local1 = GetVectorTempVariable (ctype1, sh.Value1.Value, 0);
                         var local2 = GetVectorTempVariable (ctype2, sh.Value2.Value, 0);
-                        foreach (var c in ((IR.VectorConstant)sh.Mask.Value).Constants) {
-                            var index = c.Constant.Int32Value;
-                            var loc = index >= len1 ? local2 : local1;
-                            var loci = index >= len1 ? index - len1 : index;
-                            var typ = index >= len1 ? ctype2 : ctype1;
-                            Emit (il.Create (OpCodes.Ldloc, loc));
-                            Emit (il.Create (OpCodes.Ldfld, typ.ElementFields[loci]));
+                        if (sh.Mask.Value is ZeroConstant) {
+                            for (var c = 0; c < len1; c++) {
+                                EmitZeroValue (type1.ElementType);
+                            }
+                        }
+                        else if (sh.Mask.Value is VectorConstant vc) {
+                            foreach (var c in vc.Constants) {
+                                var index = c.Constant.Int32Value;
+                                var loc = index >= len1 ? local2 : local1;
+                                var loci = index >= len1 ? index - len1 : index;
+                                var typ = index >= len1 ? ctype2 : ctype1;
+                                Emit (il.Create (OpCodes.Ldloc, loc));
+                                Emit (il.Create (OpCodes.Ldfld, typ.ElementFields[loci]));
+                            }
+                        }
+                        else {
+                            throw new NotSupportedException ("Cannot shuffle with mask: " + sh.Mask);
                         }
                         Emit (il.Create (OpCodes.Newobj, crt.Ctor));
                     }
