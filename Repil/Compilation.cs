@@ -50,6 +50,8 @@ namespace Repil
         public MethodReference sysMathCeilD;
         public MethodReference sysMathFloorD;
         public MethodReference sysMathSqrtD;
+        public MethodReference sysSingleIsNaN;
+        public MethodReference sysDoubleIsNaN;
         TypeReference sysEventArgs;
         TypeReference sysIAsyncResult;
         TypeReference sysAsyncCallback;
@@ -194,6 +196,8 @@ namespace Repil
             sysIntPtr = Import ("System.IntPtr");
             sysSingle = Import ("System.Single");
             sysDouble = Import ("System.Double");
+            sysSingleIsNaN = ImportMethod (sysSingle, sysBoolean, "IsNaN", sysSingle);
+            sysDoubleIsNaN = ImportMethod (sysDouble, sysBoolean, "IsNaN", sysDouble);
             sysVoid = Import ("System.Void");
             sysVoidPtr = sysVoid.MakePointerType ();
             sysString = Import ("System.String");
