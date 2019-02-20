@@ -27,7 +27,8 @@ namespace Tests
                 "SuiteSparse.klu_analyze_given.ll",
                 "SuiteSparse.klu_defaults.ll",
                 "SuiteSparse.klu_diagnostics.ll",
-                //"SuiteSparse.klu_dump.ll",
+                "SuiteSparse.klu_dump.ll",
+                "SuiteSparse.klu_extract.ll",
                 "SuiteSparse.klu_memory.ll",
                 }
                 .Select (x => Repil.Module.Parse (GetCode (x)));

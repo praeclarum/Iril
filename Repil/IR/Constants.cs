@@ -34,6 +34,24 @@ namespace Repil.IR
         public override string ToString () => $"{Type} {Constant}";
     }
 
+    public class ArrayConstant : ComplexConstant
+    {
+        public readonly TypedConstant[] Constants;
+
+        public ArrayConstant (IEnumerable<TypedConstant> constants)
+        {
+            if (constants == null) {
+                throw new ArgumentNullException (nameof (constants));
+            }
+
+            Constants = constants.ToArray ();
+        }
+
+        public override int Int32Value => 0;
+
+        public override string ToString () => $"[{string.Join (", ", (object[])Constants)}]";
+    }
+
     public class BooleanConstant : SimpleConstant
     {
         public static readonly BooleanConstant True = new BooleanConstant (true);

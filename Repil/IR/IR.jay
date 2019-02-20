@@ -479,6 +479,10 @@ constant
     {
         $$ = new VectorConstant ((List<TypedConstant>)$2);
     }
+    | '[' typed_constants ']'
+    {
+        $$ = new ArrayConstant ((List<TypedConstant>)$2);
+    }
     | '{' typed_values '}'
     {
         $$ = new StructureConstant ((List<TypedValue>)$2);
