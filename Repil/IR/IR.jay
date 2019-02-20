@@ -459,6 +459,10 @@ value
     {
         $$ = new GetElementPointerValue ((LType)$4, (TypedValue)$6, (List<TypedValue>)$8);
     }
+    | BITCAST '(' typed_value TO type ')'
+    {
+        $$ = new BitcastValue ((TypedValue)$3, (LType)$5);
+    }
     ;
     
 pointer_value

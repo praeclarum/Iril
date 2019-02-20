@@ -10,6 +10,28 @@ namespace Repil.IR
         public virtual IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
     }
 
+    public class BitcastValue : ConversionValue
+    {
+        public BitcastValue (TypedValue value, LType type)
+            : base (value, type)
+        {
+        }
+    }
+
+    public abstract class ConversionValue : Value
+    {
+        public readonly TypedValue Value;
+        public readonly LType Type;
+
+        protected ConversionValue (TypedValue value, LType type)
+        {
+            Value = value;
+            Type = type;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
+    }
+
     public class LabelValue : Value
     {
         public readonly LocalSymbol Symbol;

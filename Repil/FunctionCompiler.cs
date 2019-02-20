@@ -292,6 +292,7 @@ namespace Repil
                     }
                     break;
                 case IR.BitcastInstruction bitcast:
+                    // CLR doesn't need bitcast
                     EmitTypedValue (bitcast.Input);
                     break;
                 case IR.CallInstruction call:
@@ -802,6 +803,10 @@ namespace Repil
         void EmitValue (IR.Value value, LType type)
         {
             switch (value) {
+                case IR.BitcastValue bitcast:
+                    // CLR doesn't need bitcast
+                    EmitTypedValue (bitcast.Value);
+                    break;
                 case IR.BooleanConstant b:
                     Emit (il.Create (b.IsTrue ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0));
                     break;
