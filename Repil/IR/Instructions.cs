@@ -187,6 +187,14 @@ namespace Repil.IR
         }
     }
 
+    public class DivInstruction : BinaryInstruction
+    {
+        public DivInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
+        {
+        }
+    }
+
     public class ExtractElementInstruction : Instruction
     {
         public readonly TypedValue Value;

@@ -18,7 +18,11 @@ namespace Repil
 
         public override string ToString ()
         {
+#if DEBUG
+            return $"{Type}: {Text}\n{Exception}";
+#else
             return $"{Type}: {Text}";
+#endif
         }
     }
 

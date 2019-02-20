@@ -33,8 +33,8 @@ namespace Repil
 
         public FieldReference[] ElementFields;
 
-        //public MethodReference Add;
-        public MethodReference Subtract;
+        public MethodReference Add, Subtract;
+        public MethodReference Multiply, Divide;
     }
 
     class FunctionCompiler
@@ -267,19 +267,29 @@ namespace Repil
         {
             switch (instruction) {
                 case IR.AddInstruction add:
-                    EmitValue (add.Op1, add.Type);
-                    EmitValue (add.Op2, add.Type);
-                    Emit (il.Create (OpCodes.Add));
+                    if (add.Type is Types.VectorType) {
+                        EmitVectorOp (OpCodes.Add, add.Op1, add.Op2, (Types.VectorType)add.Type);
+                    }
+                    else {
+                        EmitValue (add.Op1, add.Type);
+                        EmitValue (add.Op2, add.Type);
+                        Emit (il.Create (OpCodes.Add));
+                    }
                     break;
-                case IR.AllocaInstruction add:
-                    Emit (il.Create (OpCodes.Ldc_I4, (int)add.Type.GetByteSize (function.IRModule)));
+                case IR.AllocaInstruction alloca:
+                    Emit (il.Create (OpCodes.Ldc_I4, (int)alloca.Type.GetByteSize (function.IRModule)));
                     Emit (il.Create (OpCodes.Conv_U));
                     Emit (il.Create (OpCodes.Localloc));
                     break;
                 case IR.AndInstruction and:
-                    EmitValue (and.Op1, and.Type);
-                    EmitValue (and.Op2, and.Type);
-                    Emit (il.Create (OpCodes.And));
+                    if (and.Type is Types.VectorType) {
+                        EmitVectorOp (OpCodes.And, and.Op1, and.Op2, (Types.VectorType)and.Type);
+                    }
+                    else {
+                        EmitValue (and.Op1, and.Type);
+                        EmitValue (and.Op2, and.Type);
+                        Emit (il.Create (OpCodes.And));
+                    }
                     break;
                 case IR.BitcastInstruction bitcast:
                     EmitTypedValue (bitcast.Input);
@@ -292,6 +302,16 @@ namespace Repil
                     if (cbr.IfFalse.Symbol != nextBlock?.Symbol)
                         Emit (il.Create (OpCodes.Br, GetLabel (cbr.IfFalse)));
                     break;
+                case IR.DivInstruction div:
+                    if (div.Type is Types.VectorType) {
+                        EmitVectorOp (OpCodes.Div, div.Op1, div.Op2, (Types.VectorType)div.Type);
+                    }
+                    else {
+                        EmitValue (div.Op1, div.Type);
+                        EmitValue (div.Op2, div.Type);
+                        Emit (il.Create (OpCodes.Div));
+                    }
+                    break;
                 case IR.ExtractElementInstruction ee: {
                         EmitTypedValue (ee.Value);
                         var index = ((IR.Constant)ee.Index.Value).Int32Value;
@@ -300,13 +320,13 @@ namespace Repil
                         Emit (il.Create (OpCodes.Ldfld, field));
                     }
                     break;
-                case IR.FaddInstruction add:
-                    if (add.Type is Types.VectorType) {
-                        EmitVectorOp (OpCodes.Add, add.Op1, add.Op2, (Types.VectorType)add.Type);
+                case IR.FaddInstruction fadd:
+                    if (fadd.Type is Types.VectorType) {
+                        EmitVectorOp (OpCodes.Add, fadd.Op1, fadd.Op2, (Types.VectorType)fadd.Type);
                     }
                     else {
-                        EmitValue (add.Op1, add.Type);
-                        EmitValue (add.Op2, add.Type);
+                        EmitValue (fadd.Op1, fadd.Type);
+                        EmitValue (fadd.Op2, fadd.Type);
                         Emit (il.Create (OpCodes.Add));
                     }
                     break;
@@ -1091,11 +1111,21 @@ namespace Repil
             EmitValue (op1, type);
             EmitValue (op2, type);
             var v = GetVectorType (type);
-            if (op.Code == Code.Sub) {
-                Emit (il.Create (OpCodes.Call, v.Subtract));
-            }
-            else {
-                throw new NotSupportedException ($"Cannot {op.Code} {type}");
+            switch (op.Code) {
+                case Code.Add:
+                    Emit (il.Create (OpCodes.Call, v.Add));
+                    break;
+                case Code.Sub:
+                    Emit (il.Create (OpCodes.Call, v.Subtract));
+                    break;
+                case Code.Mul:
+                    Emit (il.Create (OpCodes.Call, v.Multiply));
+                    break;
+                case Code.Div:
+                    Emit (il.Create (OpCodes.Call, v.Divide));
+                    break;
+                default:
+                    throw new NotSupportedException ($"Cannot perform vector op {op.Code} {type}");
             }
         }
 

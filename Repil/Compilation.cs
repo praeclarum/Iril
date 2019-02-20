@@ -628,10 +628,28 @@ namespace Repil
                 ctor.Body = body;
                 td.Methods.Add (ctor);
             }
-            var sub = new MethodDefinition ("Subtract", MethodAttributes.Public | MethodAttributes.Static, td);
+
+            var r = new SimdVector {
+                ElementClrType = elementType,
+                ClrType = td,
+                Ctor = ctor,
+                ElementFields = td.Fields.Select (x => (FieldReference)x).ToArray (),
+            };
+
+            //
+            // Generate operations
+            //
+            var opMethods = new[] {
+                ("Add", OpCodes.Add),
+                ("Subtract", OpCodes.Sub),
+                ("Multiply", OpCodes.Mul),
+                ("Divide", OpCodes.Div),
+            };
+            foreach (var (name, opcode) in opMethods)
             {
-                sub.Parameters.Add (new ParameterDefinition ("a", ParameterAttributes.None, td));
-                sub.Parameters.Add (new ParameterDefinition ("b", ParameterAttributes.None, td));
+                var mop = new MethodDefinition (name, MethodAttributes.Public | MethodAttributes.Static, td);
+                mop.Parameters.Add (new ParameterDefinition ("a", ParameterAttributes.None, td));
+                mop.Parameters.Add (new ParameterDefinition ("b", ParameterAttributes.None, td));
 
                 var body = new MethodBody (ctor);
                 var il = body.GetILProcessor ();
@@ -640,24 +658,18 @@ namespace Repil
                     il.Append (il.Create (OpCodes.Ldfld, td.Fields[i]));
                     il.Append (il.Create (OpCodes.Ldarg_1));
                     il.Append (il.Create (OpCodes.Ldfld, td.Fields[i]));
-                    il.Append (il.Create (OpCodes.Sub));
+                    il.Append (il.Create (opcode));
                 }
                 il.Append (il.Create (OpCodes.Newobj, ctor));
                 il.Append (il.Create (OpCodes.Ret));
                 body.Optimize ();
 
-                sub.Body = body;
-                td.Methods.Add (sub);
+                mop.Body = body;
+                td.Methods.Add (mop);
+                typeof (SimdVector).GetField (name).SetValue (r, mop);
             }
 
             mod.Types.Add (td);
-            var r = new SimdVector {
-                ElementClrType = elementType,
-                ClrType = td,
-                Ctor = ctor,
-                Subtract = sub,
-                ElementFields = td.Fields.Select (x => (FieldReference)x).ToArray (),
-            };
             vectorTypes[key] = r;
 
             return r;
