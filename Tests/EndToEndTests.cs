@@ -21,7 +21,6 @@ namespace Tests
             var asmFileName = "SuiteSparse.dll";
             var irmods = new[] {
                 "SuiteSparse.colamd.ll",
-                "SuiteSparse.SuiteSparse_config.ll",
                 "SuiteSparse.klu.ll",
                 "SuiteSparse.klu_analyze.ll",
                 "SuiteSparse.klu_analyze_given.ll",
@@ -34,6 +33,12 @@ namespace Tests
                 "SuiteSparse.klu_free_symbolic.ll",
                 "SuiteSparse.klu_kernel.ll",
                 "SuiteSparse.klu_memory.ll",
+                "SuiteSparse.klu_refactor.ll",
+                "SuiteSparse.klu_scale.ll",
+                "SuiteSparse.klu_solve.ll",
+                "SuiteSparse.klu_sort.ll",
+                "SuiteSparse.klu_tsolve.ll",
+                "SuiteSparse.SuiteSparse_config.ll",
                 }
                 .Select (x => Repil.Module.Parse (GetCode (x)));
             var compilation = new Compilation (
