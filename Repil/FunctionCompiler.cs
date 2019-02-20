@@ -749,6 +749,16 @@ namespace Repil
                             throw new NotSupportedException ($"Cannot trunc {trunc.Type}");
                     }
                     break;
+                case IR.UdivInstruction udiv:
+                    if (udiv.Type is Types.VectorType) {
+                        EmitVectorOp (OpCodes.Div_Un, udiv.Op1, udiv.Op2, (Types.VectorType)udiv.Type);
+                    }
+                    else {
+                        EmitValue (udiv.Op1, udiv.Type);
+                        EmitValue (udiv.Op2, udiv.Type);
+                        Emit (il.Create (OpCodes.Div_Un));
+                    }
+                    break;
                 case IR.UitofpInstruction uitofp:
                     EmitTypedValue (uitofp.Value);
                     switch (uitofp.Type) {
