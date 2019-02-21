@@ -1121,10 +1121,10 @@ namespace Repil
                     nextValue++;
                 }
 
+                EmitTypedValue (sw.Value);
                 if (offset != 0) {
                     EmitValue (rem[0].Value.Constant, rem[0].Value.Type);
                 }
-                EmitTypedValue (sw.Value);
 
                 if (endIndex > 1) {
                     var labels =
