@@ -13,8 +13,6 @@ namespace Tests
     [TestFixture]
     public unsafe class EndToEndTests : TestsBase
     {
-
-
         [Test]
         public void SuiteSparse ()
         {
@@ -94,9 +92,15 @@ namespace Tests
 
             var funcs = asm.GetType ("SuiteSparse.Functions");
             Assert.NotNull (funcs);
-            var defs = funcs.GetMethod ("klu_defaults");
-            Assert.NotNull (defs);
-            var rnull = defs.Invoke (null, new object[] { IntPtr.Zero });
+            var klu_defaults = funcs.GetMethod ("klu_defaults");
+            var klu_analyze = funcs.GetMethod ("klu_analyze");
+            var klu_factor = funcs.GetMethod ("klu_factor");
+            var klu_solve = funcs.GetMethod ("klu_solve");
+            Assert.NotNull (klu_defaults);
+            Assert.NotNull (klu_analyze);
+            Assert.NotNull (klu_factor);
+            Assert.NotNull (klu_solve);
+            var rnull = klu_defaults.Invoke (null, new object[] { IntPtr.Zero });
             Assert.AreEqual (0, rnull);
 
             var testMemory = true;
@@ -110,18 +114,46 @@ namespace Tests
                 Assert.NotZero ((long)ssrealloc);
                 var ssfree = Pointer.Unbox (funcs.GetMethod ("SuiteSparse_free").Invoke (null, new object[] { Pointer.Box (ssrealloc, typeof (byte*)) }));
                 Assert.AreEqual (0L, (long)ssfree);
-
-                var commont = asm.GetType ("SuiteSparse.klu_common");
-                Assert.NotNull (commont);
-                var common = Activator.CreateInstance (commont);
-                Assert.NotNull (common);
-                var h = GCHandle.Alloc (common, GCHandleType.Pinned);
-                var rcommon = defs.Invoke (null, new object[] { h.AddrOfPinnedObject () });
-                h.Free ();
-                Assert.AreEqual (1, rcommon);
-                var tol = commont.GetField ("tol").GetValue (common);
-                Assert.AreEqual (0.001, tol);
             }
+
+            var commont = asm.GetType ("SuiteSparse.klu_common");
+            Assert.NotNull (commont);
+            var common = Activator.CreateInstance (commont);
+            Assert.NotNull (common);
+            var hcommon = GCHandle.Alloc (common, GCHandleType.Pinned);
+            var rklu_defaults = klu_defaults.Invoke (null, new object[] { hcommon.AddrOfPinnedObject () });
+            Assert.AreEqual (1, rklu_defaults);
+            var tol = commont.GetField ("tol").GetValue (common);
+            Assert.AreEqual (0.001, tol);
+
+            var testSolve = false;
+            if (testSolve) {
+                var n = 5;
+                var b = new[] { 8.0, 45.0, -3.0, 3.0, 19.0 };
+                var ap = new[] { 0, 2, 5, 9, 10, 12 };
+                var ai = new[] { 0, 1, 0, 2, 4, 1, 2, 3, 4, 2, 1, 4 };
+                var ax = new double[] { 2.0, 3.0, 3.0, -1.0, 4.0, 4.0, -3.0, 1.0, 2.0, 2.0, 6.0, 1.0 };
+
+                var hb = GCHandle.Alloc (b, GCHandleType.Pinned);
+                var hap = GCHandle.Alloc (ap, GCHandleType.Pinned);
+                var hai = GCHandle.Alloc (ai, GCHandleType.Pinned);
+                var hax = GCHandle.Alloc (ax, GCHandleType.Pinned);
+
+                var rklu_analyze = klu_analyze.Invoke (null, new object[] {
+                    n,
+                    hap.AddrOfPinnedObject (),
+                    hai.AddrOfPinnedObject (),
+                    hcommon.AddrOfPinnedObject (),
+                });
+                Assert.AreNotEqual (IntPtr.Zero, (IntPtr)Pointer.Unbox (rklu_analyze));
+
+                hb.Free ();
+                hap.Free ();
+                hai.Free ();
+                hax.Free ();
+            }
+
+            hcommon.Free ();
         }
     }
 }
