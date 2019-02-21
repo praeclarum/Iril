@@ -12,7 +12,7 @@ namespace Tests
             var ir = CToIR (@"
 void *myprint(const char *format, ...) {
 }");
-            Console.WriteLine (ir);
+            //Console.WriteLine (ir);
         }
     }
 }

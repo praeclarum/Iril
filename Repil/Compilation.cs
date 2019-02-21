@@ -601,10 +601,10 @@ namespace Repil
             if (vectorTypes.TryGetValue (key, out var vct)) {
                 return vct;
             }
-            return AddVectorType (key, et);
+            return AddVectorType (key, vt, et);
         }
 
-        SimdVector AddVectorType ((int Length, string TypeFullName) key, TypeReference elementType)
+        SimdVector AddVectorType ((int Length, string TypeFullName) key, VectorType irType, TypeReference elementType)
         {
             var tname = $"Vector{key.Length}{elementType.Name}";
 
@@ -642,17 +642,22 @@ namespace Repil
                 ElementFields = td.Fields.Select (x => (FieldReference)x).ToArray (),
             };
 
+            mod.Types.Add (td);
+            vectorTypes[key] = r;
+
             //
             // Generate operations
             //
             var unopMethods = new[] {
-                ("ToInt8", OpCodes.Conv_I1),
-                ("ToInt16", OpCodes.Conv_I2),
-                ("ToInt32", OpCodes.Conv_I4),
-                ("ToInt64", OpCodes.Conv_I8),
+                ("ToInt8", OpCodes.Conv_I1, new VectorType (irType.Length, IntegerType.I1)),
+                ("ToInt16", OpCodes.Conv_I2, new VectorType (irType.Length, IntegerType.I16)),
+                ("ToInt32", OpCodes.Conv_I4, new VectorType (irType.Length, IntegerType.I32)),
+                ("ToInt64", OpCodes.Conv_I8, new VectorType (irType.Length, IntegerType.I64)),
             };
-            foreach (var (name, opcode) in unopMethods) {
-                var mop = new MethodDefinition (name, MethodAttributes.Public | MethodAttributes.Static, td);
+            foreach (var (name, opcode, vt) in unopMethods) {
+                var cvt = GetClrType (vt);
+                var cvtCtor = cvt.Resolve ().Methods.First (x => x.Name == ".ctor" && x.Parameters.Count > 0);
+                var mop = new MethodDefinition (name, MethodAttributes.Public | MethodAttributes.Static, cvt);
                 mop.Parameters.Add (new ParameterDefinition ("a", ParameterAttributes.None, td));
 
                 var body = new MethodBody (ctor);
@@ -662,7 +667,7 @@ namespace Repil
                     il.Append (il.Create (OpCodes.Ldfld, td.Fields[i]));
                     il.Append (il.Create (opcode));
                 }
-                il.Append (il.Create (OpCodes.Newobj, ctor));
+                il.Append (il.Create (OpCodes.Newobj, cvtCtor));
                 il.Append (il.Create (OpCodes.Ret));
                 body.Optimize ();
 
@@ -700,8 +705,6 @@ namespace Repil
                 typeof (SimdVector).GetField (name).SetValue (r, mop);
             }
 
-            mod.Types.Add (td);
-            vectorTypes[key] = r;
 
             return r;
         }
