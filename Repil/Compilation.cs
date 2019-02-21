@@ -73,13 +73,18 @@ namespace Repil
         public bool TryGetFunction (Symbol symbol, out DefinedFunction function) =>
             methodDefs.TryGetValue (symbol, out function);
 
-        readonly SymbolTable<FieldDefinition> globals =
-            new SymbolTable<FieldDefinition> ();
+        readonly SymbolTable<SymbolTable<FieldDefinition>> globals =
+            new SymbolTable<SymbolTable<FieldDefinition>> ();
 
-        public bool TryGetGlobal (Symbol symbol, out FieldDefinition global) =>
-            globals.TryGetValue (symbol, out global);
+        public bool TryGetGlobal (Symbol module, Symbol symbol, out FieldDefinition global)
+        {
+            if (globals.TryGetValue (module, out var mglobals))
+                return mglobals.TryGetValue (symbol, out global);
+            global = null;
+            return false;
+        }
 
-        public FieldDefinition GetGlobal (Symbol symbol) => globals[symbol];
+        public FieldDefinition GetGlobal (Symbol module, Symbol symbol) => globals[module][symbol];
 
         Syscalls syscalls;
 
@@ -257,28 +262,87 @@ namespace Repil
 
         void EmitGlobalVariables ()
         {
-            if (!Modules.Any (m => m.GlobalVariables.Count > 0))
-                return;
+            //var publicGlobalsType = new TypeDefinition (namespac, "Globals", TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, sysObj);
+            //mod.Types.Add (publicGlobalsType);
 
-            var gstd = new TypeDefinition (namespac, "Globals", TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, sysObj);
-            mod.Types.Add (gstd);
-
+            //
+            // Define globals
+            //
             foreach (var m in Modules) {
+
+                if (m.GlobalVariables.All (x => x.Value.IsExternal))
+                    continue;
+
+                if (!globals.TryGetValue (m.Symbol, out var mglobals)) {
+                    mglobals = new SymbolTable<FieldDefinition> ();
+                    globals.Add (m.Symbol, mglobals);
+                }
+
+                var isPrivate = false;//m.GlobalVariables.All (x => x.Value.IsExternal || x.Value.IsPrivate);
+
+                var moduleGlobalsType = new TypeDefinition (
+                    namespac, m.Symbol.ToString (),
+                    TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract | TypeAttributes.Sealed
+                    | (isPrivate ? 0 : TypeAttributes.Public),
+                    sysObj);
+                mod.Types.Add (moduleGlobalsType);
+
                 foreach (var kv in m.GlobalVariables) {
 
                     var symbol = kv.Key;
                     var g = kv.Value;
 
+                    if (g.IsExternal)
+                        continue;
                     if (globals.ContainsKey (symbol))
                         continue;
 
                     var gname = GetIdentifier (symbol);
 
                     var gtype = GetClrType (g.Type);
-                    var field = new FieldDefinition (gname, FieldAttributes.Static | FieldAttributes.Public, gtype);
+                    var field = new FieldDefinition (
+                        gname,
+                        FieldAttributes.Static | (FieldAttributes.Public), gtype);
 
-                    gstd.Fields.Add (field);
-                    globals.Add (symbol, field);
+                    moduleGlobalsType.Fields.Add (field);
+                    mglobals.Add (symbol, field);
+                }
+            }
+
+            //
+            // Link module variables
+            //
+            foreach (var m in Modules) {
+
+                if (!m.GlobalVariables.Any (x => x.Value.IsExternal))
+                    continue;
+
+                if (!globals.TryGetValue (m.Symbol, out var mglobals)) {
+                    mglobals = new SymbolTable<FieldDefinition> ();
+                    globals.Add (m.Symbol, mglobals);
+                }
+
+                foreach (var kv in m.GlobalVariables) {
+
+                    var symbol = kv.Key;
+                    var ident = GetIdentifier (symbol);
+                    var g = kv.Value;
+
+                    if (!g.IsExternal)
+                        continue;
+
+                    var field = from ms in globals.Values
+                                from mkv in ms
+                                let mg = mkv.Value
+                                where mg.IsPublic && mg.Name == ident
+                                select mg;
+                    var f = field.FirstOrDefault ();
+                    if (f != null) {
+                        mglobals.Add (symbol, f);
+                    }
+                    else {
+                        ErrorMessage ($"Global variable `{symbol}` is undefined");
+                    }
                 }
             }
         }
@@ -444,7 +508,7 @@ namespace Repil
 
         public bool HasErrors => Messages.Exists (m => m.Type == MessageType.Error);
 
-        void ErrorMessage (string message, Exception exception)
+        void ErrorMessage (string message, Exception exception = null)
         {
             Messages.Add (new Message (message, exception));
         }

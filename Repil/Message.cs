@@ -12,7 +12,7 @@ namespace Repil
         public Message (string message, Exception exception)
         {
             Type = MessageType.Error;
-            Text = message;
+            Text = message ?? throw new ArgumentNullException (nameof (message));
             this.exception = exception;
         }
 

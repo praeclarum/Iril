@@ -13,6 +13,8 @@ namespace Repil
     /// </summary>
     public class Module
     {
+        public Symbol Symbol { get; private set; }
+
         /// <summary>
         /// The original module identifier
         /// </summary>
@@ -42,19 +44,29 @@ namespace Repil
 
         public SymbolTable<object> Metadata = new SymbolTable<object> ();
 
-        public static Module Parse (string llvm)
+        public static Module Parse (string llvm, string filename = "")
         {
             var module = new Module ();
+            module.Symbol = GetIdentifier (filename);
             var parser = new Parser (module);
             var lex = new Lexer (llvm);
             try {
                 parser.yyparse (lex, null);
+                if (!string.IsNullOrEmpty (module.SourceFilename))
+                    module.Symbol = GetIdentifier (module.SourceFilename);
             }
             catch (Exception ex) {
                 var m = $"{ex.Message}\n{lex.Surrounding}";
                 throw new Exception (m, ex);
             }
             return module;
+        }
+
+        static Symbol GetIdentifier (string rawName)
+        {
+            var name = System.IO.Path.GetFileNameWithoutExtension (rawName ?? "");
+            var lastName = name.Split (new[] { '.', ' ', '\t', '\r', '\n', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault ();
+            return lastName ?? "Module";
         }
     }
 }

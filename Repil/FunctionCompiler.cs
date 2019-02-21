@@ -861,7 +861,7 @@ namespace Repil
                     if (compilation.TryGetFunction (g.Symbol, out var ff)) {
                         Emit (il.Create (OpCodes.Ldftn, ff.ILDefinition));
                     }
-                    else if (compilation.TryGetGlobal (g.Symbol, out var globalVariableField)) {
+                    else if (compilation.TryGetGlobal (function.IRModule.Symbol, g.Symbol, out var globalVariableField)) {
                         Emit (il.Create (OpCodes.Ldfld, globalVariableField));
                     }
                     else {
@@ -976,7 +976,7 @@ namespace Repil
         void EmitValuePointer (IR.Value value, LType type)
         {
             if (value is IR.GlobalValue g) {
-                Emit (il.Create (OpCodes.Ldsflda, compilation.GetGlobal (g.Symbol)));
+                Emit (il.Create (OpCodes.Ldsflda, compilation.GetGlobal (function.IRModule.Symbol, g.Symbol)));
                 Emit (il.Create (OpCodes.Conv_U));
             }
             else {
