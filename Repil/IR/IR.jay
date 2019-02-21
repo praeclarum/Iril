@@ -112,30 +112,30 @@ module_part
 global_variable
     : GLOBAL_SYMBOL '=' function_addr global_kind type constant ',' ALIGN INTEGER metadata_kvs
     {
-        $$ = new GlobalVariable ((GlobalSymbol)$1, (bool)$4, (LType)$5, (Constant)$6, isPrivate: false);
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, (Constant)$6, isPrivate: false, isExternal: false, isConstant: (bool)$4);
     }
     | GLOBAL_SYMBOL '=' visibility function_addr global_kind type constant ',' ALIGN INTEGER
     {
-        $$ = new GlobalVariable ((GlobalSymbol)$1, (bool)$5, (LType)$6, (Constant)$7, isPrivate: true);
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Constant)$7, isPrivate: (bool)$3, isExternal: false, isConstant: (bool)$5);
     }
     | GLOBAL_SYMBOL '=' linkage function_addr global_kind type ',' ALIGN INTEGER
     {
-        $$ = new GlobalVariable ((GlobalSymbol)$1, (bool)$5, (LType)$6, null, isPrivate: true);
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, null, isPrivate: false, isExternal: (bool)$3, isConstant: false);
     }
     ;
     
 global_kind
-    : GLOBAL { $$ = true; }
+    : GLOBAL   { $$ = false; }
     | CONSTANT { $$ = true; }
     ;
     
 linkage
-    : EXTERNAL
-    | INTERNAL
+    : EXTERNAL { $$ = true; }
+    | INTERNAL { $$ = false; }
     ;
     
 visibility
-    : PRIVATE
+    : PRIVATE { $$ = true; }
     ;
     
 metadata_args

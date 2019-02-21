@@ -608,27 +608,39 @@ case 16:
 case 17:
 #line 116 "Repil/IR/IR.jay"
   {
-        yyVal = new GlobalVariable ((GlobalSymbol)yyVals[-9+yyTop], (bool)yyVals[-6+yyTop], (LType)yyVals[-5+yyTop], (Constant)yyVals[-4+yyTop], isPrivate: false);
+        yyVal = new GlobalVariable ((GlobalSymbol)yyVals[-9+yyTop], (LType)yyVals[-5+yyTop], (Constant)yyVals[-4+yyTop], isPrivate: false, isExternal: false, isConstant: (bool)yyVals[-6+yyTop]);
     }
   break;
 case 18:
 #line 120 "Repil/IR/IR.jay"
   {
-        yyVal = new GlobalVariable ((GlobalSymbol)yyVals[-9+yyTop], (bool)yyVals[-5+yyTop], (LType)yyVals[-4+yyTop], (Constant)yyVals[-3+yyTop], isPrivate: true);
+        yyVal = new GlobalVariable ((GlobalSymbol)yyVals[-9+yyTop], (LType)yyVals[-4+yyTop], (Constant)yyVals[-3+yyTop], isPrivate: (bool)yyVals[-7+yyTop], isExternal: false, isConstant: (bool)yyVals[-5+yyTop]);
     }
   break;
 case 19:
 #line 124 "Repil/IR/IR.jay"
   {
-        yyVal = new GlobalVariable ((GlobalSymbol)yyVals[-8+yyTop], (bool)yyVals[-4+yyTop], (LType)yyVals[-3+yyTop], null, isPrivate: true);
+        yyVal = new GlobalVariable ((GlobalSymbol)yyVals[-8+yyTop], (LType)yyVals[-3+yyTop], null, isPrivate: false, isExternal: (bool)yyVals[-6+yyTop], isConstant: false);
     }
   break;
 case 20:
 #line 128 "Repil/IR/IR.jay"
-  { yyVal = true; }
+  { yyVal = false; }
   break;
 case 21:
 #line 129 "Repil/IR/IR.jay"
+  { yyVal = true; }
+  break;
+case 22:
+#line 133 "Repil/IR/IR.jay"
+  { yyVal = true; }
+  break;
+case 23:
+#line 134 "Repil/IR/IR.jay"
+  { yyVal = false; }
+  break;
+case 24:
+#line 138 "Repil/IR/IR.jay"
   { yyVal = true; }
   break;
 case 25:

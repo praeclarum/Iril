@@ -6,16 +6,20 @@ namespace Repil.IR
     public class GlobalVariable
     {
         public readonly GlobalSymbol Symbol;
-        public readonly bool IsConstant;
         public readonly LType Type;
         public readonly Constant Initializer;
+        public readonly bool IsPrivate;
+        public readonly bool IsExternal;
+        public readonly bool IsConstant;
 
-        public GlobalVariable (GlobalSymbol symbol, bool isConstant, LType type, Constant initializer, bool isPrivate)
+        public GlobalVariable (GlobalSymbol symbol, LType type, Constant initializer, bool isPrivate, bool isExternal, bool isConstant)
         {
             Symbol = symbol;
-            IsConstant = isConstant;
             Type = type ?? throw new ArgumentNullException (nameof (type));
             Initializer = initializer;
+            IsPrivate = isPrivate;
+            IsExternal = isExternal;
+            IsConstant = isConstant;
         }
     }
 }
