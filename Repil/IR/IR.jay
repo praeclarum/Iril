@@ -19,7 +19,7 @@ namespace Repil.IR
 %token INTEGER HEX_INTEGER FLOAT_LITERAL STRING TRUE FALSE UNDEF VOID NULL LABEL X
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
 %token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL META_SYMBOL_DEF SYMBOL DISTINCT METADATA CONSTANT_BYTES
-%token TYPE HALF FLOAT DOUBLE X86_FP80 I1 I8 I16 I32 I64 ZEROINITIALIZER OPAQUE
+%token TYPE HALF FLOAT DOUBLE X86_FP80 INTEGER_TYPE ZEROINITIALIZER OPAQUE
 %token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR NOALIAS ELLIPSIS GLOBAL
 %token CONSTANT PRIVATE INTERNAL EXTERNAL FASTCC
 %token NONNULL NOCAPTURE WRITEONLY READONLY READNONE
@@ -284,15 +284,11 @@ return_type
     
 type
     : literal_structure
-    | HALF     { $$ = FloatType.Half; }
-    | FLOAT    { $$ = FloatType.Float; }
-    | DOUBLE   { $$ = FloatType.Double; }
-    | X86_FP80 { $$ = FloatType.X86_FP80; }
-    | I1       { $$ = IntegerType.I1; }
-    | I8       { $$ = IntegerType.I8; }
-    | I16      { $$ = IntegerType.I16; }
-    | I32      { $$ = IntegerType.I32; }
-    | I64      { $$ = IntegerType.I64; }
+    | INTEGER_TYPE
+    | HALF         { $$ = FloatType.Half; }
+    | FLOAT        { $$ = FloatType.Float; }
+    | DOUBLE       { $$ = FloatType.Double; }
+    | X86_FP80     { $$ = FloatType.X86_FP80; }
     | return_type '(' ')'
     {
         $$ = new FunctionType ((LType)$1, Enumerable.Empty<LType>());
@@ -777,7 +773,7 @@ terminator_instruction
     {
         $$ = new UnconditionalBrInstruction ((LabelValue)$2);
     }
-    | BR I1 value ',' label_value ',' label_value
+    | BR INTEGER_TYPE value ',' label_value ',' label_value
     {
         $$ = new ConditionalBrInstruction ((Value)$3, (LabelValue)$5, (LabelValue)$7);
     }
@@ -807,6 +803,14 @@ instruction
     | AND type value ',' value
     {
         $$ = new AndInstruction ((LType)$2, (Value)$3, (Value)$5);
+    }
+    | ASHR type value ',' value
+    {
+        $$ = new AshrInstruction ((LType)$2, (Value)$3, (Value)$5, false);
+    }
+    | ASHR EXACT type value ',' value
+    {
+        $$ = new AshrInstruction ((LType)$3, (Value)$4, (Value)$6, true);
     }
     | BITCAST typed_value TO type
     {
@@ -856,6 +860,10 @@ instruction
     {
         $$ = new FmulInstruction ((LType)$2, (Value)$3, (Value)$5);
     }
+    | FPEXT typed_value TO type
+    {
+        $$ = new FpextInstruction ((TypedValue)$2, (LType)$4);
+    }
     | FPTOUI typed_value TO type
     {
         $$ = new FptouiInstruction ((TypedValue)$2, (LType)$4);
@@ -863,6 +871,10 @@ instruction
     | FPTOSI typed_value TO type
     {
         $$ = new FptosiInstruction ((TypedValue)$2, (LType)$4);
+    }
+    | FPTRUNC typed_value TO type
+    {
+        $$ = new FptruncInstruction ((TypedValue)$2, (LType)$4);
     }
     | FSUB type value ',' value
     {
@@ -943,6 +955,10 @@ instruction
     | SITOFP typed_value TO type
     {
         $$ = new SitofpInstruction ((TypedValue)$2, (LType)$4);
+    }
+    | SREM type value ',' value
+    {
+        $$ = new SremInstruction ((LType)$2, (Value)$3, (Value)$5);
     }
     | STORE typed_value ',' typed_pointer_value ',' ALIGN INTEGER
     {

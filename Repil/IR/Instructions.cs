@@ -19,6 +19,14 @@ namespace Repil.IR
         public override LType ResultType (Module module) => VoidType.Void;
     }
 
+    public class AshrInstruction : BinaryInstruction
+    {
+        public AshrInstruction (LType type, Value op1, Value op2, bool exact)
+            : base (type, op1, op2)
+        {
+        }
+    }
+
     public abstract class BinaryInstruction : Instruction
     {
         public readonly LType Type;
@@ -278,6 +286,14 @@ namespace Repil.IR
         }
     }
 
+    public class FpextInstruction : ConversionInstruction
+    {
+        public FpextInstruction (TypedValue input, LType outputType)
+            : base (input, outputType)
+        {
+        }
+    }
+
     public class FptosiInstruction : ConversionInstruction
     {
         public FptosiInstruction (TypedValue input, LType outputType)
@@ -289,6 +305,14 @@ namespace Repil.IR
     public class FptouiInstruction : ConversionInstruction
     {
         public FptouiInstruction (TypedValue input, LType outputType)
+            : base (input, outputType)
+        {
+        }
+    }
+
+    public class FptruncInstruction : ConversionInstruction
+    {
+        public FptruncInstruction (TypedValue input, LType outputType)
             : base (input, outputType)
         {
         }
@@ -589,6 +613,14 @@ namespace Repil.IR
     {
         public SitofpInstruction (TypedValue input, LType outputType)
             : base (input, outputType)
+        {
+        }
+    }
+
+    public class SremInstruction : BinaryInstruction
+    {
+        public SremInstruction (LType type, Value op1, Value op2)
+            : base (type, op1, op2)
         {
         }
     }

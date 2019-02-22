@@ -35,11 +35,6 @@ namespace Repil.IR
             { Symbol.Intern ("true"), Token.TRUE },
             { Symbol.Intern ("false"), Token.FALSE },
             { Symbol.Intern ("x"), Token.X },
-            { Symbol.Intern ("i1"), Token.I1 },
-            { Symbol.Intern ("i8"), Token.I8 },
-            { Symbol.Intern ("i16"), Token.I16 },
-            { Symbol.Intern ("i32"), Token.I32 },
-            { Symbol.Intern ("i64"), Token.I64 },
             { Symbol.Intern ("declare"), Token.DECLARE },
             { Symbol.Intern ("define"), Token.DEFINE },
             { Symbol.Intern ("unnamed_addr"), Token.UNNAMED_ADDR },
@@ -95,6 +90,7 @@ namespace Repil.IR
             { Symbol.Intern ("fmul"), Token.FMUL },
             { Symbol.Intern ("and"), Token.AND },
             { Symbol.Intern ("lshr"), Token.LSHR },
+            { Symbol.Intern ("ashr"), Token.ASHR },
             { Symbol.Intern ("exact"), Token.EXACT },
             { Symbol.Intern ("sub"), Token.SUB },
             { Symbol.Intern ("select"), Token.SELECT },
@@ -104,6 +100,7 @@ namespace Repil.IR
             { Symbol.Intern ("extractelement"), Token.EXTRACTELEMENT },
             { Symbol.Intern ("shl"), Token.SHL },
             { Symbol.Intern ("sdiv"), Token.SDIV },
+            { Symbol.Intern ("srem"), Token.SREM },
             { Symbol.Intern ("fdiv"), Token.FDIV },
             { Symbol.Intern ("fsub"), Token.FSUB },
             { Symbol.Intern ("sitofp"), Token.SITOFP },
@@ -122,6 +119,7 @@ namespace Repil.IR
             { Symbol.Intern ("uno"), Token.UNO },
             { Symbol.Intern ("fptosi"), Token.FPTOSI },
             { Symbol.Intern ("fptoui"), Token.FPTOUI },
+            { Symbol.Intern ("fptrunc"), Token.FPTRUNC },
             { Symbol.Intern ("distinct"), Token.DISTINCT },
             { Symbol.Intern ("noalias"), Token.NOALIAS },
             { Symbol.Intern ("metadata"), Token.METADATA },
@@ -138,6 +136,7 @@ namespace Repil.IR
             { Symbol.Intern ("fastcc"), Token.FASTCC },
             { Symbol.Intern ("opaque"), Token.OPAQUE },
             { Symbol.Intern ("x86_fp80"), Token.X86_FP80 },
+            { Symbol.Intern ("fpext"), Token.FPEXT },
         };
 
         public Lexer (string llvm)
@@ -279,6 +278,15 @@ namespace Repil.IR
                         }
                     }
                     break;
+                case 'i' when p + 1 < n && char.IsDigit (s[p + 1]): {
+                        var ep = p + 1;
+                        while (ep < n && char.IsDigit (s[ep]))
+                            ep++;
+                        val = Types.IntegerType.Parse (s, p, ep - p);
+                        p = ep;
+                        tok = Token.INTEGER_TYPE;
+                    }
+                    break;
                 case var ch when char.IsLetter (ch): {
                         var ep = p + 1;
                         while (ep < n && (char.IsLetterOrDigit (s[ep]) || s[ep] == '_'))
@@ -294,8 +302,11 @@ namespace Repil.IR
                         }
                     }
                     break;
-                case '0' when p + 1 < n && s[p + 1] == 'x': {
+                case '0' when p + 2 < n && s[p + 1] == 'x': {
                         p += 2;
+                        if (IsFloatHexStart (s[p]))
+                            p++;
+
                         var ep = p;
                         while (ep < n && IsHex (s[ep])) {
                             ep++;
@@ -354,6 +365,18 @@ namespace Repil.IR
             }
 
             return true;
+        }
+
+        bool IsFloatHexStart (char c)
+        {
+            switch (c) {
+                case 'K':
+                case 'M':
+                case 'L':
+                case 'H':
+                    return true;
+            }
+            return false;
         }
 
         bool IsHex (char c)
