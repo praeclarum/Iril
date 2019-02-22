@@ -278,6 +278,13 @@ namespace Repil.IR
         }
     }
 
+    public class FenceInstruction : Instruction
+    {
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
+
+        public override LType ResultType (Module module) => VoidType.Void;
+    }
+
     public class FmulInstruction : BinaryInstruction
     {
         public FmulInstruction (LType type, Value op1, Value op2)
@@ -418,6 +425,14 @@ namespace Repil.IR
             Value.ReferencedLocals.Concat (Element.ReferencedLocals).Concat (Index.ReferencedLocals);
 
         public override LType ResultType (Module module) => Value.Type;
+    }
+
+    public class InttoptrInstruction : ConversionInstruction
+    {
+        public InttoptrInstruction (TypedValue input, LType outputType)
+            : base (input, outputType)
+        {
+        }
     }
 
     public class LoadInstruction : Instruction

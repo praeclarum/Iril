@@ -24,6 +24,7 @@ namespace Repil.IR
 %token CONSTANT PRIVATE INTERNAL EXTERNAL FASTCC SIGNEXT ZEROEXT VOLATILE RETURNED
 %token NONNULL NOCAPTURE WRITEONLY READONLY READNONE
 %token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND SPECULATABLE SSP UWTABLE ARGMEMONLY
+%token SEQ_CST
 %token RET BR SWITCH INDIRECTBR INVOKE RESUME CATCHSWITCH CATCHRET CLEANUPRET UNREACHABLE
 %token FNEG
 %token ADD NUW NSW FADD SUB FSUB MUL FMUL UDIV SDIV FDIV UREM SREM FREM
@@ -779,6 +780,10 @@ calling_convention
     : FASTCC
     ;
     
+atomic_constraint
+    : SEQ_CST
+    ;
+    
 terminator_instruction
     : BR label_value
     {
@@ -875,6 +880,10 @@ instruction
     {
         $$ = new FdivInstruction ((LType)$2, (Value)$3, (Value)$5);
     }
+    | FENCE atomic_constraint
+    {
+        $$ = new FenceInstruction ();
+    }
     | FMUL type value ',' value
     {
         $$ = new FmulInstruction ((LType)$2, (Value)$3, (Value)$5);
@@ -914,6 +923,10 @@ instruction
     | INSERTELEMENT typed_value ',' typed_value ',' typed_value
     {
         $$ = new InsertElementInstruction ((TypedValue)$2, (TypedValue)$4, (TypedValue)$6);
+    }
+    | INTTOPTR typed_value TO type
+    {
+        $$ = new InttoptrInstruction ((TypedValue)$2, (LType)$4);
     }
     | LOAD type ',' typed_pointer_value ',' ALIGN INTEGER
     {
