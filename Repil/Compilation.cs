@@ -651,6 +651,8 @@ namespace Repil
                     }
                 case Types.ArrayType art:
                     return GetClrType (art.ElementType).MakePointerType ();
+                case Types.PointerType pt when pt.ElementType is LiteralStructureType ls && ls.Elements.Length == 0:
+                    return sysVoidPtr;
                 case Types.PointerType pt:
                     return GetClrType (pt.ElementType).MakePointerType ();
                 case FunctionType ft:
