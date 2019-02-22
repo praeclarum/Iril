@@ -646,7 +646,10 @@ namespace Repil
                 case FunctionType ft:
                     return sysVoidPtr;
                 case NamedType nt:
-                    return structs[nt.Symbol].Item2;
+                    if (structs.TryGetValue (nt.Symbol, out var ntSym))
+                        return ntSym.Item2;
+                    else
+                        throw new Exception ($"Cannot find {nt}");
                 case VectorType vt:
                     return GetVectorType (vt).ClrType;
                 case VoidType vdt:

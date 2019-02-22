@@ -34,7 +34,7 @@ namespace Tests
                             using (var r = new StreamReader (es))
                                 c = r.ReadToEnd ();
                         }
-                        System.Console.WriteLine (c.Length);
+                        //System.Console.WriteLine (c.Length);
                         code.Add ((c, e.Name));
                     }
                 }

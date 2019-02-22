@@ -177,11 +177,13 @@ metadata_args
     ;
     
 metadata_arg
-    : SYMBOL ':' SYMBOL       { $$ = Tuple.Create ($1, $3); }
-    | SYMBOL ':' META_SYMBOL  { $$ = Tuple.Create ($1, $3); }
-    | SYMBOL ':' STRING       { $$ = Tuple.Create ($1, $3); }
-    | SYMBOL ':' constant     { $$ = Tuple.Create ($1, $3); }
-    | TYPE ':' META_SYMBOL    { $$ = Tuple.Create ($1, $3); }
+    : SYMBOL ':' SYMBOL         { $$ = Tuple.Create ($1, $3); }
+    | SYMBOL ':' META_SYMBOL    { $$ = Tuple.Create ($1, $3); }
+    | SYMBOL ':' STRING         { $$ = Tuple.Create ($1, $3); }
+    | SYMBOL ':' constant       { $$ = Tuple.Create ($1, $3); }
+    | SYMBOL ':' typed_constant { $$ = Tuple.Create ($1, $3); }
+    | TYPE ':' META_SYMBOL      { $$ = Tuple.Create ($1, $3); }
+    | ALIGN ':' constant        { $$ = Tuple.Create ($1, $3); }
     | SYMBOL ':' META_SYMBOL '(' metadata_value_args ')'
     {
         $$ = Tuple.Create ($1, $3);
