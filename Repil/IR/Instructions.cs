@@ -280,9 +280,21 @@ namespace Repil.IR
 
     public class FenceInstruction : Instruction
     {
+        public readonly AtomicConstraint Constraint;
+
+        public FenceInstruction (AtomicConstraint constraint)
+        {
+            Constraint = constraint;
+        }
+
         public override IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
 
         public override LType ResultType (Module module) => VoidType.Void;
+    }
+
+    public enum AtomicConstraint
+    {
+        SequentiallyConsistent
     }
 
     public class FmulInstruction : BinaryInstruction

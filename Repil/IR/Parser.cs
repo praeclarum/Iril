@@ -1477,6 +1477,10 @@ case 215:
         yyVal = new SwitchCase ((TypedConstant)yyVals[-2+yyTop], (LabelValue)yyVals[0+yyTop]);
     }
   break;
+case 221:
+#line 784 "Repil/IR/IR.jay"
+  { yyVal = AtomicConstraint.SequentiallyConsistent; }
+  break;
 case 222:
 #line 791 "Repil/IR/IR.jay"
   {
@@ -1618,7 +1622,7 @@ case 244:
 case 245:
 #line 886 "Repil/IR/IR.jay"
   {
-        yyVal = new FenceInstruction ();
+        yyVal = new FenceInstruction ((AtomicConstraint)yyVals[0+yyTop]);
     }
   break;
 case 246:

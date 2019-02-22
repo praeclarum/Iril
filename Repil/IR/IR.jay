@@ -781,7 +781,7 @@ calling_convention
     ;
     
 atomic_constraint
-    : SEQ_CST
+    : SEQ_CST { $$ = AtomicConstraint.SequentiallyConsistent; }
     ;
     
 terminator_instruction
@@ -882,7 +882,7 @@ instruction
     }
     | FENCE atomic_constraint
     {
-        $$ = new FenceInstruction ();
+        $$ = new FenceInstruction ((AtomicConstraint)$2);
     }
     | FMUL type value ',' value
     {
