@@ -126,6 +126,10 @@ global_variable
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: (bool)$3, isExternal: false, isConstant: (bool)$5);
     }
+    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type value
+    {
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: (bool)$3, isExternal: false, isConstant: (bool)$5);
+    }
     | GLOBAL_SYMBOL '=' visibility function_addr global_kind type value ',' ALIGN INTEGER metadata_kvs
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: (bool)$3, isExternal: false, isConstant: (bool)$5);
