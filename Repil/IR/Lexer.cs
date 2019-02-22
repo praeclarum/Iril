@@ -137,6 +137,8 @@ namespace Repil.IR
             { Symbol.Intern ("opaque"), Token.OPAQUE },
             { Symbol.Intern ("x86_fp80"), Token.X86_FP80 },
             { Symbol.Intern ("fpext"), Token.FPEXT },
+            { Symbol.Intern ("signext"), Token.SIGNEXT },
+            { Symbol.Intern ("zeroext"), Token.ZEROEXT },
         };
 
         public Lexer (string llvm)

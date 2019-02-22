@@ -97,11 +97,13 @@ namespace Repil.IR
     [Flags]
     public enum ParameterAttributes
     {
-        NonNull   = 1 << 0,
-        NoCapture = 1 << 1,
-        WriteOnly = 1 << 2,
-        ReadOnly  = 1 << 3,
-        ReadNone  = 1 << 4,
+        NonNull    = 1 << 0,
+        NoCapture  = 1 << 1,
+        WriteOnly  = 1 << 2,
+        ReadOnly   = 1 << 3,
+        ReadNone   = 1 << 4,
+        SignExtend = 1 << 5,
+        ZeroExtend = 1 << 6,
     }
 
     public class Block
