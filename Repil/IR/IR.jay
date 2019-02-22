@@ -364,6 +364,10 @@ function_definition
     {
         $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$9, (SymbolTable<MetaSymbol>)$7);
     }
+    | DEFINE linkage parameter_attribute return_type GLOBAL_SYMBOL parameters attribute_group_refs metadata_kvs '{' blocks '}'
+    {
+        $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6, (List<Block>)$10, (SymbolTable<MetaSymbol>)$8);
+    }
     | DEFINE linkage return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
     {
         $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$10, (SymbolTable<MetaSymbol>)$8);
@@ -717,10 +721,26 @@ function_arg
     ;
     
 metadata_value
-    : constant
+    : constant 
     | GLOBAL_SYMBOL { $$ = new GlobalValue ((GlobalSymbol)$1); }
+    | INTTOPTR '(' typed_value TO type ')'
+    {
+        $$ = new IntToPointerValue ((TypedValue)$3, (LType)$5);
+    }
+    | GETELEMENTPTR INBOUNDS '(' type ',' typed_value ',' element_indices ')'
+    {
+        $$ = new GetElementPointerValue ((LType)$4, (TypedValue)$6, (List<TypedValue>)$8);
+    }
+    | BITCAST '(' typed_value TO type ')'
+    {
+        $$ = new BitcastValue ((TypedValue)$3, (LType)$5);
+    }
+    | PTRTOINT '(' typed_value TO type ')'
+    {
+        $$ = new PtrtointValue ((TypedValue)$3, (LType)$5);
+    }
     ;
-    
+
 metadata_value_args
     : metadata_value_arg
     | metadata_value_args ',' metadata_value_arg
@@ -851,6 +871,10 @@ instruction
     | TAIL CALL return_type function_pointer function_args attribute_group_refs
     {
         $$ = new CallInstruction ((LType)$3, (Value)$4, (IEnumerable<Argument>)$5, true);
+    }
+    | TAIL CALL parameter_attribute return_type function_pointer function_args attribute_group_refs
+    {
+        $$ = new CallInstruction ((LType)$4, (Value)$5, (IEnumerable<Argument>)$6, true);
     }
     | TAIL CALL return_type function_pointer function_args
     {
