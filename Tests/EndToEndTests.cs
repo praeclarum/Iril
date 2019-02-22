@@ -155,5 +155,32 @@ namespace Tests
 
             hcommon.Free ();
         }
+
+        [Test]
+        public void Sqlite ()
+        {
+            var asmFileName = "SQLite.dll";
+            var irmods =
+                GetZippedCode ("sqlite3.ll.zip")
+                .Select (x => Repil.Module.Parse (x.Code, x.Name));
+            var compilation = new Compilation (
+                irmods,
+                assemblyName: asmFileName);
+
+            var asmPath = Path.Combine (Path.GetTempPath (), asmFileName);
+            try { File.Delete (asmPath); }
+            catch { }
+            compilation.WriteAssembly (asmPath);
+
+            System.Console.WriteLine (asmPath);
+
+            Assert.IsFalse (compilation.HasErrors, "Errors Found:\n    " + String.Join ("\n    ", compilation.Messages));
+
+            var asm = Assembly.Load (File.ReadAllBytes (asmPath));
+
+            var types = asm.GetTypes ();
+            Assert.Greater (types.Length, 0);
+
+        }
     }
 }
