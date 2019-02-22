@@ -231,19 +231,29 @@ namespace Repil
 
         void CompileStructures ()
         {
+            var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.Public;
+
             var todo = new List<(Module, LiteralStructureType, TypeDefinition)> ();
 
             foreach (var m in Modules) {
                 foreach (var iskv in m.IdentifiedStructures) {
                     if (structs.ContainsKey (iskv.Key))
                         continue;
+                    var tname = GetIdentifier (iskv.Key);
+                    structNames.Add (tname);
                     if (iskv.Value is LiteralStructureType l) {
-                        var tname = GetIdentifier (iskv.Key);
-                        var td = new TypeDefinition (namespac, tname, TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.Public, sysVal);
-                        structNames.Add (tname);
+                        var td = new TypeDefinition (namespac, tname, tattrs, sysVal);
                         mod.Types.Add (td);
                         structs[iskv.Key] = (l, td);
                         todo.Add ((m, l, td));
+                    }
+                    else if (iskv.Value is OpaqueStructureType) {
+                        var td = new TypeDefinition (namespac, tname, tattrs, sysVal);
+                        mod.Types.Add (td);
+                        structs[iskv.Key] = (null, td);
+                    }
+                    else {
+                        throw new NotSupportedException ($"Cannot compile {iskv.Value}");
                     }
                 }
             }
@@ -649,7 +659,7 @@ namespace Repil
                     if (structs.TryGetValue (nt.Symbol, out var ntSym))
                         return ntSym.Item2;
                     else
-                        throw new Exception ($"Cannot find {nt}");
+                        throw new Exception ($"Cannot find {nt.Symbol}");
                 case VectorType vt:
                     return GetVectorType (vt).ClrType;
                 case VoidType vdt:
@@ -657,7 +667,7 @@ namespace Repil
                 case VarArgsType vat:
                     return sysIntPtr;
                 default:
-                    throw new NotSupportedException ($"{irType} not supported");
+                    throw new NotSupportedException ($"{irType} ({irType?.GetType().Name}) not supported");
             }
         }
 
