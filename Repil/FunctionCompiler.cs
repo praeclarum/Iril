@@ -254,6 +254,11 @@ namespace Repil
             md.Body = body;
         }
 
+        bool HasLocal (LocalSymbol symbol)
+        {
+            return locals.ContainsKey (symbol);
+        }
+
         bool ShouldInline (LocalSymbol symbol)
         {
             return shouldInline.TryGetValue (symbol, out var s) && s;
@@ -1048,7 +1053,7 @@ namespace Repil
         {
             // Shortcut Load Field
             if (load.Pointer.Value is IR.LocalValue pointerLocal
-                && ShouldInline (pointerLocal.Symbol)) {
+                && (ShouldInline (pointerLocal.Symbol) || HasLocal (pointerLocal.Symbol))) {
 
                 var pointerInst = function.IRDefinition.FindAssignment (pointerLocal)?.Instruction;
                 if (pointerInst is IR.GetElementPointerInstruction gep
