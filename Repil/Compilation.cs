@@ -629,10 +629,8 @@ namespace Repil
                     switch (floatt.Bits) {
                         case 32:
                             return sysSingle;
-                        case 64:
-                            return sysDouble;
                         default:
-                            throw new NotSupportedException ($"{floatt.Bits}-bit floats not supported");
+                            return sysDouble;
                     }
                 case IntegerType intt:
                     switch (intt.Bits) {
