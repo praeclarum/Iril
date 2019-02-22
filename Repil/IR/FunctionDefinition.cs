@@ -104,6 +104,7 @@ namespace Repil.IR
         ReadNone   = 1 << 4,
         SignExtend = 1 << 5,
         ZeroExtend = 1 << 6,
+        Returned   = 1 << 7,
     }
 
     public class Block

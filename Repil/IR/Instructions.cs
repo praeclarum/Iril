@@ -424,11 +424,13 @@ namespace Repil.IR
     {
         public readonly LType Type;
         public readonly TypedValue Pointer;
+        public readonly bool IsVolatile;
 
-        public LoadInstruction (LType type, TypedValue pointer)
+        public LoadInstruction (LType type, TypedValue pointer, bool isVolatile)
         {
             Type = type;
             Pointer = pointer;
+            IsVolatile = isVolatile;
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Pointer.ReferencedLocals;
@@ -629,11 +631,13 @@ namespace Repil.IR
     {
         public readonly TypedValue Value;
         public readonly TypedValue Pointer;
+        public readonly bool IsVolatile;
 
-        public StoreInstruction (TypedValue value, TypedValue pointer)
+        public StoreInstruction (TypedValue value, TypedValue pointer, bool isVolatile)
         {
             Value = value;
             Pointer = pointer;
+            IsVolatile = isVolatile;
         }
 
         public override string ToString () => $"{Pointer} <- {Value}";

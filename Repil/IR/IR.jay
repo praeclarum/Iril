@@ -21,7 +21,7 @@ namespace Repil.IR
 %token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL META_SYMBOL_DEF SYMBOL DISTINCT METADATA CONSTANT_BYTES
 %token TYPE HALF FLOAT DOUBLE X86_FP80 INTEGER_TYPE ZEROINITIALIZER OPAQUE
 %token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR NOALIAS ELLIPSIS GLOBAL
-%token CONSTANT PRIVATE INTERNAL EXTERNAL FASTCC SIGNEXT ZEROEXT
+%token CONSTANT PRIVATE INTERNAL EXTERNAL FASTCC SIGNEXT ZEROEXT VOLATILE RETURNED
 %token NONNULL NOCAPTURE WRITEONLY READONLY READNONE
 %token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND SPECULATABLE SSP UWTABLE ARGMEMONLY
 %token RET BR SWITCH INDIRECTBR INVOKE RESUME CATCHSWITCH CATCHRET CLEANUPRET UNREACHABLE
@@ -361,15 +361,23 @@ function_definition
     }
     | DEFINE linkage return_type GLOBAL_SYMBOL parameters attribute_group_refs metadata_kvs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$9);
+        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$9, (SymbolTable<MetaSymbol>)$7);
+    }
+    | DEFINE linkage return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
+    {
+        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$10, (SymbolTable<MetaSymbol>)$8);
     }
     | DEFINE linkage calling_convention return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs '{' blocks '}'
     {
         $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6, (List<Block>)$10);
     }
+    | DEFINE linkage calling_convention parameter_attribute return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
+    {
+        $$ = new FunctionDefinition ((LType)$5, (GlobalSymbol)$6, (IEnumerable<Parameter>)$7, (List<Block>)$12, (SymbolTable<MetaSymbol>)$10);
+    }
     | DEFINE linkage calling_convention return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6, (List<Block>)$11);
+        $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6, (List<Block>)$11, (SymbolTable<MetaSymbol>)$9);
     }
     ;
     
@@ -439,6 +447,7 @@ parameter_attribute
     | READNONE  { $$ = ParameterAttributes.ReadNone; }
     | SIGNEXT   { $$ = ParameterAttributes.SignExtend; }
     | ZEROEXT   { $$ = ParameterAttributes.ZeroExtend; }
+    | RETURNED  { $$ = ParameterAttributes.Returned; }
     ;
     
 function_addr
@@ -846,6 +855,10 @@ instruction
     {
         $$ = new CallInstruction ((LType)$4, (Value)$5, (IEnumerable<Argument>)$6, true);
     }
+    | TAIL CALL calling_convention parameter_attribute return_type function_pointer function_args
+    {
+        $$ = new CallInstruction ((LType)$5, (Value)$6, (IEnumerable<Argument>)$7, true);
+    }
     | EXTRACTELEMENT typed_value ',' typed_value
     {
         $$ = new ExtractElementInstruction ((TypedValue)$2, (TypedValue)$4);
@@ -904,7 +917,11 @@ instruction
     }
     | LOAD type ',' typed_pointer_value ',' ALIGN INTEGER
     {
-        $$ = new LoadInstruction ((LType)$2, (TypedValue)$4);
+        $$ = new LoadInstruction ((LType)$2, (TypedValue)$4, isVolatile: false);
+    }
+    | LOAD VOLATILE type ',' typed_pointer_value ',' ALIGN INTEGER
+    {
+        $$ = new LoadInstruction ((LType)$3, (TypedValue)$5, isVolatile: true);
     }
     | LSHR type value ',' value
     {
@@ -968,7 +985,11 @@ instruction
     }
     | STORE typed_value ',' typed_pointer_value ',' ALIGN INTEGER
     {
-        $$ = new StoreInstruction (value: (TypedValue)$2, pointer: (TypedValue)$4);
+        $$ = new StoreInstruction (value: (TypedValue)$2, pointer: (TypedValue)$4, isVolatile: false);
+    }
+    | STORE VOLATILE typed_value ',' typed_pointer_value ',' ALIGN INTEGER
+    {
+        $$ = new StoreInstruction (value: (TypedValue)$3, pointer: (TypedValue)$5, isVolatile: true);
     }
     | SUB type value ',' value
     {
