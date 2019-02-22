@@ -19,7 +19,7 @@ namespace Repil.IR
 %token INTEGER HEX_INTEGER FLOAT_LITERAL STRING TRUE FALSE UNDEF VOID NULL LABEL X
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
 %token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL META_SYMBOL_DEF SYMBOL DISTINCT METADATA CONSTANT_BYTES
-%token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64 ZEROINITIALIZER
+%token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64 ZEROINITIALIZER OPAQUE
 %token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR NOALIAS ELLIPSIS GLOBAL
 %token CONSTANT PRIVATE INTERNAL EXTERNAL FASTCC
 %token NONNULL NOCAPTURE WRITEONLY READONLY
@@ -68,6 +68,10 @@ module_part
     | LOCAL_SYMBOL '=' TYPE literal_structure
     {
         module.IdentifiedStructures[(Symbol)$1] = (StructureType)$4;
+    }
+    | LOCAL_SYMBOL '=' TYPE OPAQUE
+    {
+        module.IdentifiedStructures[(Symbol)$1] = OpaqueStructureType.Opaque;
     }
     | function_definition
     {
@@ -228,10 +232,17 @@ attribute
     ;
     
 literal_structure
-    : '{' type_list '}'
+    : '{' '}'
     {
-        var s = new LiteralStructureType ((List<LType>)$2);
-        $$ = s;
+        $$ = LiteralStructureType.Empty;
+    }
+    | '{' type_list '}'
+    {
+        $$ = new LiteralStructureType ((List<LType>)$2);
+    }
+    | '<' '{' type_list '}' '>'
+    {
+        $$ = new PackedStructureType ((List<LType>)$3);
     }
     ;
     
@@ -261,6 +272,10 @@ type
     | I16    { $$ = IntegerType.I16; }
     | I32    { $$ = IntegerType.I32; }
     | I64    { $$ = IntegerType.I64; }
+    | return_type '(' ')'
+    {
+        $$ = new FunctionType ((LType)$1, Enumerable.Empty<LType>());
+    }
     | return_type '(' function_type_args ')'
     {
         $$ = new FunctionType ((LType)$1, (List<LType>)$3);

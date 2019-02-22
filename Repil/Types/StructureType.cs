@@ -10,11 +10,15 @@ namespace Repil.Types
 
     public class OpaqueStructureType : StructureType
     {
+        public static readonly OpaqueStructureType Opaque = new OpaqueStructureType ();
+
         public override long GetByteSize (Module module) => 0;
     }
 
     public class LiteralStructureType : StructureType
     {
+        public static readonly LiteralStructureType Empty = new LiteralStructureType (Enumerable.Empty<LType> ());
+
         public readonly LType[] Elements;
 
         public LiteralStructureType (IEnumerable<LType> elements)
@@ -30,7 +34,7 @@ namespace Repil.Types
 
     public class PackedStructureType : LiteralStructureType
     {
-        public PackedStructureType (LType[] elements) : base (elements)
+        public PackedStructureType (IEnumerable<LType> elements) : base (elements)
         {
         }
     }

@@ -34,6 +34,8 @@ namespace Repil
 
         public SymbolTable<StructureType> IdentifiedStructures = new SymbolTable<StructureType> ();
 
+        public HashSet<Symbol> IdentifiedOpaques = new HashSet<Symbol> ();
+
         public SymbolTable<FunctionDefinition> FunctionDefinitions = new SymbolTable<FunctionDefinition> ();
 
         public SymbolTable<FunctionDeclaration> FunctionDeclarations = new SymbolTable<FunctionDeclaration> ();
