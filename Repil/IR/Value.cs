@@ -106,6 +106,13 @@ namespace Repil.IR
         public override string ToString () => Symbol.ToString ();
     }
 
+    public class PtrtointValue : ConversionValue
+    {
+        public PtrtointValue (TypedValue value, LType type) : base (value, type)
+        {
+        }
+    }
+
     public class VectorValue : Value
     {
         public readonly TypedValue[] Values;

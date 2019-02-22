@@ -22,8 +22,8 @@ namespace Repil.IR
 %token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64 ZEROINITIALIZER OPAQUE
 %token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR NOALIAS ELLIPSIS GLOBAL
 %token CONSTANT PRIVATE INTERNAL EXTERNAL FASTCC
-%token NONNULL NOCAPTURE WRITEONLY READONLY
-%token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND READNONE SPECULATABLE SSP UWTABLE ARGMEMONLY
+%token NONNULL NOCAPTURE WRITEONLY READONLY READNONE
+%token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND SPECULATABLE SSP UWTABLE ARGMEMONLY
 %token RET BR SWITCH INDIRECTBR INVOKE RESUME CATCHSWITCH CATCHRET CLEANUPRET UNREACHABLE
 %token FNEG
 %token ADD NUW NSW FADD SUB FSUB MUL FMUL UDIV SDIV FDIV UREM SREM FREM
@@ -358,6 +358,14 @@ function_definition
     {
         $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$10, (SymbolTable<MetaSymbol>)$8);
     }
+    | DEFINE linkage return_type GLOBAL_SYMBOL parameters attribute_group_refs '{' blocks '}'
+    {
+        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$8);
+    }
+    | DEFINE linkage return_type GLOBAL_SYMBOL parameters attribute_group_refs metadata_kvs '{' blocks '}'
+    {
+        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$9);
+    }
     | DEFINE linkage calling_convention return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs '{' blocks '}'
     {
         $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6, (List<Block>)$10);
@@ -431,6 +439,7 @@ parameter_attribute
     | NOCAPTURE { $$ = ParameterAttributes.NoCapture; }
     | READONLY  { $$ = ParameterAttributes.ReadOnly; }
     | WRITEONLY { $$ = ParameterAttributes.WriteOnly; }
+    | READNONE  { $$ = ParameterAttributes.ReadNone; }
     ;
     
 function_addr
@@ -494,6 +503,10 @@ value
     | BITCAST '(' typed_value TO type ')'
     {
         $$ = new BitcastValue ((TypedValue)$3, (LType)$5);
+    }
+    | PTRTOINT '(' typed_value TO type ')'
+    {
+        $$ = new PtrtointValue ((TypedValue)$3, (LType)$5);
     }
     | '<' typed_values '>'
     {
