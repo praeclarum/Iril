@@ -137,6 +137,7 @@ namespace Repil.IR
             { Symbol.Intern ("udiv"), Token.UDIV },
             { Symbol.Intern ("fastcc"), Token.FASTCC },
             { Symbol.Intern ("opaque"), Token.OPAQUE },
+            { Symbol.Intern ("x86_fp80"), Token.X86_FP80 },
         };
 
         public Lexer (string llvm)

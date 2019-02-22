@@ -19,7 +19,7 @@ namespace Repil.IR
 %token INTEGER HEX_INTEGER FLOAT_LITERAL STRING TRUE FALSE UNDEF VOID NULL LABEL X
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
 %token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL META_SYMBOL_DEF SYMBOL DISTINCT METADATA CONSTANT_BYTES
-%token TYPE HALF FLOAT DOUBLE I1 I8 I16 I32 I64 ZEROINITIALIZER OPAQUE
+%token TYPE HALF FLOAT DOUBLE X86_FP80 I1 I8 I16 I32 I64 ZEROINITIALIZER OPAQUE
 %token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR NOALIAS ELLIPSIS GLOBAL
 %token CONSTANT PRIVATE INTERNAL EXTERNAL FASTCC
 %token NONNULL NOCAPTURE WRITEONLY READONLY READNONE
@@ -284,14 +284,15 @@ return_type
     
 type
     : literal_structure
-    | HALF   { $$ = FloatType.Half; }
-    | FLOAT  { $$ = FloatType.Float; }
-    | DOUBLE { $$ = FloatType.Double; }
-    | I1     { $$ = IntegerType.I1; }
-    | I8     { $$ = IntegerType.I8; }
-    | I16    { $$ = IntegerType.I16; }
-    | I32    { $$ = IntegerType.I32; }
-    | I64    { $$ = IntegerType.I64; }
+    | HALF     { $$ = FloatType.Half; }
+    | FLOAT    { $$ = FloatType.Float; }
+    | DOUBLE   { $$ = FloatType.Double; }
+    | X86_FP80 { $$ = FloatType.X86_FP80; }
+    | I1       { $$ = IntegerType.I1; }
+    | I8       { $$ = IntegerType.I8; }
+    | I16      { $$ = IntegerType.I16; }
+    | I32      { $$ = IntegerType.I32; }
+    | I64      { $$ = IntegerType.I64; }
     | return_type '(' ')'
     {
         $$ = new FunctionType ((LType)$1, Enumerable.Empty<LType>());
