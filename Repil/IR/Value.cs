@@ -8,6 +8,24 @@ namespace Repil.IR
     public abstract class Value
     {
         public virtual IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
+
+        public virtual int GetInt32Value (Module module) => 0;
+    }
+
+    public class ArrayConstant : Value
+    {
+        public readonly TypedValue[] Constants;
+
+        public ArrayConstant (IEnumerable<TypedValue> constants)
+        {
+            if (constants == null) {
+                throw new ArgumentNullException (nameof (constants));
+            }
+
+            Constants = constants.ToArray ();
+        }
+
+        public override string ToString () => $"[{string.Join (", ", (object[])Constants)}]";
     }
 
     public class BitcastValue : ConversionValue
@@ -157,6 +175,22 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
+    }
+
+    public class VectorConstant : Value
+    {
+        public readonly TypedValue[] Constants;
+
+        public VectorConstant (IEnumerable<TypedValue> constants)
+        {
+            if (constants == null) {
+                throw new ArgumentNullException (nameof (constants));
+            }
+
+            Constants = constants.ToArray ();
+        }
+
+        public override string ToString () => $"<{string.Join (", ", (object[])Constants)}>";
     }
 
     public class VoidValue : Value

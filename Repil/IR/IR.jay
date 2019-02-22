@@ -114,17 +114,33 @@ module_part
     ;
     
 global_variable
-    : GLOBAL_SYMBOL '=' function_addr global_kind type constant ',' ALIGN INTEGER metadata_kvs
+    : GLOBAL_SYMBOL '=' global_kind type value ',' ALIGN INTEGER metadata_kvs
     {
-        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, (Constant)$6, isPrivate: false, isExternal: false, isConstant: (bool)$4);
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$4, (Value)$5, isPrivate: false, isExternal: false, isConstant: (bool)$3);
     }
-    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type constant ',' ALIGN INTEGER
+    | GLOBAL_SYMBOL '=' function_addr global_kind type value ',' ALIGN INTEGER metadata_kvs
     {
-        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Constant)$7, isPrivate: (bool)$3, isExternal: false, isConstant: (bool)$5);
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, (Value)$6, isPrivate: false, isExternal: false, isConstant: (bool)$4);
+    }
+    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type value ',' ALIGN INTEGER
+    {
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: (bool)$3, isExternal: false, isConstant: (bool)$5);
+    }
+    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type value ',' ALIGN INTEGER metadata_kvs
+    {
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: (bool)$3, isExternal: false, isConstant: (bool)$5);
     }
     | GLOBAL_SYMBOL '=' linkage function_addr global_kind type ',' ALIGN INTEGER
     {
-        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, null, isPrivate: false, isExternal: (bool)$3, isConstant: false);
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, null, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$5);
+    }
+    | GLOBAL_SYMBOL '=' linkage function_addr global_kind type value ',' ALIGN INTEGER metadata_kvs
+    {
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$5);
+    }
+    | GLOBAL_SYMBOL '=' linkage global_kind type value ',' ALIGN INTEGER metadata_kvs
+    {
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, (Value)$6, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$4);
     }
     ;
     
@@ -478,6 +494,18 @@ value
     {
         $$ = new BitcastValue ((TypedValue)$3, (LType)$5);
     }
+    | '<' typed_values '>'
+    {
+        $$ = new VectorConstant ((List<TypedValue>)$2);
+    }
+    | '[' typed_values ']'
+    {
+        $$ = new ArrayConstant ((List<TypedValue>)$2);
+    }
+    | '{' typed_values '}'
+    {
+        $$ = new StructureConstant ((List<TypedValue>)$2);
+    }
     ;
     
 pointer_value
@@ -494,18 +522,6 @@ constant
     | UNDEF           { $$ = UndefinedConstant.Undefined; }
     | ZEROINITIALIZER { $$ = ZeroConstant.Zero; }
     | CONSTANT_BYTES  { $$ = new BytesConstant ((Symbol)$1); }
-    | '<' typed_constants '>'
-    {
-        $$ = new VectorConstant ((List<TypedConstant>)$2);
-    }
-    | '[' typed_constants ']'
-    {
-        $$ = new ArrayConstant ((List<TypedConstant>)$2);
-    }
-    | '{' typed_values '}'
-    {
-        $$ = new StructureConstant ((List<TypedValue>)$2);
-    }
     ;
     
 label_value
@@ -548,17 +564,6 @@ typed_constant
     : type constant
     {
         $$ = new TypedConstant ((LType)$1, (Constant)$2);
-    }
-    ;
-    
-typed_constants
-    : typed_constant
-    {
-        $$ = NewList ((TypedConstant)$1);
-    }
-    | typed_constants ',' typed_constant
-    {
-        $$ = ListAdd ($1, (TypedConstant)$3);
     }
     ;
 

@@ -10,6 +10,8 @@ namespace Repil.IR
     public abstract class Constant : Value
     {
         public abstract int Int32Value { get; }
+
+        public override int GetInt32Value (Module module) => Int32Value;
     }
 
     public abstract class SimpleConstant : Constant
@@ -32,24 +34,6 @@ namespace Repil.IR
         }
 
         public override string ToString () => $"{Type} {Constant}";
-    }
-
-    public class ArrayConstant : ComplexConstant
-    {
-        public readonly TypedConstant[] Constants;
-
-        public ArrayConstant (IEnumerable<TypedConstant> constants)
-        {
-            if (constants == null) {
-                throw new ArgumentNullException (nameof (constants));
-            }
-
-            Constants = constants.ToArray ();
-        }
-
-        public override int Int32Value => 0;
-
-        public override string ToString () => $"[{string.Join (", ", (object[])Constants)}]";
     }
 
     public class BooleanConstant : SimpleConstant
@@ -156,23 +140,7 @@ namespace Repil.IR
         public override int Int32Value => 0;
     }
 
-    public class VectorConstant : ComplexConstant
-    {
-        public readonly TypedConstant[] Constants;
 
-        public VectorConstant (IEnumerable<TypedConstant> constants)
-        {
-            if (constants == null) {
-                throw new ArgumentNullException (nameof (constants));
-            }
-
-            Constants = constants.ToArray ();
-        }
-
-        public override int Int32Value => 0;
-
-        public override string ToString () => $"<{string.Join (", ", (object[])Constants)}>";
-    }
 
     public class UndefinedConstant : SimpleConstant
     {

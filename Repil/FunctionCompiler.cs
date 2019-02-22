@@ -683,7 +683,7 @@ namespace Repil
                         }
                         else if (sh.Mask.Value is VectorConstant vc) {
                             foreach (var c in vc.Constants) {
-                                var index = c.Constant.Int32Value;
+                                var index = c.Value.GetInt32Value (function.IRModule);
                                 var loc = index >= len1 ? local2 : local1;
                                 var loci = index >= len1 ? index - len1 : index;
                                 var typ = index >= len1 ? ctype2 : ctype1;
@@ -956,7 +956,7 @@ namespace Repil
                     break;
                 case IR.VectorConstant vec:
                     foreach (var c in vec.Constants) {
-                        EmitValue (c.Constant, c.Type);
+                        EmitValue (c.Value, c.Type);
                     } {
                         var vt = GetVectorType ((VectorType)type);
                         Emit (il.Create (OpCodes.Newobj, vt.Ctor));
