@@ -64,7 +64,7 @@ namespace Tests
             catch { }
             compilation.WriteAssembly (asmPath);
 
-            Assert.IsFalse (compilation.HasErrors, "Errors Found:\n    " + String.Join ("\n    ", compilation.Messages));
+            AssertNoErrors (compilation);
 
             var disProc = new Process {
                 StartInfo = new ProcessStartInfo {
@@ -174,13 +174,12 @@ namespace Tests
 
             System.Console.WriteLine (asmPath);
 
-            Assert.IsFalse (compilation.HasErrors, "Errors Found:\n    " + String.Join ("\n    ", compilation.Messages));
+            AssertNoErrors (compilation);
 
             var asm = Assembly.Load (File.ReadAllBytes (asmPath));
 
             var types = asm.GetTypes ();
             Assert.Greater (types.Length, 0);
-
         }
     }
 }

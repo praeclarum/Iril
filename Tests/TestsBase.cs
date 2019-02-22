@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using NUnit.Framework;
+using Repil;
 
 namespace Tests
 {
@@ -40,6 +41,14 @@ namespace Tests
                 }
             }
             return code.ToArray ();
+        }
+
+        protected static void AssertNoErrors (Compilation compilation)
+        {
+            Assert.IsFalse (compilation.HasErrors, "Errors Found:\n    " +
+                            string.Join ("\n    ", compilation.Messages) +
+                            "\n" + compilation.ErrorCount + " errors, " +
+                            compilation.CompiledFunctionCount + " functions");
         }
 
         // clang -g -O1 -S -emit-llvm -fpic *.c

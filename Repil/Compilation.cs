@@ -76,6 +76,10 @@ namespace Repil
         readonly SymbolTable<SymbolTable<FieldDefinition>> globals =
             new SymbolTable<SymbolTable<FieldDefinition>> ();
 
+        int compiledFunctionCount;
+
+        public int CompiledFunctionCount => compiledFunctionCount;
+
         public bool TryGetGlobal (Symbol module, Symbol symbol, out FieldDefinition global)
         {
             if (globals.TryGetValue (module, out var mglobals))
@@ -502,6 +506,7 @@ namespace Repil
                     try {
                         var fc = new FunctionCompiler (this, m.Value);
                         fc.CompileFunction ();
+                        compiledFunctionCount++;
                     }
                     catch (Exception ex) {
                         ErrorMessage ($"Failed to compile {m.Key}: {ex.Message}", ex);
@@ -517,6 +522,7 @@ namespace Repil
         public readonly List<Message> Messages = new List<Message> ();
 
         public bool HasErrors => Messages.Exists (m => m.Type == MessageType.Error);
+        public int ErrorCount => Messages.Count (m => m.Type == MessageType.Error);
 
         void ErrorMessage (string message, Exception exception = null)
         {
