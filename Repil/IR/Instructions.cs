@@ -145,6 +145,12 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals {
             get {
+                if (Pointer is GlobalValue g) {
+                    if (g.Symbol.Text == "@llvm.dbg.value") {
+                        yield break;
+                    }
+                }
+
                 foreach (var a in Arguments) {
                     foreach (var l in a.Value.ReferencedLocals) {
                         yield return l;
