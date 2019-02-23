@@ -447,6 +447,23 @@ namespace Repil
                         Emit (il.Create (OpCodes.Mul));
                     }
                     break;
+                case IR.FpextInstruction fpext:
+                    EmitTypedValue (fpext.Value);
+                    switch (fpext.Type) {
+                        case Types.FloatType intt:
+                            switch (intt.Bits) {
+                                case 32:
+                                    Emit (il.Create (OpCodes.Conv_R4));
+                                    break;
+                                default:
+                                    Emit (il.Create (OpCodes.Conv_R8));
+                                    break;
+                            }
+                            break;
+                        default:
+                            throw new NotSupportedException ($"Cannot fpext {fpext.Type}");
+                    }
+                    break;
                 case IR.FptosiInstruction sext:
                     EmitTypedValue (sext.Value);
                     switch (sext.Type) {
@@ -556,6 +573,16 @@ namespace Repil
                     break;
                 case IR.InsertElementInstruction insertElement:
                     EmitTypedValue (insertElement.Value);
+                    break;
+                case IR.InttoptrInstruction inttoptr:
+                    EmitTypedValue (inttoptr.Value);
+                    switch (inttoptr.Type) {
+                        case Types.PointerType ptrt:
+                            Emit (il.Create (OpCodes.Conv_U));
+                            break;
+                        default:
+                            throw new NotSupportedException ($"Cannot inttoptr {inttoptr.Type}");
+                    }
                     break;
                 case IR.LoadInstruction load:
                     EmitLoad (load);
@@ -722,6 +749,16 @@ namespace Repil
                             break;
                         default:
                             throw new NotSupportedException ($"Cannot sitofp {sitofp.Type}");
+                    }
+                    break;
+                case IR.SremInstruction srem:
+                    if (srem.Type is Types.VectorType) {
+                        EmitVectorOp (OpCodes.Rem, srem.Op1, srem.Op2, (Types.VectorType)srem.Type);
+                    }
+                    else {
+                        EmitValue (srem.Op1, srem.Type);
+                        EmitValue (srem.Op2, srem.Type);
+                        Emit (il.Create (OpCodes.Rem));
                     }
                     break;
                 case IR.StoreInstruction store:
@@ -960,6 +997,25 @@ namespace Repil
                 case IR.NullConstant nll:
                     Emit (il.Create (OpCodes.Ldc_I4_0));
                     Emit (il.Create (OpCodes.Conv_U));
+                    break;
+                case IR.PtrtointValue i:
+                    EmitTypedValue (i.Value);
+                    switch (((IntegerType)i.Type).Bits) {
+                        case 8:
+                            Emit (il.Create (OpCodes.Conv_I1));
+                            break;
+                        case 16:
+                            Emit (il.Create (OpCodes.Conv_I2));
+                            break;
+                        case 32:
+                            Emit (il.Create (OpCodes.Conv_I4));
+                            break;
+                        case 64:
+                            Emit (il.Create (OpCodes.Conv_I8));
+                            break;
+                        default:
+                            throw new NotSupportedException ($"Cannot ptrtoint {i.Type}");
+                    }
                     break;
                 case IR.UndefinedConstant und:
                     EmitZeroValue (type);
@@ -1438,7 +1494,12 @@ namespace Repil
                     var field = cst.Fields[(int)iconst.Value];
                     Emit (il.Create (OpCodes.Ldflda, field));
                     Emit (il.Create (OpCodes.Conv_U));
-                    t = st.Elements[i];
+                    if (0 <= i && i < st.Elements.Length) {
+                        t = st.Elements[i];
+                    }
+                    else {
+                        throw new InvalidOperationException ($"Cannot get element #{i} from {st} ({t})");
+                    }
                 }
                 else if (t is Types.ArrayType artt) {
                     var esize = artt.ElementType.GetByteSize (function.IRModule);
@@ -1452,7 +1513,7 @@ namespace Repil
                 else {
 
                     if (i + 1 < n) {
-                        throw new NotSupportedException ("Cannot get pointer to " + t);
+                        throw new InvalidOperationException ("Cannot get pointer to " + t);
                     }
 
                 }
