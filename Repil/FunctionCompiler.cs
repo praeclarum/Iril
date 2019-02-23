@@ -297,6 +297,11 @@ namespace Repil
                         Emit (il.Create (OpCodes.And));
                     }
                     break;
+                case IR.AshrInstruction lshr:
+                    EmitValue (lshr.Op1, lshr.Type);
+                    EmitValue (lshr.Op2, lshr.Type);
+                    Emit (il.Create (OpCodes.Shr));
+                    break;
                 case IR.BitcastInstruction bitcast:
                     // CLR doesn't need bitcast
                     EmitTypedValue (bitcast.Input);
