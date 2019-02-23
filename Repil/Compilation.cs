@@ -504,9 +504,9 @@ namespace Repil
 
                 if (m.Value.IRDefinition != null) {
                     try {
+                        compiledFunctionCount++;
                         var fc = new FunctionCompiler (this, m.Value);
                         fc.CompileFunction ();
-                        compiledFunctionCount++;
                     }
                     catch (Exception ex) {
                         ErrorMessage ($"Failed to compile {m.Key}: {ex.Message}", ex);
