@@ -1310,6 +1310,32 @@ namespace Repil
                         EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
                         Emit (il.Create (OpCodes.Call, compilation.sysMathSqrtD));
                         return;
+                    case "@llvm.objectsize.i32.p0i8" when call.Arguments.Length >= 3: {
+                            var min = 0;
+                            if (call.Arguments[1].Value is Constant osizeConst) {
+                                min = osizeConst.Int32Value;
+                            }
+                            if (min == 0) {
+                                Emit (il.Create (OpCodes.Ldc_I4, -1));
+                            }
+                            else {
+                                Emit (il.Create (OpCodes.Ldc_I4, 0));
+                            }
+                        }
+                        return;
+                    case "@llvm.objectsize.i64.p0i8" when call.Arguments.Length >= 3: {
+                            var min = 0;
+                            if (call.Arguments[1].Value is Constant osizeConst) {
+                                min = osizeConst.Int32Value;
+                            }
+                            if (min == 0) {
+                                Emit (il.Create (OpCodes.Ldc_I8, -1L));
+                            }
+                            else {
+                                Emit (il.Create (OpCodes.Ldc_I8, 0L));
+                            }
+                        }
+                        return;
                     // declare void @llvm.memset.p0i8.i32(i8* <dest>, i8 <val>,
                     //                                    i32<len>, i1<isvolatile>)
                     case "@llvm.memset.p0i8.i32" when call.Arguments.Length >= 3:
