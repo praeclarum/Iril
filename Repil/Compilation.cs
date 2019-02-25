@@ -301,6 +301,8 @@ namespace Repil
                     sysObj);
                 mod.Types.Add (moduleGlobalsType);
 
+                List<(IR.GlobalVariable, FieldDefinition)> needsInit
+                    = new List<(IR.GlobalVariable, FieldDefinition)> ();
                 foreach (var kv in m.GlobalVariables) {
 
                     var symbol = kv.Key;
@@ -320,6 +322,14 @@ namespace Repil
 
                     moduleGlobalsType.Fields.Add (field);
                     mglobals.Add (symbol, field);
+
+                    if (g.Initializer != null) {
+                        needsInit.Add ((g, field));
+                    }
+                }
+
+                if (needsInit.Count > 0) {
+                    EmitGlobalInitializers (m, moduleGlobalsType, needsInit);
                 }
             }
 
@@ -358,6 +368,45 @@ namespace Repil
                         ErrorMessage ($"Global variable `{symbol}` is undefined");
                     }
                 }
+            }
+        }
+
+        void EmitGlobalInitializers (Module m, TypeDefinition moduleGlobalsType, List<(IR.GlobalVariable, FieldDefinition)> needsInit)
+        {
+            var cctor = new MethodDefinition (".cctor", MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName, sysVoid);
+            moduleGlobalsType.Methods.Add (cctor);
+            var compiler = new GlobalInitializersCompiler (this, m, cctor);
+            compiler.Compile (needsInit);
+        }
+
+        class GlobalInitializersCompiler : Emitter
+        {
+            public GlobalInitializersCompiler (Compilation compilation, Module module, MethodDefinition methodDefinition)
+                : base (compilation, module, methodDefinition)
+            {
+            }
+
+            public void Compile (List<(IR.GlobalVariable, FieldDefinition)> needsInit)
+            {
+                foreach (var (g, f) in needsInit) {
+                    switch (g.Initializer) {
+                        case IR.ArrayConstant c:
+                            break;
+                        case IR.BytesConstant c:
+                            break;
+                        case IR.StructureConstant c:
+                            break;
+                        default:
+                            EmitValue (g.Initializer, g.Type);
+                            Emit (il.Create (OpCodes.Stfld, f));
+                            break;
+                    }
+                }
+
+                Emit (OpCodes.Ret);
+
+                body.Optimize ();
+                method.Body = body;
             }
         }
 
