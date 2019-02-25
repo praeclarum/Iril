@@ -701,7 +701,7 @@ namespace Repil
                     break;
                 case IR.ShlInstruction shl:
                     EmitValue (shl.Op1, shl.Type);
-                    EmitValue (shl.Op2, shl.Type);
+                    EmitValue (shl.Op2, IntegerType.I32);
                     Emit (il.Create (OpCodes.Shl));
                     break;
                 case IR.ShuffleVectorInstruction sh: {
