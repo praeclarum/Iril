@@ -6,8 +6,7 @@ using Mono.Cecil;
 using Repil.Types;
 using Mono.Cecil.Rocks;
 using Mono.Cecil.Cil;
-
-using CecilInstruction = Mono.Cecil.Cil.Instruction;
+using System.Text;
 
 namespace Repil
 {
@@ -28,6 +27,10 @@ namespace Repil
 
         AssemblyDefinition sysAsm;
         TypeReference sysVoid;
+        TypeReference sysArray;
+        TypeReference sysRuntimeFieldHandle;
+        TypeReference sysRuntimeHelpers;
+        MethodReference sysRuntimeHelpersInitArray;
         TypeReference sysVoidPtr;
         TypeReference sysVoidPtrPtr;
         TypeReference sysObj;
@@ -42,6 +45,15 @@ namespace Repil
         TypeReference sysSingle;
         TypeReference sysDouble;
         TypeReference sysString;
+        TypeReference sysChar;
+        TypeReference sysCharArray;
+        MethodReference sysStringToCharArray;
+        TypeReference sysCompGen;
+        MethodReference sysCompGenCtor;
+        TypeReference sysGCHandle;
+        TypeReference sysGCHandleType;
+        MethodReference sysGCHandleAlloc;
+        MethodReference sysGCHandleAddrOfPinnedObject;
         TypeReference sysNotImpl;
         MethodReference sysNotImplCtor;
         TypeReference sysNotSupp;
@@ -92,6 +104,9 @@ namespace Repil
 
         Syscalls syscalls;
 
+        readonly Lazy<TypeDefinition> dataType;
+        readonly Dictionary<int, TypeDefinition> dataFieldTypes = new Dictionary<int, TypeDefinition> ();
+
         public Compilation (IEnumerable<Module> documents, string assemblyName)
         {
             Modules = documents.ToArray ();
@@ -107,6 +122,7 @@ namespace Repil
             };
             asm = AssemblyDefinition.CreateAssembly (asmName, modName, mps);
             mod = asm.MainModule;
+            dataType = new Lazy<TypeDefinition> (CreateDataType);
             Compile ();
         }
 
@@ -195,6 +211,7 @@ namespace Repil
                 }
                 throw new Exception ($"Cannot find {name} in {declType}");
             }
+            sysVoid = Import ("System.Void");
             sysObj = Import ("System.Object");
             sysVal = Import ("System.ValueType");
             sysByte = Import ("System.Byte");
@@ -206,12 +223,24 @@ namespace Repil
             sysIntPtr = Import ("System.IntPtr");
             sysSingle = Import ("System.Single");
             sysDouble = Import ("System.Double");
-            sysSingleIsNaN = ImportMethod (sysSingle, sysBoolean, "IsNaN", sysSingle);
-            sysDoubleIsNaN = ImportMethod (sysDouble, sysBoolean, "IsNaN", sysDouble);
-            sysVoid = Import ("System.Void");
+            sysArray = Import ("System.Array");
+            sysCompGen = Import ("System.Runtime.CompilerServices.CompilerGeneratedAttribute");
+            sysCompGenCtor = ImportMethod (sysCompGen, sysVoid, ".ctor");
             sysVoidPtr = sysVoid.MakePointerType ();
             sysVoidPtrPtr = sysVoidPtr.MakePointerType ();
             sysString = Import ("System.String");
+            sysChar = Import ("System.Char");
+            sysCharArray = sysChar.MakeArrayType ();
+            sysStringToCharArray = ImportMethod (sysString, sysCharArray, "ToCharArray");
+            sysRuntimeFieldHandle = Import ("System.RuntimeFieldHandle");
+            sysRuntimeHelpers = Import ("System.Runtime.CompilerServices.RuntimeHelpers");
+            sysRuntimeHelpersInitArray = ImportMethod (sysRuntimeHelpers, sysVoid, "InitializeArray", sysArray, sysRuntimeFieldHandle);
+            sysGCHandle = Import ("System.Runtime.InteropServices.GCHandle");
+            sysGCHandleType = Import ("System.Runtime.InteropServices.GCHandleType");
+            sysGCHandleAlloc = ImportMethod (sysGCHandle, sysGCHandle, "Alloc", sysObj, sysGCHandleType);
+            sysGCHandleAddrOfPinnedObject = ImportMethod (sysGCHandle, sysIntPtr, "AddrOfPinnedObject");
+            sysSingleIsNaN = ImportMethod (sysSingle, sysBoolean, "IsNaN", sysSingle);
+            sysDoubleIsNaN = ImportMethod (sysDouble, sysBoolean, "IsNaN", sysDouble);
             sysNotImpl = Import ("System.NotImplementedException");
             sysNotImplCtor = ImportMethod (sysNotImpl, sysVoid, ".ctor");
             sysNotSupp = Import ("System.NotSupportedException");
@@ -379,6 +408,36 @@ namespace Repil
             compiler.Compile (needsInit);
         }
 
+        TypeDefinition CreateDataType ()
+        {
+            var name = "<PrivateImplementationDetails>";
+            var td = new TypeDefinition ("", name, TypeAttributes.AnsiClass | TypeAttributes.Sealed, sysObj);
+            var compGen = new CustomAttribute (sysCompGenCtor);
+            td.CustomAttributes.Add (compGen);
+            mod.Types.Add (td);
+            return td;
+        }
+
+        FieldDefinition AddDataField (byte[] data)
+        {
+            var td = dataType.Value;
+            var size = data.Length;
+            if (!dataFieldTypes.TryGetValue (size, out var dft)) {
+                dft = new TypeDefinition ("", $"__StaticArrayInitTypeSize={size}", TypeAttributes.ExplicitLayout | TypeAttributes.AnsiClass | TypeAttributes.Sealed | TypeAttributes.NestedPrivate, sysVal) {
+                    PackingSize = 1,
+                    ClassSize = size
+                };
+                td.NestedTypes.Add (dft);
+                dataFieldTypes[size] = dft;
+            }
+            var name = "D" + Guid.NewGuid ().ToString ("N").ToUpperInvariant ();
+            var fd = new FieldDefinition (name, FieldAttributes.Static | FieldAttributes.Assembly | FieldAttributes.InitOnly | FieldAttributes.HasFieldRVA, dft) {
+                InitialValue = data
+            };
+            td.Fields.Add (fd);
+            return fd;
+        }
+
         class GlobalInitializersCompiler : Emitter
         {
             public GlobalInitializersCompiler (Compilation compilation, Module module, MethodDefinition methodDefinition)
@@ -388,17 +447,60 @@ namespace Repil
 
             public void Compile (List<(IR.GlobalVariable, FieldDefinition)> needsInit)
             {
+                var gcHandleV = new Lazy<VariableDefinition> (() => {
+                    var v = new VariableDefinition (compilation.sysGCHandle);
+                    body.Variables.Add (v);
+                    return v;
+                });
+
                 foreach (var (g, f) in needsInit) {
                     switch (g.Initializer) {
                         case IR.ArrayConstant c:
                             break;
-                        case IR.BytesConstant c:
+                        case IR.BytesConstant c: {
+                                var chars = new List<byte> ();
+                                var s = c.Bytes.Text;
+                                var i = 2;
+                                var n = s.Length - 1;
+                                while (i < n) {
+                                    if (s[i] == '\\' && i + 1 < n && s[i + 1] == '\\') {
+                                        chars.Add ((byte)'\\');
+                                        i += 2;
+                                    }
+                                    else if (s[i] == '\\' && i + 2 < n) {
+                                        var hex = s.Substring (i + 1, 2);
+                                        var v = int.Parse (hex, System.Globalization.NumberStyles.HexNumber);
+                                        var sv = Math.Min (255, Math.Max (0, v));
+                                        chars.Add ((byte)sv);
+                                        i += 3;
+                                    }
+                                    else {
+                                        chars.Add ((byte)s[i]);
+                                        i++;
+                                    }
+                                }
+                                var bytes = chars.ToArray ();
+                                var size = bytes.Length;
+                                var dataField = compilation.AddDataField (bytes);
+                                Emit (il.Create (OpCodes.Ldc_I4, size));
+                                Emit (il.Create (OpCodes.Newarr, compilation.sysByte));
+                                Emit (il.Create (OpCodes.Dup));
+                                Emit (il.Create (OpCodes.Ldtoken, dataField));
+                                Emit (il.Create (OpCodes.Call, compilation.sysRuntimeHelpersInitArray));
+                                Emit (OpCodes.Ldc_I4_3);
+                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
+                                Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
+                                Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
+                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
+                                Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
+                                Emit (il.Create (OpCodes.Stsfld, f));
+                            }
                             break;
                         case IR.StructureConstant c:
                             break;
                         default:
                             EmitValue (g.Initializer, g.Type);
-                            Emit (il.Create (OpCodes.Stfld, f));
+                            Emit (il.Create (OpCodes.Stsfld, f));
                             break;
                     }
                 }
