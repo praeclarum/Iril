@@ -455,7 +455,29 @@ namespace Repil
 
                 foreach (var (g, f) in needsInit) {
                     switch (g.Initializer) {
-                        case IR.ArrayConstant c:
+                        case IR.ArrayConstant c: {
+                                var size = c.Elements.Length;
+                                var et = c.Elements[0].Type;
+                                var cet = compilation.GetClrType (et);
+                                Emit (il.Create (OpCodes.Ldc_I4, size));
+                                Emit (il.Create (OpCodes.Newarr, cet));
+                                Emit (il.Create (OpCodes.Dup));
+                                for (int i = 0; i < c.Elements.Length; i++) {
+                                    var e = c.Elements[i];
+                                    Emit (il.Create (OpCodes.Ldc_I4, i));
+                                    EmitTypedValue (e);
+                                    Emit (il.Create (OpCodes.Stelem_Any, cet));
+                                    Emit (il.Create (OpCodes.Dup));
+                                }
+                                Emit (il.Create (OpCodes.Pop));
+                                Emit (OpCodes.Ldc_I4_3);
+                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
+                                Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
+                                Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
+                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
+                                Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
+                                Emit (il.Create (OpCodes.Stsfld, f));
+                            }
                             break;
                         case IR.BytesConstant c: {
                                 var chars = new List<byte> ();

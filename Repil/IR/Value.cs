@@ -14,7 +14,7 @@ namespace Repil.IR
 
     public class ArrayConstant : Value
     {
-        public readonly TypedValue[] Constants;
+        public readonly TypedValue[] Elements;
 
         public ArrayConstant (IEnumerable<TypedValue> constants)
         {
@@ -22,10 +22,10 @@ namespace Repil.IR
                 throw new ArgumentNullException (nameof (constants));
             }
 
-            Constants = constants.ToArray ();
+            Elements = constants.ToArray ();
         }
 
-        public override string ToString () => $"[{string.Join (", ", (object[])Constants)}]";
+        public override string ToString () => $"[{string.Join (", ", (object[])Elements)}]";
     }
 
     public class BitcastValue : ConversionValue
