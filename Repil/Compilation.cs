@@ -130,9 +130,9 @@ namespace Repil
         {
             FindSystemTypes ();
             CompileStructures ();
-            EmitGlobalVariables ();
             EmitSyscalls ();
             FindFunctions ();
+            EmitGlobalVariables ();
             CompileFunctions ();
         }
 
@@ -496,7 +496,15 @@ namespace Repil
                                 Emit (il.Create (OpCodes.Stsfld, f));
                             }
                             break;
-                        case IR.StructureConstant c:
+                        case IR.StructureConstant c: {
+                                var td = f.FieldType.Resolve ();
+                                for (int i = 0; i < c.Elements.Length; i++) {
+                                    var e = c.Elements[i];
+                                    Emit (il.Create (OpCodes.Ldsflda, f));
+                                    EmitTypedValue (e);
+                                    Emit (il.Create (OpCodes.Stfld, td.Fields[i]));
+                                }
+                            }
                             break;
                         default:
                             EmitValue (g.Initializer, g.Type);

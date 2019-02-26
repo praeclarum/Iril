@@ -14,5 +14,7 @@ namespace Repil.Types
         public static readonly VarArgsType VarArgs = new VarArgsType ();
 
         public override long GetByteSize (Module module) => 0L;
+
+        public override string ToString () => "...";
     }
 }

@@ -24,9 +24,10 @@ namespace Repil
         public void Emit()
         {
             EmitCalloc ();
-            EmitMalloc ();
-            EmitRealloc ();
             EmitFree ();
+            EmitMalloc ();
+            EmitPrintf ();
+            EmitRealloc ();
         }
 
         MethodDefinition NewMethod (Symbol symbol, LType returnType, params (string, LType)[] parameters)
@@ -84,6 +85,15 @@ namespace Repil
             il.Append (il.Create (OpCodes.Call, compilation.sysIntPtrFromInt64));
             il.Append (il.Create (OpCodes.Call, compilation.sysAllocHGlobal));
             il.Append (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
+            il.Append (il.Create (OpCodes.Ret));
+            b.Optimize ();
+        }
+
+        void EmitPrintf ()
+        {
+            var m = NewMethod ("@printf", Types.VoidType.Void, ("format", Types.PointerType.I8Pointer), ("arguments", VarArgsType.VarArgs));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
             il.Append (il.Create (OpCodes.Ret));
             b.Optimize ();
         }
