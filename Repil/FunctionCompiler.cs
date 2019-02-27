@@ -1287,6 +1287,11 @@ namespace Repil
                         EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
                         Emit (il.Create (OpCodes.Call, compilation.sysMathSqrtD));
                         return;
+                    case "@llvm.pow.f64":
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathPowD));
+                        return;
                     case "@llvm.objectsize.i32.p0i8" when call.Arguments.Length >= 3: {
                             var min = 0;
                             if (call.Arguments[1].Value is Constant osizeConst) {

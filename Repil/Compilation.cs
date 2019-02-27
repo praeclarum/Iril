@@ -65,6 +65,7 @@ namespace Repil
         public MethodReference sysMathCeilD;
         public MethodReference sysMathFloorD;
         public MethodReference sysMathSqrtD;
+        public MethodReference sysMathPowD;
         public MethodReference sysSingleIsNaN;
         public MethodReference sysDoubleIsNaN;
         TypeReference sysEventArgs;
@@ -260,6 +261,7 @@ namespace Repil
             sysMathCeilD = ImportMethod (sysMath, sysDouble, "Ceiling", sysDouble);
             sysMathFloorD = ImportMethod (sysMath, sysDouble, "Floor", sysDouble);
             sysMathSqrtD = ImportMethod (sysMath, sysDouble, "Sqrt", sysDouble);
+            sysMathPowD = ImportMethod (sysMath, sysDouble, "Pow", sysDouble, sysDouble);
             sysEventArgs = Import ("System.EventArgs");
             sysIAsyncResult = Import ("System.IAsyncResult");
             sysAsyncCallback = Import ("System.AsyncCallback");
