@@ -93,7 +93,6 @@ namespace Repil
             // Find a path with no definition of then variable.
             //
             var visitedBlocks = new HashSet<LocalSymbol> ();
-            visitedBlocks.Add (bi.Symbol);
             isAlive = DetermineIsAliveInBlock (variable, bi, visitedBlocks);
             bi.AliveCache[variable] = isAlive;
             return isAlive;
@@ -101,8 +100,12 @@ namespace Repil
 
         bool DetermineIsAliveInBlock (LocalSymbol variable, BlockInfo block, HashSet<LocalSymbol> visitedBlocks)
         {
-            if (visitedBlocks.Contains (block.Symbol))
-                return block.AliveCache.TryGetValue (variable, out var a) && a;
+            if (visitedBlocks.Contains (block.Symbol)) {
+                if (block.AliveCache.TryGetValue (variable, out var a))
+                    return a;
+                //throw new Exception ("Cycle");
+                return false;
+            }
             visitedBlocks.Add (block.Symbol);
 
             //

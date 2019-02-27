@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using Repil;
+using System.Linq;
 
 namespace Cli
 {
@@ -8,7 +9,15 @@ namespace Cli
     {
         static void Main(string[] args)
         {
-            Module.Parse ("declare void @llvm.memset.p0i8.i64(i8* nocapture writeonly, i8, i64, i32, i1) #1");
+            var files =
+                from f in Directory.GetFiles ("/Users/fak/Dropbox/Projects/SparsePerf/SparseSuite/SparseSuite", "*.ll")
+                let code = File.ReadAllText (f)
+                let m = Module.Parse (code, f)
+                select m;
+
+            var comp = new Compilation (files, "SuiteSparse.dll");
+
+            comp.WriteAssembly ("SuiteSparse.dll");
         }
     }
 }

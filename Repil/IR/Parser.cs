@@ -1385,7 +1385,7 @@ case 191:
 case 192:
 #line 663 "Repil/IR/IR.jay"
   {
-        yyVal = new Assignment ((Instruction)yyVals[-1+yyTop]);
+        yyVal = new Assignment ((Instruction)yyVals[-1+yyTop], (SymbolTable<MetaSymbol>)yyVals[0+yyTop]);
     }
   break;
 case 193:
@@ -1397,7 +1397,7 @@ case 193:
 case 194:
 #line 671 "Repil/IR/IR.jay"
   {
-        yyVal = new Assignment ((LocalSymbol)yyVals[-3+yyTop], (Instruction)yyVals[-1+yyTop]);
+        yyVal = new Assignment ((LocalSymbol)yyVals[-3+yyTop], (Instruction)yyVals[-1+yyTop], (SymbolTable<MetaSymbol>)yyVals[0+yyTop]);
     }
   break;
 case 196:

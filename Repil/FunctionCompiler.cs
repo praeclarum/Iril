@@ -8,6 +8,7 @@ using Repil.Types;
 using CecilInstruction = Mono.Cecil.Cil.Instruction;
 using System.Runtime.InteropServices;
 using Repil.IR;
+using System.Numerics;
 
 namespace Repil
 {
@@ -51,6 +52,8 @@ namespace Repil
         readonly SymbolTable<bool> shouldInline = new SymbolTable<bool> ();
         readonly Dictionary<(string, int), VariableDefinition> vectorTemps = new Dictionary<(string, int), VariableDefinition> ();
         readonly SymbolTable<CecilInstruction> blockFirstInstr = new SymbolTable<CecilInstruction> ();
+        readonly SymbolTable<CecilInstruction> blockHeadLastInstr = new SymbolTable<CecilInstruction> ();
+        readonly SymbolTable<CecilInstruction> blockLastInstr = new SymbolTable<CecilInstruction> ();
 
         public FunctionCompiler (Compilation compilation, DefinedFunction function)
             : base (compilation, function.IRModule, function.ILDefinition)
@@ -78,7 +81,7 @@ namespace Repil
             }
             foreach (var b in f.Blocks) {
                 foreach (var i in b.Assignments) {
-                    if (i.Result != LocalSymbol.None)
+                    if (i.HasResult)
                         localCounts.Add (i.Result, 0);
                 }
             }
@@ -109,9 +112,10 @@ namespace Repil
 
                     var should = false;
                     if (referencedOnce) {
-                        should = true;
+                        should = false;
                         // Make sure its use is before a state-changing instruction
-                        for (var j = i + 1; j < b.Assignments.Length; j++) {
+                        var j = i + 1;
+                        for (; j < b.Assignments.Length && should; j++) {
                             if (b.Assignments[j].Instruction.ReferencedLocals.Contains (symbol)) {
                                 break;
                             }
@@ -119,6 +123,10 @@ namespace Repil
                                 should = false;
                                 break;
                             }
+                        }
+                        // Make sure it was used in this block
+                        if (should && j == b.Assignments.Length && !b.Terminator.ReferencedLocals.Contains (symbol)) {
+                            should = false;
                         }
                     }
                     shouldInline.Add (symbol, should);
@@ -136,7 +144,9 @@ namespace Repil
                     if (a.HasResult && a.Instruction is IR.PhiInstruction phi) {
                         var irtype = a.Instruction.ResultType (function.IRModule);
                         var ctype = compilation.GetClrType (irtype);
-                        var local = GetFreeVariable (symbol, ctype, true);
+                        //var local = GetFreeVariable (symbol, ctype, true);
+                        var local = new VariableDefinition (ctype);
+                        body.Variables.Add (local);
                         phiLocals[a.Result] = local;
                         //var name = "phi" + a.Result.Text.Substring (1);
                         //var dbg = new VariableDebugInformation (local, name);
@@ -165,18 +175,30 @@ namespace Repil
             }
 
             //
-            // Create target instructions for each block
+            // Add tracing
             //
 
+
+            //
+            // Create target instructions for each block
+            //
             foreach (var b in f.Blocks) {
                 var i = il.Create (OpCodes.Nop);
                 il.Append (i);
                 blockFirstInstr[b.Symbol] = i;
+
+                il.Append (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
+                i = il.Create (OpCodes.Call, compilation.sysConsoleWriteLine);
+                il.Append (i);
+                //i = il.Create (OpCodes.Call, compilation.sysDebuggerBreak);
+                //il.Append (i);
+                blockHeadLastInstr[b.Symbol] = i;
             }
 
             //
             // Emit each block
             //
+            var sqpts = new List<(CecilInstruction, MetaSymbol)> ();
             for (var i = 0; i < f.Blocks.Length; i++) {
                 var b = f.Blocks[i];
                 var nextBlock = i + 1 < f.Blocks.Length ? f.Blocks[i + 1] : null;
@@ -184,12 +206,16 @@ namespace Repil
                 //
                 // Emit the assignments
                 //
-                prev = blockFirstInstr[b.Symbol];
+                prev = blockHeadLastInstr[b.Symbol];
                 foreach (var a in b.Assignments) {
                     if (!ShouldInline (a.Result)
                         && !(a.Instruction is IR.PhiInstruction)) {
 
                         EmitInstruction (a.Result, a.Instruction, nextBlock);
+
+                        if (a.HasDebugSymbol) {
+                            //sqpts.Add ((prev, a.DebugSymbol));
+                        }
 
                         // If we need to assign it, do so
                         if (locals.TryGetValue (a.Result, out var vd)) {
@@ -232,16 +258,61 @@ namespace Repil
                 // Emit terminator
                 //
                 EmitInstruction (LocalSymbol.None, b.Terminator, nextBlock);
+
+                blockLastInstr[b.Symbol] = prev;
             }
 
             body.Optimize ();
 
-            var scopeDbg = new ScopeDebugInformation (body.Instructions.First (), body.Instructions.Last ());
-            foreach (var d in vdbgs) {
-                scopeDbg.Variables.Add (d);
+            //
+            // Add sequence points
+            //
+            foreach (var (cinst, dbgSym) in sqpts) {
+                if (module.Metadata.TryGetValue (dbgSym, out var dbg) && dbg is SymbolTable<object> dbgVals) {
+                    var cinstr = prev;
+                    if (dbgVals.TryGetValue (Symbol.Line, out var lineO) && lineO is Constant line
+                        && dbgVals.TryGetValue (Symbol.Column, out var columnO) && columnO is Constant column
+                        && dbgVals.TryGetValue (Symbol.Scope, out var scopeO) && scopeO is MetaSymbol scopeRef) {
+
+                        var doc = compilation.GetScopeDocument (module, scopeRef);
+                        if (doc != null) {
+                            //method.DebugInformation.
+                            var sp = new SequencePoint (cinstr, doc);
+                            sp.StartLine = line.Int32Value;
+                            sp.EndLine = line.Int32Value;
+                            sp.StartColumn = column.Int32Value;
+                            sp.EndColumn = column.Int32Value + 1;
+                            method.DebugInformation.SequencePoints.Add (sp);
+                            Console.WriteLine ("DEBUG: " + sp);
+                        }
+                    }
+                }
             }
 
-            md.DebugInformation.Scope = scopeDbg;
+            var bodyDbg = new ScopeDebugInformation (body.Instructions.First (), null);
+
+            foreach (var b in f.Blocks) {
+                var scope = new ScopeDebugInformation (blockFirstInstr[b.Symbol], blockLastInstr[b.Symbol]);
+                foreach (var a in b.Assignments) {
+                    if (!a.HasResult)
+                        continue;
+                    if (locals.TryGetValue (a.Result, out var vd)) {
+                        var name = "local" + a.Result.Text.Substring (1) + "_";
+                        var vdbg = new VariableDebugInformation (vd, name);
+                        vdbg.IsDebuggerHidden = false;
+                        scope.Variables.Add (vdbg);
+                    }
+                    else if (phiLocals.TryGetValue (a.Result, out vd)) {
+                        var name = "phi" + a.Result.Text.Substring (1) + "_";
+                        var vdbg = new VariableDebugInformation (vd, name);
+                        vdbg.IsDebuggerHidden = false;
+                        scope.Variables.Add (vdbg);
+                    }
+                }
+                bodyDbg.Scopes.Add (scope);
+            }
+
+            md.DebugInformation.Scope = bodyDbg;
             md.Body = body;
         }
 
@@ -290,7 +361,7 @@ namespace Repil
                     break;
                 case IR.AshrInstruction lshr:
                     EmitValue (lshr.Op1, lshr.Type);
-                    EmitValue (lshr.Op2, lshr.Type);
+                    EmitValue (lshr.Op2, Types.IntegerType.I32);
                     Emit (il.Create (OpCodes.Shr));
                     break;
                 case IR.BitcastInstruction bitcast:
@@ -580,7 +651,7 @@ namespace Repil
                     break;
                 case IR.LshrInstruction lshr:
                     EmitValue (lshr.Op1, lshr.Type);
-                    EmitValue (lshr.Op2, lshr.Type);
+                    EmitValue (lshr.Op2, Types.IntegerType.I32);
                     Emit (il.Create (OpCodes.Shr_Un));
                     break;
                 case IR.MultiplyInstruction mul:
@@ -1317,6 +1388,8 @@ namespace Repil
             // Get the right list
             //
             var types = isPhi ? phiVariablesByType : sharedVariablesByType;
+            var living = liveliness;
+
             if (!types.TryGetValue (clrType.FullName, out var variables)) {
                 variables = new List<SharedVariable> ();
                 types[clrType.FullName] = variables;
@@ -1335,7 +1408,7 @@ namespace Repil
             //
             SharedVariable variable = null;
             foreach (var v in variables) {
-                var interferes = liveliness.VariablesInterfere (symbol, v.Users);
+                var interferes = living.VariablesInterfere (symbol, v.Users);
                 if (!interferes) {
                     variable = v;
                     break;

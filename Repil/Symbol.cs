@@ -14,6 +14,12 @@ namespace Repil
         public static readonly Symbol Types = Intern ("types");
         public static readonly Symbol BaseType = Intern ("baseType");
         public static readonly Symbol Elements = Intern ("elements");
+        public static readonly Symbol Line = Intern ("line");
+        public static readonly Symbol Column = Intern ("column");
+        public static readonly Symbol Scope = Intern ("scope");
+        public static readonly Symbol File = Intern ("file");
+        public static readonly Symbol Filename = Intern ("filename");
+        public static readonly Symbol Directory = Intern ("directory");
 
         public readonly uint Hash;
         public readonly string Text;
@@ -133,6 +139,7 @@ namespace Repil
     public class MetaSymbol : Symbol
     {
         public static readonly MetaSymbol Dbg = (MetaSymbol)Intern ("!dbg");
+        public static readonly MetaSymbol None = (MetaSymbol)Intern ("!");
 
         public MetaSymbol (uint hash, string text) : base (hash, text)
         {

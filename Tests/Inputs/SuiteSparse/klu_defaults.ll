@@ -9,51 +9,56 @@ target triple = "x86_64-apple-macosx10.14.0"
 define i32 @klu_defaults(%struct.klu_common_struct*) local_unnamed_addr #0 !dbg !10 {
   call void @llvm.dbg.value(metadata %struct.klu_common_struct* %0, metadata !53, metadata !DIExpression()), !dbg !54
   %2 = icmp eq %struct.klu_common_struct* %0, null, !dbg !55
-  br i1 %2, label %25, label %3, !dbg !57
+  br i1 %2, label %26, label %3, !dbg !57
 
 ; <label>:3:                                      ; preds = %1
-  %4 = bitcast %struct.klu_common_struct* %0 to <2 x double>*, !dbg !58
-  store <2 x double> <double 1.000000e-03, double 1.200000e+00>, <2 x double>* %4, align 8, !dbg !58, !tbaa !59
-  %5 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 2, !dbg !63
-  %6 = bitcast double* %5 to <2 x double>*, !dbg !64
-  store <2 x double> <double 1.200000e+00, double 1.000000e+01>, <2 x double>* %6, align 8, !dbg !64, !tbaa !59
-  %7 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 5, !dbg !65
-  store i32 1, i32* %7, align 8, !dbg !66, !tbaa !67
-  %8 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 4, !dbg !72
-  store double 0.000000e+00, double* %8, align 8, !dbg !73, !tbaa !74
-  %9 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 6, !dbg !75
-  store i32 0, i32* %9, align 4, !dbg !76, !tbaa !77
-  %10 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 7, !dbg !78
-  store i32 2, i32* %10, align 8, !dbg !79, !tbaa !80
-  %11 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 10, !dbg !81
-  store i32 1, i32* %11, align 8, !dbg !82, !tbaa !83
-  %12 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 8, !dbg !84
-  %13 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 11, !dbg !85
-  store i32 0, i32* %13, align 4, !dbg !86, !tbaa !87
-  %14 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 12, !dbg !88
-  store i32 0, i32* %14, align 8, !dbg !89, !tbaa !90
-  %15 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 13, !dbg !91
-  %16 = bitcast i32 (i32, i32*, i32*, i32*, %struct.klu_common_struct*)** %12 to i8*, !dbg !92
-  call void @llvm.memset.p0i8.i64(i8* nonnull %16, i8 0, i64 16, i32 8, i1 false), !dbg !93
-  store i32 -1, i32* %15, align 4, !dbg !92, !tbaa !94
-  %17 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 14, !dbg !95
-  store i32 -1, i32* %17, align 8, !dbg !96, !tbaa !97
-  %18 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 16, !dbg !98
-  store i32 -1, i32* %18, align 8, !dbg !99, !tbaa !100
-  %19 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 17, !dbg !101
-  %20 = bitcast double* %19 to <2 x double>*, !dbg !102
-  store <2 x double> <double -1.000000e+00, double -1.000000e+00>, <2 x double>* %20, align 8, !dbg !102, !tbaa !59
-  %21 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 19, !dbg !103
-  %22 = bitcast double* %21 to <2 x double>*, !dbg !104
-  store <2 x double> <double -1.000000e+00, double -1.000000e+00>, <2 x double>* %22, align 8, !dbg !104, !tbaa !59
-  %23 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 21, !dbg !105
-  %24 = bitcast double* %23 to i8*, !dbg !106
-  call void @llvm.memset.p0i8.i64(i8* nonnull %24, i8 0, i64 24, i32 8, i1 false), !dbg !107
-  br label %25, !dbg !106
+  %4 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 0, !dbg !58
+  store double 1.000000e-03, double* %4, align 8, !dbg !59, !tbaa !60
+  %5 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 1, !dbg !68
+  store double 1.200000e+00, double* %5, align 8, !dbg !69, !tbaa !70
+  %6 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 2, !dbg !71
+  store double 1.200000e+00, double* %6, align 8, !dbg !72, !tbaa !73
+  %7 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 3, !dbg !74
+  store double 1.000000e+01, double* %7, align 8, !dbg !75, !tbaa !76
+  %8 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 5, !dbg !77
+  store i32 1, i32* %8, align 8, !dbg !78, !tbaa !79
+  %9 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 4, !dbg !80
+  store double 0.000000e+00, double* %9, align 8, !dbg !81, !tbaa !82
+  %10 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 6, !dbg !83
+  store i32 0, i32* %10, align 4, !dbg !84, !tbaa !85
+  %11 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 7, !dbg !86
+  store i32 2, i32* %11, align 8, !dbg !87, !tbaa !88
+  %12 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 10, !dbg !89
+  store i32 1, i32* %12, align 8, !dbg !90, !tbaa !91
+  %13 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 8, !dbg !92
+  %14 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 11, !dbg !93
+  store i32 0, i32* %14, align 4, !dbg !94, !tbaa !95
+  %15 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 12, !dbg !96
+  store i32 0, i32* %15, align 8, !dbg !97, !tbaa !98
+  %16 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 13, !dbg !99
+  %17 = bitcast i32 (i32, i32*, i32*, i32*, %struct.klu_common_struct*)** %13 to i8*, !dbg !100
+  call void @llvm.memset.p0i8.i64(i8* nonnull %17, i8 0, i64 16, i32 8, i1 false), !dbg !101
+  store i32 -1, i32* %16, align 4, !dbg !100, !tbaa !102
+  %18 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 14, !dbg !103
+  store i32 -1, i32* %18, align 8, !dbg !104, !tbaa !105
+  %19 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 16, !dbg !106
+  store i32 -1, i32* %19, align 8, !dbg !107, !tbaa !108
+  %20 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 17, !dbg !109
+  store double -1.000000e+00, double* %20, align 8, !dbg !110, !tbaa !111
+  %21 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 18, !dbg !112
+  store double -1.000000e+00, double* %21, align 8, !dbg !113, !tbaa !114
+  %22 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 19, !dbg !115
+  store double -1.000000e+00, double* %22, align 8, !dbg !116, !tbaa !117
+  %23 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 20, !dbg !118
+  store double -1.000000e+00, double* %23, align 8, !dbg !119, !tbaa !120
+  %24 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %0, i64 0, i32 21, !dbg !121
+  %25 = bitcast double* %24 to i8*, !dbg !122
+  call void @llvm.memset.p0i8.i64(i8* nonnull %25, i8 0, i64 24, i32 8, i1 false), !dbg !123
+  br label %26, !dbg !122
 
-; <label>:25:                                     ; preds = %1, %3
-  %26 = phi i32 [ 1, %3 ], [ 0, %1 ], !dbg !108
-  ret i32 %26, !dbg !109
+; <label>:26:                                     ; preds = %1, %3
+  %27 = phi i32 [ 1, %3 ], [ 0, %1 ], !dbg !124
+  ret i32 %27, !dbg !125
 }
 
 ; Function Attrs: nounwind readnone speculatable
@@ -128,55 +133,71 @@ attributes #2 = { argmemonly nounwind }
 !55 = !DILocation(line: 14, column: 16, scope: !56)
 !56 = distinct !DILexicalBlock(scope: !10, file: !1, line: 14, column: 9)
 !57 = !DILocation(line: 14, column: 9, scope: !10)
-!58 = !DILocation(line: 20, column: 17, scope: !10)
-!59 = !{!60, !60, i64 0}
-!60 = !{!"double", !61, i64 0}
-!61 = !{!"omnipotent char", !62, i64 0}
-!62 = !{!"Simple C/C++ TBAA"}
-!63 = !DILocation(line: 22, column: 13, scope: !10)
-!64 = !DILocation(line: 22, column: 25, scope: !10)
-!65 = !DILocation(line: 24, column: 13, scope: !10)
-!66 = !DILocation(line: 24, column: 17, scope: !10)
-!67 = !{!68, !69, i64 40}
-!68 = !{!"klu_common_struct", !60, i64 0, !60, i64 8, !60, i64 16, !60, i64 24, !60, i64 32, !69, i64 40, !69, i64 44, !69, i64 48, !70, i64 56, !70, i64 64, !69, i64 72, !69, i64 76, !69, i64 80, !69, i64 84, !69, i64 88, !69, i64 92, !69, i64 96, !60, i64 104, !60, i64 112, !60, i64 120, !60, i64 128, !60, i64 136, !71, i64 144, !71, i64 152}
-!69 = !{!"int", !61, i64 0}
-!70 = !{!"any pointer", !61, i64 0}
-!71 = !{!"long", !61, i64 0}
-!72 = !DILocation(line: 25, column: 13, scope: !10)
-!73 = !DILocation(line: 25, column: 21, scope: !10)
-!74 = !{!68, !60, i64 32}
-!75 = !DILocation(line: 26, column: 13, scope: !10)
-!76 = !DILocation(line: 26, column: 22, scope: !10)
-!77 = !{!68, !69, i64 44}
-!78 = !DILocation(line: 28, column: 13, scope: !10)
-!79 = !DILocation(line: 28, column: 19, scope: !10)
-!80 = !{!68, !69, i64 48}
-!81 = !DILocation(line: 32, column: 13, scope: !10)
-!82 = !DILocation(line: 32, column: 30, scope: !10)
-!83 = !{!68, !69, i64 72}
-!84 = !DILocation(line: 35, column: 13, scope: !10)
-!85 = !DILocation(line: 39, column: 13, scope: !10)
-!86 = !DILocation(line: 39, column: 20, scope: !10)
-!87 = !{!68, !69, i64 76}
-!88 = !DILocation(line: 40, column: 13, scope: !10)
-!89 = !DILocation(line: 40, column: 22, scope: !10)
-!90 = !{!68, !69, i64 80}
-!91 = !DILocation(line: 41, column: 13, scope: !10)
-!92 = !DILocation(line: 41, column: 29, scope: !10)
-!93 = !DILocation(line: 36, column: 23, scope: !10)
-!94 = !{!68, !69, i64 84}
-!95 = !DILocation(line: 42, column: 13, scope: !10)
-!96 = !DILocation(line: 42, column: 28, scope: !10)
-!97 = !{!68, !69, i64 88}
-!98 = !DILocation(line: 43, column: 13, scope: !10)
-!99 = !DILocation(line: 43, column: 22, scope: !10)
-!100 = !{!68, !69, i64 96}
-!101 = !DILocation(line: 44, column: 13, scope: !10)
-!102 = !DILocation(line: 44, column: 19, scope: !10)
-!103 = !DILocation(line: 46, column: 13, scope: !10)
-!104 = !DILocation(line: 46, column: 21, scope: !10)
-!105 = !DILocation(line: 48, column: 13, scope: !10)
-!106 = !DILocation(line: 53, column: 5, scope: !10)
-!107 = !DILocation(line: 50, column: 22, scope: !10)
-!108 = !DILocation(line: 0, scope: !10)
-!109 = !DILocation(line: 54, column: 1, scope: !10)
+!58 = !DILocation(line: 20, column: 13, scope: !10)
+!59 = !DILocation(line: 20, column: 17, scope: !10)
+!60 = !{!61, !62, i64 0}
+!61 = !{!"klu_common_struct", !62, i64 0, !62, i64 8, !62, i64 16, !62, i64 24, !62, i64 32, !65, i64 40, !65, i64 44, !65, i64 48, !66, i64 56, !66, i64 64, !65, i64 72, !65, i64 76, !65, i64 80, !65, i64 84, !65, i64 88, !65, i64 92, !65, i64 96, !62, i64 104, !62, i64 112, !62, i64 120, !62, i64 128, !62, i64 136, !67, i64 144, !67, i64 152}
+!62 = !{!"double", !63, i64 0}
+!63 = !{!"omnipotent char", !64, i64 0}
+!64 = !{!"Simple C/C++ TBAA"}
+!65 = !{!"int", !63, i64 0}
+!66 = !{!"any pointer", !63, i64 0}
+!67 = !{!"long", !63, i64 0}
+!68 = !DILocation(line: 21, column: 13, scope: !10)
+!69 = !DILocation(line: 21, column: 21, scope: !10)
+!70 = !{!61, !62, i64 8}
+!71 = !DILocation(line: 22, column: 13, scope: !10)
+!72 = !DILocation(line: 22, column: 25, scope: !10)
+!73 = !{!61, !62, i64 16}
+!74 = !DILocation(line: 23, column: 13, scope: !10)
+!75 = !DILocation(line: 23, column: 21, scope: !10)
+!76 = !{!61, !62, i64 24}
+!77 = !DILocation(line: 24, column: 13, scope: !10)
+!78 = !DILocation(line: 24, column: 17, scope: !10)
+!79 = !{!61, !65, i64 40}
+!80 = !DILocation(line: 25, column: 13, scope: !10)
+!81 = !DILocation(line: 25, column: 21, scope: !10)
+!82 = !{!61, !62, i64 32}
+!83 = !DILocation(line: 26, column: 13, scope: !10)
+!84 = !DILocation(line: 26, column: 22, scope: !10)
+!85 = !{!61, !65, i64 44}
+!86 = !DILocation(line: 28, column: 13, scope: !10)
+!87 = !DILocation(line: 28, column: 19, scope: !10)
+!88 = !{!61, !65, i64 48}
+!89 = !DILocation(line: 32, column: 13, scope: !10)
+!90 = !DILocation(line: 32, column: 30, scope: !10)
+!91 = !{!61, !65, i64 72}
+!92 = !DILocation(line: 35, column: 13, scope: !10)
+!93 = !DILocation(line: 39, column: 13, scope: !10)
+!94 = !DILocation(line: 39, column: 20, scope: !10)
+!95 = !{!61, !65, i64 76}
+!96 = !DILocation(line: 40, column: 13, scope: !10)
+!97 = !DILocation(line: 40, column: 22, scope: !10)
+!98 = !{!61, !65, i64 80}
+!99 = !DILocation(line: 41, column: 13, scope: !10)
+!100 = !DILocation(line: 41, column: 29, scope: !10)
+!101 = !DILocation(line: 36, column: 23, scope: !10)
+!102 = !{!61, !65, i64 84}
+!103 = !DILocation(line: 42, column: 13, scope: !10)
+!104 = !DILocation(line: 42, column: 28, scope: !10)
+!105 = !{!61, !65, i64 88}
+!106 = !DILocation(line: 43, column: 13, scope: !10)
+!107 = !DILocation(line: 43, column: 22, scope: !10)
+!108 = !{!61, !65, i64 96}
+!109 = !DILocation(line: 44, column: 13, scope: !10)
+!110 = !DILocation(line: 44, column: 19, scope: !10)
+!111 = !{!61, !62, i64 104}
+!112 = !DILocation(line: 45, column: 13, scope: !10)
+!113 = !DILocation(line: 45, column: 19, scope: !10)
+!114 = !{!61, !62, i64 112}
+!115 = !DILocation(line: 46, column: 13, scope: !10)
+!116 = !DILocation(line: 46, column: 21, scope: !10)
+!117 = !{!61, !62, i64 120}
+!118 = !DILocation(line: 47, column: 13, scope: !10)
+!119 = !DILocation(line: 47, column: 21, scope: !10)
+!120 = !{!61, !62, i64 128}
+!121 = !DILocation(line: 48, column: 13, scope: !10)
+!122 = !DILocation(line: 53, column: 5, scope: !10)
+!123 = !DILocation(line: 50, column: 22, scope: !10)
+!124 = !DILocation(line: 0, scope: !10)
+!125 = !DILocation(line: 54, column: 1, scope: !10)

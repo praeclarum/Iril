@@ -7,177 +7,212 @@ target triple = "x86_64-apple-macosx10.14.0"
 %struct.klu_common_struct = type { double, double, double, double, double, i32, i32, i32, i32 (i32, i32*, i32*, i32*, %struct.klu_common_struct*)*, i8*, i32, i32, i32, i32, i32, i32, i32, double, double, double, double, double, i64, i64 }
 
 ; Function Attrs: nounwind ssp uwtable
-define %struct.klu_symbolic* @klu_alloc_symbolic(i32, i32* readonly, i32* readonly, %struct.klu_common_struct*) local_unnamed_addr #0 {
+define %struct.klu_symbolic* @klu_alloc_symbolic(i32, i32* readonly, i32* readonly, %struct.klu_common_struct*) local_unnamed_addr #0 !dbg !12 {
   %5 = alloca %struct.klu_symbolic*, align 8
-  %6 = bitcast %struct.klu_symbolic** %5 to i8*
-  call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %6) #3
-  %7 = icmp eq %struct.klu_common_struct* %3, null
-  br i1 %7, label %107, label %8
+  call void @llvm.dbg.value(metadata i32 %0, metadata !74, metadata !DIExpression()), !dbg !88
+  call void @llvm.dbg.value(metadata i32* %1, metadata !75, metadata !DIExpression()), !dbg !89
+  call void @llvm.dbg.value(metadata i32* %2, metadata !76, metadata !DIExpression()), !dbg !90
+  call void @llvm.dbg.value(metadata %struct.klu_common_struct* %3, metadata !77, metadata !DIExpression()), !dbg !91
+  %6 = bitcast %struct.klu_symbolic** %5 to i8*, !dbg !92
+  call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %6) #4, !dbg !92
+  %7 = icmp eq %struct.klu_common_struct* %3, null, !dbg !93
+  br i1 %7, label %110, label %8, !dbg !95
 
 ; <label>:8:                                      ; preds = %4
-  %9 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %3, i64 0, i32 11
-  store i32 0, i32* %9, align 4, !tbaa !3
-  %10 = icmp slt i32 %0, 1
-  %11 = icmp eq i32* %1, null
-  %12 = or i1 %10, %11
-  %13 = icmp eq i32* %2, null
-  %14 = or i1 %12, %13
-  br i1 %14, label %15, label %16
+  %9 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %3, i64 0, i32 11, !dbg !96
+  store i32 0, i32* %9, align 4, !dbg !97, !tbaa !98
+  %10 = icmp slt i32 %0, 1, !dbg !106
+  %11 = icmp eq i32* %1, null, !dbg !108
+  %12 = or i1 %10, %11, !dbg !109
+  %13 = icmp eq i32* %2, null, !dbg !110
+  %14 = or i1 %12, %13, !dbg !109
+  br i1 %14, label %15, label %16, !dbg !109
 
 ; <label>:15:                                     ; preds = %8
-  store i32 -3, i32* %9, align 4, !tbaa !3
-  br label %107
+  store i32 -3, i32* %9, align 4, !dbg !111, !tbaa !98
+  br label %110, !dbg !113
 
 ; <label>:16:                                     ; preds = %8
-  %17 = sext i32 %0 to i64
-  %18 = getelementptr inbounds i32, i32* %1, i64 %17
-  %19 = load i32, i32* %18, align 4, !tbaa !11
-  %20 = load i32, i32* %1, align 4, !tbaa !11
-  %21 = icmp ne i32 %20, 0
-  %22 = icmp slt i32 %19, 0
-  %23 = or i1 %22, %21
-  br i1 %23, label %25, label %24
+  %17 = sext i32 %0 to i64, !dbg !114
+  %18 = getelementptr inbounds i32, i32* %1, i64 %17, !dbg !114
+  %19 = load i32, i32* %18, align 4, !dbg !114, !tbaa !115
+  call void @llvm.dbg.value(metadata i32 %19, metadata !83, metadata !DIExpression()), !dbg !116
+  %20 = load i32, i32* %1, align 4, !dbg !117, !tbaa !115
+  %21 = icmp ne i32 %20, 0, !dbg !119
+  %22 = icmp slt i32 %19, 0, !dbg !120
+  %23 = or i1 %22, %21, !dbg !121
+  br i1 %23, label %24, label %25, !dbg !121
 
 ; <label>:24:                                     ; preds = %16
-  br label %28
+  store i32 -3, i32* %9, align 4, !dbg !122, !tbaa !98
+  br label %110, !dbg !124
 
 ; <label>:25:                                     ; preds = %16
-  store i32 -3, i32* %9, align 4, !tbaa !3
-  br label %107
+  call void @llvm.dbg.value(metadata i32 0, metadata !85, metadata !DIExpression()), !dbg !125
+  %26 = sext i32 %0 to i64, !dbg !126
+  br label %29, !dbg !126
 
-; <label>:26:                                     ; preds = %28
-  %27 = icmp slt i64 %31, %17
-  br i1 %27, label %28, label %36
+; <label>:27:                                     ; preds = %29
+  call void @llvm.dbg.value(metadata i32 undef, metadata !85, metadata !DIExpression(DW_OP_plus_uconst, 1, DW_OP_stack_value)), !dbg !125
+  %28 = icmp slt i64 %33, %26, !dbg !128
+  br i1 %28, label %29, label %38, !dbg !126, !llvm.loop !130
 
-; <label>:28:                                     ; preds = %24, %26
-  %29 = phi i32 [ %33, %26 ], [ 0, %24 ]
-  %30 = phi i64 [ %31, %26 ], [ 0, %24 ]
-  %31 = add nuw nsw i64 %30, 1
-  %32 = getelementptr inbounds i32, i32* %1, i64 %31
-  %33 = load i32, i32* %32, align 4, !tbaa !11
-  %34 = icmp sgt i32 %29, %33
-  br i1 %34, label %35, label %26
+; <label>:29:                                     ; preds = %25, %27
+  %30 = phi i64 [ 0, %25 ], [ %33, %27 ]
+  call void @llvm.dbg.value(metadata i64 %30, metadata !85, metadata !DIExpression()), !dbg !125
+  %31 = getelementptr inbounds i32, i32* %1, i64 %30, !dbg !132
+  %32 = load i32, i32* %31, align 4, !dbg !132, !tbaa !115
+  %33 = add nuw nsw i64 %30, 1, !dbg !135
+  %34 = getelementptr inbounds i32, i32* %1, i64 %33, !dbg !136
+  %35 = load i32, i32* %34, align 4, !dbg !136, !tbaa !115
+  %36 = icmp sgt i32 %32, %35, !dbg !137
+  call void @llvm.dbg.value(metadata i32 undef, metadata !85, metadata !DIExpression(DW_OP_plus_uconst, 1, DW_OP_stack_value)), !dbg !125
+  br i1 %36, label %37, label %27, !dbg !138
 
-; <label>:35:                                     ; preds = %28
-  store i32 -3, i32* %9, align 4, !tbaa !3
-  br label %107
+; <label>:37:                                     ; preds = %29
+  store i32 -3, i32* %9, align 4, !dbg !139, !tbaa !98
+  br label %110, !dbg !141
 
-; <label>:36:                                     ; preds = %26
-  %37 = tail call i8* @klu_malloc(i64 %17, i64 4, %struct.klu_common_struct* nonnull %3) #3
-  %38 = bitcast i8* %37 to i32*
-  %39 = load i32, i32* %9, align 4, !tbaa !3
-  %40 = icmp slt i32 %39, 0
-  br i1 %40, label %41, label %42
+; <label>:38:                                     ; preds = %27
+  %39 = tail call i8* @klu_malloc(i64 %17, i64 4, %struct.klu_common_struct* nonnull %3) #4, !dbg !142
+  %40 = bitcast i8* %39 to i32*, !dbg !142
+  call void @llvm.dbg.value(metadata i32* %40, metadata !79, metadata !DIExpression()), !dbg !143
+  %41 = load i32, i32* %9, align 4, !dbg !144, !tbaa !98
+  %42 = icmp slt i32 %41, 0, !dbg !146
+  br i1 %42, label %43, label %44, !dbg !147
 
-; <label>:41:                                     ; preds = %36
-  store i32 -2, i32* %9, align 4, !tbaa !3
-  br label %107
+; <label>:43:                                     ; preds = %38
+  store i32 -2, i32* %9, align 4, !dbg !148, !tbaa !98
+  br label %110, !dbg !150
 
-; <label>:42:                                     ; preds = %36
-  %43 = zext i32 %0 to i64
-  %44 = shl nuw nsw i64 %43, 2
-  call void @llvm.memset.p0i8.i64(i8* %37, i8 -1, i64 %44, i32 4, i1 false)
-  br label %45
+; <label>:44:                                     ; preds = %38
+  call void @llvm.dbg.value(metadata i32 0, metadata !84, metadata !DIExpression()), !dbg !151
+  %45 = icmp sgt i32 %0, 0, !dbg !152
+  br i1 %45, label %46, label %82, !dbg !155
 
-; <label>:45:                                     ; preds = %42, %75
-  %46 = phi i64 [ 0, %42 ], [ %47, %75 ]
-  %47 = add nuw nsw i64 %46, 1
-  %48 = getelementptr inbounds i32, i32* %1, i64 %47
-  %49 = load i32, i32* %48, align 4, !tbaa !11
-  %50 = getelementptr inbounds i32, i32* %1, i64 %46
-  %51 = load i32, i32* %50, align 4, !tbaa !11
-  %52 = icmp slt i32 %51, %49
-  br i1 %52, label %53, label %75
+; <label>:46:                                     ; preds = %44
+  %47 = zext i32 %0 to i64, !dbg !155
+  %48 = shl nuw nsw i64 %47, 2, !dbg !155
+  call void @llvm.memset.p0i8.i64(i8* %39, i8 -1, i64 %48, i32 4, i1 false), !dbg !156
+  call void @llvm.dbg.value(metadata i32 0, metadata !85, metadata !DIExpression()), !dbg !125
+  %49 = sext i32 %0 to i64, !dbg !158
+  br label %50, !dbg !158
 
-; <label>:53:                                     ; preds = %45
-  %54 = sext i32 %51 to i64
-  %55 = sext i32 %49 to i64
-  %56 = trunc i64 %46 to i32
-  br label %57
+; <label>:50:                                     ; preds = %46, %80
+  %51 = phi i64 [ 0, %46 ], [ %52, %80 ]
+  call void @llvm.dbg.value(metadata i64 %51, metadata !85, metadata !DIExpression()), !dbg !125
+  %52 = add nuw nsw i64 %51, 1, !dbg !160
+  %53 = getelementptr inbounds i32, i32* %1, i64 %52, !dbg !163
+  %54 = load i32, i32* %53, align 4, !dbg !163, !tbaa !115
+  call void @llvm.dbg.value(metadata i32 %54, metadata !87, metadata !DIExpression()), !dbg !164
+  %55 = getelementptr inbounds i32, i32* %1, i64 %51, !dbg !165
+  %56 = load i32, i32* %55, align 4, !dbg !165, !tbaa !115
+  call void @llvm.dbg.value(metadata i32 %56, metadata !86, metadata !DIExpression()), !dbg !167
+  %57 = icmp slt i32 %56, %54, !dbg !168
+  br i1 %57, label %58, label %80, !dbg !170
 
-; <label>:57:                                     ; preds = %53, %72
-  %58 = phi i64 [ %54, %53 ], [ %73, %72 ]
-  %59 = getelementptr inbounds i32, i32* %2, i64 %58
-  %60 = load i32, i32* %59, align 4, !tbaa !11
-  %61 = icmp sgt i32 %60, -1
-  %62 = icmp slt i32 %60, %0
-  %63 = and i1 %61, %62
-  br i1 %63, label %64, label %70
+; <label>:58:                                     ; preds = %50
+  %59 = sext i32 %56 to i64, !dbg !170
+  %60 = sext i32 %54 to i64, !dbg !170
+  %61 = trunc i64 %51 to i32
+  br label %62, !dbg !170
 
-; <label>:64:                                     ; preds = %57
-  %65 = sext i32 %60 to i64
-  %66 = getelementptr inbounds i32, i32* %38, i64 %65
-  %67 = load i32, i32* %66, align 4, !tbaa !11
-  %68 = zext i32 %67 to i64
-  %69 = icmp eq i64 %46, %68
-  br i1 %69, label %70, label %72
+; <label>:62:                                     ; preds = %58, %77
+  %63 = phi i64 [ %59, %58 ], [ %78, %77 ]
+  call void @llvm.dbg.value(metadata i64 %63, metadata !86, metadata !DIExpression()), !dbg !167
+  %64 = getelementptr inbounds i32, i32* %2, i64 %63, !dbg !171
+  %65 = load i32, i32* %64, align 4, !dbg !171, !tbaa !115
+  call void @llvm.dbg.value(metadata i32 %65, metadata !84, metadata !DIExpression()), !dbg !151
+  %66 = icmp sgt i32 %65, -1, !dbg !173
+  %67 = icmp slt i32 %65, %0, !dbg !175
+  %68 = and i1 %66, %67, !dbg !176
+  br i1 %68, label %69, label %75, !dbg !176
 
-; <label>:70:                                     ; preds = %57, %64
-  %71 = tail call i8* @klu_free(i8* %37, i64 %17, i64 4, %struct.klu_common_struct* nonnull %3) #3
-  store i32 -3, i32* %9, align 4, !tbaa !3
-  br label %107
+; <label>:69:                                     ; preds = %62
+  %70 = sext i32 %65 to i64, !dbg !177
+  %71 = getelementptr inbounds i32, i32* %40, i64 %70, !dbg !177
+  %72 = load i32, i32* %71, align 4, !dbg !177, !tbaa !115
+  %73 = zext i32 %72 to i64, !dbg !178
+  %74 = icmp eq i64 %51, %73, !dbg !178
+  br i1 %74, label %75, label %77, !dbg !179
 
-; <label>:72:                                     ; preds = %64
-  store i32 %56, i32* %66, align 4, !tbaa !11
-  %73 = add nsw i64 %58, 1
-  %74 = icmp slt i64 %73, %55
-  br i1 %74, label %57, label %75
+; <label>:75:                                     ; preds = %62, %69
+  %76 = tail call i8* @klu_free(i8* %39, i64 %17, i64 4, %struct.klu_common_struct* nonnull %3) #4, !dbg !180
+  store i32 -3, i32* %9, align 4, !dbg !182, !tbaa !98
+  br label %110, !dbg !183
 
-; <label>:75:                                     ; preds = %72, %45
-  %76 = icmp slt i64 %47, %17
-  br i1 %76, label %45, label %77
+; <label>:77:                                     ; preds = %69
+  store i32 %61, i32* %71, align 4, !dbg !184, !tbaa !115
+  %78 = add nsw i64 %63, 1, !dbg !185
+  call void @llvm.dbg.value(metadata i32 undef, metadata !86, metadata !DIExpression(DW_OP_plus_uconst, 1, DW_OP_stack_value)), !dbg !167
+  %79 = icmp slt i64 %78, %60, !dbg !168
+  br i1 %79, label %62, label %80, !dbg !170, !llvm.loop !186
 
-; <label>:77:                                     ; preds = %75
-  %78 = tail call i8* @klu_malloc(i64 1, i64 96, %struct.klu_common_struct* nonnull %3) #3
-  %79 = bitcast %struct.klu_symbolic** %5 to i8**
-  store i8* %78, i8** %79, align 8, !tbaa !12
-  %80 = load i32, i32* %9, align 4, !tbaa !3
-  %81 = icmp slt i32 %80, 0
-  br i1 %81, label %82, label %84
+; <label>:80:                                     ; preds = %77, %50
+  call void @llvm.dbg.value(metadata i32 undef, metadata !85, metadata !DIExpression(DW_OP_plus_uconst, 1, DW_OP_stack_value)), !dbg !125
+  %81 = icmp slt i64 %52, %49, !dbg !188
+  br i1 %81, label %50, label %82, !dbg !158, !llvm.loop !189
 
-; <label>:82:                                     ; preds = %77
-  %83 = tail call i8* @klu_free(i8* %37, i64 %17, i64 4, %struct.klu_common_struct* nonnull %3) #3
-  store i32 -2, i32* %9, align 4, !tbaa !3
-  br label %107
+; <label>:82:                                     ; preds = %80, %44
+  %83 = tail call i8* @klu_malloc(i64 1, i64 96, %struct.klu_common_struct* nonnull %3) #4, !dbg !191
+  call void @llvm.dbg.value(metadata i8* %83, metadata !78, metadata !DIExpression()), !dbg !192
+  %84 = bitcast %struct.klu_symbolic** %5 to i8**, !dbg !193
+  store i8* %83, i8** %84, align 8, !dbg !193, !tbaa !194
+  %85 = load i32, i32* %9, align 4, !dbg !195, !tbaa !98
+  %86 = icmp slt i32 %85, 0, !dbg !197
+  br i1 %86, label %87, label %89, !dbg !198
 
-; <label>:84:                                     ; preds = %77
-  %85 = bitcast i8* %78 to %struct.klu_symbolic*
-  %86 = tail call i8* @klu_malloc(i64 %17, i64 4, %struct.klu_common_struct* nonnull %3) #3
-  %87 = add nsw i32 %0, 1
-  %88 = sext i32 %87 to i64
-  %89 = tail call i8* @klu_malloc(i64 %88, i64 4, %struct.klu_common_struct* nonnull %3) #3
-  %90 = tail call i8* @klu_malloc(i64 %17, i64 8, %struct.klu_common_struct* nonnull %3) #3
-  %91 = getelementptr inbounds i8, i8* %78, i64 40
-  %92 = bitcast i8* %91 to i32*
-  store i32 %0, i32* %92, align 8, !tbaa !13
-  %93 = getelementptr inbounds i8, i8* %78, i64 44
-  %94 = bitcast i8* %93 to i32*
-  store i32 %19, i32* %94, align 4, !tbaa !15
-  %95 = getelementptr inbounds i8, i8* %78, i64 48
-  %96 = bitcast i8* %95 to i8**
-  store i8* %37, i8** %96, align 8, !tbaa !16
-  %97 = getelementptr inbounds i8, i8* %78, i64 56
-  %98 = bitcast i8* %97 to i8**
-  store i8* %86, i8** %98, align 8, !tbaa !17
-  %99 = getelementptr inbounds i8, i8* %78, i64 64
-  %100 = bitcast i8* %99 to i8**
-  store i8* %89, i8** %100, align 8, !tbaa !18
-  %101 = getelementptr inbounds i8, i8* %78, i64 32
-  %102 = bitcast i8* %101 to i8**
-  store i8* %90, i8** %102, align 8, !tbaa !19
-  %103 = load i32, i32* %9, align 4, !tbaa !3
-  %104 = icmp slt i32 %103, 0
-  br i1 %104, label %105, label %107
+; <label>:87:                                     ; preds = %82
+  %88 = tail call i8* @klu_free(i8* %39, i64 %17, i64 4, %struct.klu_common_struct* nonnull %3) #4, !dbg !199
+  store i32 -2, i32* %9, align 4, !dbg !201, !tbaa !98
+  br label %110, !dbg !202
 
-; <label>:105:                                    ; preds = %84
-  %106 = call i32 @klu_free_symbolic(%struct.klu_symbolic** nonnull %5, %struct.klu_common_struct* nonnull %3) #3
-  store i32 -2, i32* %9, align 4, !tbaa !3
-  br label %107
+; <label>:89:                                     ; preds = %82
+  %90 = tail call i8* @klu_malloc(i64 %17, i64 4, %struct.klu_common_struct* nonnull %3) #4, !dbg !203
+  call void @llvm.dbg.value(metadata i8* %90, metadata !80, metadata !DIExpression()), !dbg !204
+  %91 = add nsw i32 %0, 1, !dbg !205
+  %92 = sext i32 %91 to i64, !dbg !206
+  %93 = tail call i8* @klu_malloc(i64 %92, i64 4, %struct.klu_common_struct* nonnull %3) #4, !dbg !207
+  call void @llvm.dbg.value(metadata i8* %93, metadata !81, metadata !DIExpression()), !dbg !208
+  %94 = tail call i8* @klu_malloc(i64 %17, i64 8, %struct.klu_common_struct* nonnull %3) #4, !dbg !209
+  call void @llvm.dbg.value(metadata i8* %94, metadata !82, metadata !DIExpression()), !dbg !210
+  %95 = load %struct.klu_symbolic*, %struct.klu_symbolic** %5, align 8, !dbg !211, !tbaa !194
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic* %95, metadata !78, metadata !DIExpression()), !dbg !192
+  %96 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %95, i64 0, i32 5, !dbg !212
+  store i32 %0, i32* %96, align 8, !dbg !213, !tbaa !214
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic* %95, metadata !78, metadata !DIExpression()), !dbg !192
+  %97 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %95, i64 0, i32 6, !dbg !216
+  store i32 %19, i32* %97, align 4, !dbg !217, !tbaa !218
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic* %95, metadata !78, metadata !DIExpression()), !dbg !192
+  %98 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %95, i64 0, i32 7, !dbg !219
+  %99 = bitcast i32** %98 to i8**, !dbg !220
+  store i8* %39, i8** %99, align 8, !dbg !220, !tbaa !221
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic* %95, metadata !78, metadata !DIExpression()), !dbg !192
+  %100 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %95, i64 0, i32 8, !dbg !222
+  %101 = bitcast i32** %100 to i8**, !dbg !223
+  store i8* %90, i8** %101, align 8, !dbg !223, !tbaa !224
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic* %95, metadata !78, metadata !DIExpression()), !dbg !192
+  %102 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %95, i64 0, i32 9, !dbg !225
+  %103 = bitcast i32** %102 to i8**, !dbg !226
+  store i8* %93, i8** %103, align 8, !dbg !226, !tbaa !227
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic* %95, metadata !78, metadata !DIExpression()), !dbg !192
+  %104 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %95, i64 0, i32 4, !dbg !228
+  %105 = bitcast double** %104 to i8**, !dbg !229
+  store i8* %94, i8** %105, align 8, !dbg !229, !tbaa !230
+  %106 = load i32, i32* %9, align 4, !dbg !231, !tbaa !98
+  %107 = icmp slt i32 %106, 0, !dbg !233
+  br i1 %107, label %108, label %110, !dbg !234
 
-; <label>:107:                                    ; preds = %84, %4, %105, %82, %70, %41, %35, %25, %15
-  %108 = phi %struct.klu_symbolic* [ null, %15 ], [ null, %25 ], [ null, %35 ], [ null, %41 ], [ null, %70 ], [ null, %82 ], [ null, %105 ], [ null, %4 ], [ %85, %84 ]
-  call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %6) #3
-  ret %struct.klu_symbolic* %108
+; <label>:108:                                    ; preds = %89
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic** %5, metadata !78, metadata !DIExpression()), !dbg !192
+  %109 = call i32 @klu_free_symbolic(%struct.klu_symbolic** nonnull %5, %struct.klu_common_struct* nonnull %3) #4, !dbg !235
+  store i32 -2, i32* %9, align 4, !dbg !237, !tbaa !98
+  br label %110, !dbg !238
+
+; <label>:110:                                    ; preds = %89, %4, %108, %87, %75, %43, %37, %24, %15
+  %111 = phi %struct.klu_symbolic* [ null, %15 ], [ null, %24 ], [ null, %37 ], [ null, %43 ], [ null, %75 ], [ null, %87 ], [ null, %108 ], [ null, %4 ], [ %95, %89 ], !dbg !239
+  call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %6) #4, !dbg !240
+  ret %struct.klu_symbolic* %111, !dbg !240
 }
 
 ; Function Attrs: argmemonly nounwind
@@ -193,1312 +228,467 @@ declare i32 @klu_free_symbolic(%struct.klu_symbolic**, %struct.klu_common_struct
 declare void @llvm.lifetime.end.p0i8(i64, i8* nocapture) #1
 
 ; Function Attrs: nounwind ssp uwtable
-define %struct.klu_symbolic* @klu_analyze_given(i32, i32*, i32*, i32* readonly, i32* readonly, %struct.klu_common_struct*) local_unnamed_addr #0 {
+define %struct.klu_symbolic* @klu_analyze_given(i32, i32*, i32*, i32* readonly, i32* readonly, %struct.klu_common_struct*) local_unnamed_addr #0 !dbg !241 {
   %7 = alloca %struct.klu_symbolic*, align 8
-  %8 = bitcast %struct.klu_symbolic** %7 to i8*
-  call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %8) #3
-  %9 = tail call %struct.klu_symbolic* @klu_alloc_symbolic(i32 %0, i32* %1, i32* %2, %struct.klu_common_struct* %5)
-  store %struct.klu_symbolic* %9, %struct.klu_symbolic** %7, align 8, !tbaa !12
-  %10 = icmp eq %struct.klu_symbolic* %9, null
-  br i1 %10, label %955, label %11
+  call void @llvm.dbg.value(metadata i32 %0, metadata !245, metadata !DIExpression()), !dbg !274
+  call void @llvm.dbg.value(metadata i32* %1, metadata !246, metadata !DIExpression()), !dbg !275
+  call void @llvm.dbg.value(metadata i32* %2, metadata !247, metadata !DIExpression()), !dbg !276
+  call void @llvm.dbg.value(metadata i32* %3, metadata !248, metadata !DIExpression()), !dbg !277
+  call void @llvm.dbg.value(metadata i32* %4, metadata !249, metadata !DIExpression()), !dbg !278
+  call void @llvm.dbg.value(metadata %struct.klu_common_struct* %5, metadata !250, metadata !DIExpression()), !dbg !279
+  %8 = bitcast %struct.klu_symbolic** %7 to i8*, !dbg !280
+  call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %8) #4, !dbg !280
+  %9 = tail call %struct.klu_symbolic* @klu_alloc_symbolic(i32 %0, i32* %1, i32* %2, %struct.klu_common_struct* %5), !dbg !281
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic* %9, metadata !251, metadata !DIExpression()), !dbg !282
+  store %struct.klu_symbolic* %9, %struct.klu_symbolic** %7, align 8, !dbg !283, !tbaa !194
+  %10 = icmp eq %struct.klu_symbolic* %9, null, !dbg !284
+  br i1 %10, label %245, label %11, !dbg !286
 
 ; <label>:11:                                     ; preds = %6
-  %12 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 7
-  %13 = load i32*, i32** %12, align 8, !tbaa !16
-  %14 = bitcast i32* %13 to i8*
-  %15 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 8
-  %16 = load i32*, i32** %15, align 8, !tbaa !17
-  %17 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 9
-  %18 = load i32*, i32** %17, align 8, !tbaa !18
-  %19 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 4
-  %20 = load double*, double** %19, align 8, !tbaa !19
-  %21 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 6
-  %22 = load i32, i32* %21, align 4, !tbaa !15
-  %23 = icmp eq i32* %4, null
-  %24 = icmp sgt i32 %0, 0
-  br i1 %23, label %25, label %100
-
-; <label>:25:                                     ; preds = %11
-  br i1 %24, label %26, label %229
-
-; <label>:26:                                     ; preds = %25
-  %27 = zext i32 %0 to i64
-  %28 = icmp ult i32 %0, 8
-  br i1 %28, label %92, label %29
-
-; <label>:29:                                     ; preds = %26
-  %30 = and i64 %27, 4294967288
-  %31 = add nsw i64 %30, -8
-  %32 = lshr exact i64 %31, 3
-  %33 = add nuw nsw i64 %32, 1
-  %34 = and i64 %33, 3
-  %35 = icmp ult i64 %31, 24
-  br i1 %35, label %72, label %36
-
-; <label>:36:                                     ; preds = %29
-  %37 = sub nsw i64 %33, %34
-  br label %38
-
-; <label>:38:                                     ; preds = %38, %36
-  %39 = phi i64 [ 0, %36 ], [ %68, %38 ]
-  %40 = phi <4 x i32> [ <i32 0, i32 1, i32 2, i32 3>, %36 ], [ %69, %38 ]
-  %41 = phi i64 [ %37, %36 ], [ %70, %38 ]
-  %42 = getelementptr inbounds i32, i32* %16, i64 %39
-  %43 = add <4 x i32> %40, <i32 4, i32 4, i32 4, i32 4>
-  %44 = bitcast i32* %42 to <4 x i32>*
-  store <4 x i32> %40, <4 x i32>* %44, align 4, !tbaa !11
-  %45 = getelementptr i32, i32* %42, i64 4
-  %46 = bitcast i32* %45 to <4 x i32>*
-  store <4 x i32> %43, <4 x i32>* %46, align 4, !tbaa !11
-  %47 = or i64 %39, 8
-  %48 = add <4 x i32> %40, <i32 8, i32 8, i32 8, i32 8>
-  %49 = getelementptr inbounds i32, i32* %16, i64 %47
-  %50 = add <4 x i32> %40, <i32 12, i32 12, i32 12, i32 12>
-  %51 = bitcast i32* %49 to <4 x i32>*
-  store <4 x i32> %48, <4 x i32>* %51, align 4, !tbaa !11
-  %52 = getelementptr i32, i32* %49, i64 4
-  %53 = bitcast i32* %52 to <4 x i32>*
-  store <4 x i32> %50, <4 x i32>* %53, align 4, !tbaa !11
-  %54 = or i64 %39, 16
-  %55 = add <4 x i32> %40, <i32 16, i32 16, i32 16, i32 16>
-  %56 = getelementptr inbounds i32, i32* %16, i64 %54
-  %57 = add <4 x i32> %40, <i32 20, i32 20, i32 20, i32 20>
-  %58 = bitcast i32* %56 to <4 x i32>*
-  store <4 x i32> %55, <4 x i32>* %58, align 4, !tbaa !11
-  %59 = getelementptr i32, i32* %56, i64 4
-  %60 = bitcast i32* %59 to <4 x i32>*
-  store <4 x i32> %57, <4 x i32>* %60, align 4, !tbaa !11
-  %61 = or i64 %39, 24
-  %62 = add <4 x i32> %40, <i32 24, i32 24, i32 24, i32 24>
-  %63 = getelementptr inbounds i32, i32* %16, i64 %61
-  %64 = add <4 x i32> %40, <i32 28, i32 28, i32 28, i32 28>
-  %65 = bitcast i32* %63 to <4 x i32>*
-  store <4 x i32> %62, <4 x i32>* %65, align 4, !tbaa !11
-  %66 = getelementptr i32, i32* %63, i64 4
-  %67 = bitcast i32* %66 to <4 x i32>*
-  store <4 x i32> %64, <4 x i32>* %67, align 4, !tbaa !11
-  %68 = add i64 %39, 32
-  %69 = add <4 x i32> %40, <i32 32, i32 32, i32 32, i32 32>
-  %70 = add i64 %41, -4
-  %71 = icmp eq i64 %70, 0
-  br i1 %71, label %72, label %38, !llvm.loop !20
-
-; <label>:72:                                     ; preds = %38, %29
-  %73 = phi i64 [ 0, %29 ], [ %68, %38 ]
-  %74 = phi <4 x i32> [ <i32 0, i32 1, i32 2, i32 3>, %29 ], [ %69, %38 ]
-  %75 = icmp eq i64 %34, 0
-  br i1 %75, label %90, label %76
-
-; <label>:76:                                     ; preds = %72
-  br label %77
-
-; <label>:77:                                     ; preds = %77, %76
-  %78 = phi i64 [ %73, %76 ], [ %86, %77 ]
-  %79 = phi <4 x i32> [ %74, %76 ], [ %87, %77 ]
-  %80 = phi i64 [ %34, %76 ], [ %88, %77 ]
-  %81 = getelementptr inbounds i32, i32* %16, i64 %78
-  %82 = add <4 x i32> %79, <i32 4, i32 4, i32 4, i32 4>
-  %83 = bitcast i32* %81 to <4 x i32>*
-  store <4 x i32> %79, <4 x i32>* %83, align 4, !tbaa !11
-  %84 = getelementptr i32, i32* %81, i64 4
-  %85 = bitcast i32* %84 to <4 x i32>*
-  store <4 x i32> %82, <4 x i32>* %85, align 4, !tbaa !11
-  %86 = add i64 %78, 8
-  %87 = add <4 x i32> %79, <i32 8, i32 8, i32 8, i32 8>
-  %88 = add i64 %80, -1
-  %89 = icmp eq i64 %88, 0
-  br i1 %89, label %90, label %77, !llvm.loop !22
-
-; <label>:90:                                     ; preds = %77, %72
-  %91 = icmp eq i64 %30, %27
-  br i1 %91, label %229, label %92
-
-; <label>:92:                                     ; preds = %90, %26
-  %93 = phi i64 [ 0, %26 ], [ %30, %90 ]
-  br label %94
-
-; <label>:94:                                     ; preds = %92, %94
-  %95 = phi i64 [ %98, %94 ], [ %93, %92 ]
-  %96 = getelementptr inbounds i32, i32* %16, i64 %95
-  %97 = trunc i64 %95 to i32
-  store i32 %97, i32* %96, align 4, !tbaa !11
-  %98 = add nuw nsw i64 %95, 1
-  %99 = icmp eq i64 %98, %27
-  br i1 %99, label %229, label %94, !llvm.loop !24
-
-; <label>:100:                                    ; preds = %11
-  br i1 %24, label %101, label %229
-
-; <label>:101:                                    ; preds = %100
-  %102 = zext i32 %0 to i64
-  %103 = icmp ult i32 %0, 8
-  br i1 %103, label %190, label %104
-
-; <label>:104:                                    ; preds = %101
-  %105 = getelementptr i32, i32* %16, i64 %102
-  %106 = getelementptr i32, i32* %4, i64 %102
-  %107 = icmp ult i32* %16, %106
-  %108 = icmp ugt i32* %105, %4
-  %109 = and i1 %107, %108
-  br i1 %109, label %190, label %110
-
-; <label>:110:                                    ; preds = %104
-  %111 = and i64 %102, 4294967288
-  %112 = add nsw i64 %111, -8
-  %113 = lshr exact i64 %112, 3
-  %114 = add nuw nsw i64 %113, 1
-  %115 = and i64 %114, 3
-  %116 = icmp ult i64 %112, 24
-  br i1 %116, label %168, label %117
-
-; <label>:117:                                    ; preds = %110
-  %118 = sub nsw i64 %114, %115
-  br label %119
-
-; <label>:119:                                    ; preds = %119, %117
-  %120 = phi i64 [ 0, %117 ], [ %165, %119 ]
-  %121 = phi i64 [ %118, %117 ], [ %166, %119 ]
-  %122 = getelementptr inbounds i32, i32* %4, i64 %120
-  %123 = bitcast i32* %122 to <4 x i32>*
-  %124 = load <4 x i32>, <4 x i32>* %123, align 4, !tbaa !11, !alias.scope !26
-  %125 = getelementptr i32, i32* %122, i64 4
-  %126 = bitcast i32* %125 to <4 x i32>*
-  %127 = load <4 x i32>, <4 x i32>* %126, align 4, !tbaa !11, !alias.scope !26
-  %128 = getelementptr inbounds i32, i32* %16, i64 %120
-  %129 = bitcast i32* %128 to <4 x i32>*
-  store <4 x i32> %124, <4 x i32>* %129, align 4, !tbaa !11, !alias.scope !29, !noalias !26
-  %130 = getelementptr i32, i32* %128, i64 4
-  %131 = bitcast i32* %130 to <4 x i32>*
-  store <4 x i32> %127, <4 x i32>* %131, align 4, !tbaa !11, !alias.scope !29, !noalias !26
-  %132 = or i64 %120, 8
-  %133 = getelementptr inbounds i32, i32* %4, i64 %132
-  %134 = bitcast i32* %133 to <4 x i32>*
-  %135 = load <4 x i32>, <4 x i32>* %134, align 4, !tbaa !11, !alias.scope !26
-  %136 = getelementptr i32, i32* %133, i64 4
-  %137 = bitcast i32* %136 to <4 x i32>*
-  %138 = load <4 x i32>, <4 x i32>* %137, align 4, !tbaa !11, !alias.scope !26
-  %139 = getelementptr inbounds i32, i32* %16, i64 %132
-  %140 = bitcast i32* %139 to <4 x i32>*
-  store <4 x i32> %135, <4 x i32>* %140, align 4, !tbaa !11, !alias.scope !29, !noalias !26
-  %141 = getelementptr i32, i32* %139, i64 4
-  %142 = bitcast i32* %141 to <4 x i32>*
-  store <4 x i32> %138, <4 x i32>* %142, align 4, !tbaa !11, !alias.scope !29, !noalias !26
-  %143 = or i64 %120, 16
-  %144 = getelementptr inbounds i32, i32* %4, i64 %143
-  %145 = bitcast i32* %144 to <4 x i32>*
-  %146 = load <4 x i32>, <4 x i32>* %145, align 4, !tbaa !11, !alias.scope !26
-  %147 = getelementptr i32, i32* %144, i64 4
-  %148 = bitcast i32* %147 to <4 x i32>*
-  %149 = load <4 x i32>, <4 x i32>* %148, align 4, !tbaa !11, !alias.scope !26
-  %150 = getelementptr inbounds i32, i32* %16, i64 %143
-  %151 = bitcast i32* %150 to <4 x i32>*
-  store <4 x i32> %146, <4 x i32>* %151, align 4, !tbaa !11, !alias.scope !29, !noalias !26
-  %152 = getelementptr i32, i32* %150, i64 4
-  %153 = bitcast i32* %152 to <4 x i32>*
-  store <4 x i32> %149, <4 x i32>* %153, align 4, !tbaa !11, !alias.scope !29, !noalias !26
-  %154 = or i64 %120, 24
-  %155 = getelementptr inbounds i32, i32* %4, i64 %154
-  %156 = bitcast i32* %155 to <4 x i32>*
-  %157 = load <4 x i32>, <4 x i32>* %156, align 4, !tbaa !11, !alias.scope !26
-  %158 = getelementptr i32, i32* %155, i64 4
-  %159 = bitcast i32* %158 to <4 x i32>*
-  %160 = load <4 x i32>, <4 x i32>* %159, align 4, !tbaa !11, !alias.scope !26
-  %161 = getelementptr inbounds i32, i32* %16, i64 %154
-  %162 = bitcast i32* %161 to <4 x i32>*
-  store <4 x i32> %157, <4 x i32>* %162, align 4, !tbaa !11, !alias.scope !29, !noalias !26
-  %163 = getelementptr i32, i32* %161, i64 4
-  %164 = bitcast i32* %163 to <4 x i32>*
-  store <4 x i32> %160, <4 x i32>* %164, align 4, !tbaa !11, !alias.scope !29, !noalias !26
-  %165 = add i64 %120, 32
-  %166 = add i64 %121, -4
-  %167 = icmp eq i64 %166, 0
-  br i1 %167, label %168, label %119, !llvm.loop !31
-
-; <label>:168:                                    ; preds = %119, %110
-  %169 = phi i64 [ 0, %110 ], [ %165, %119 ]
-  %170 = icmp eq i64 %115, 0
-  br i1 %170, label %188, label %171
-
-; <label>:171:                                    ; preds = %168
-  br label %172
-
-; <label>:172:                                    ; preds = %172, %171
-  %173 = phi i64 [ %169, %171 ], [ %185, %172 ]
-  %174 = phi i64 [ %115, %171 ], [ %186, %172 ]
-  %175 = getelementptr inbounds i32, i32* %4, i64 %173
-  %176 = bitcast i32* %175 to <4 x i32>*
-  %177 = load <4 x i32>, <4 x i32>* %176, align 4, !tbaa !11, !alias.scope !26
-  %178 = getelementptr i32, i32* %175, i64 4
-  %179 = bitcast i32* %178 to <4 x i32>*
-  %180 = load <4 x i32>, <4 x i32>* %179, align 4, !tbaa !11, !alias.scope !26
-  %181 = getelementptr inbounds i32, i32* %16, i64 %173
-  %182 = bitcast i32* %181 to <4 x i32>*
-  store <4 x i32> %177, <4 x i32>* %182, align 4, !tbaa !11, !alias.scope !29, !noalias !26
-  %183 = getelementptr i32, i32* %181, i64 4
-  %184 = bitcast i32* %183 to <4 x i32>*
-  store <4 x i32> %180, <4 x i32>* %184, align 4, !tbaa !11, !alias.scope !29, !noalias !26
-  %185 = add i64 %173, 8
-  %186 = add i64 %174, -1
-  %187 = icmp eq i64 %186, 0
-  br i1 %187, label %188, label %172, !llvm.loop !32
-
-; <label>:188:                                    ; preds = %172, %168
-  %189 = icmp eq i64 %111, %102
-  br i1 %189, label %229, label %190
-
-; <label>:190:                                    ; preds = %188, %104, %101
-  %191 = phi i64 [ 0, %104 ], [ 0, %101 ], [ %111, %188 ]
-  %192 = add nsw i64 %102, -1
-  %193 = sub nsw i64 %192, %191
-  %194 = and i64 %102, 3
-  %195 = icmp eq i64 %194, 0
-  br i1 %195, label %206, label %196
-
-; <label>:196:                                    ; preds = %190
-  br label %197
-
-; <label>:197:                                    ; preds = %197, %196
-  %198 = phi i64 [ %203, %197 ], [ %191, %196 ]
-  %199 = phi i64 [ %204, %197 ], [ %194, %196 ]
-  %200 = getelementptr inbounds i32, i32* %4, i64 %198
-  %201 = load i32, i32* %200, align 4, !tbaa !11
-  %202 = getelementptr inbounds i32, i32* %16, i64 %198
-  store i32 %201, i32* %202, align 4, !tbaa !11
-  %203 = add nuw nsw i64 %198, 1
-  %204 = add i64 %199, -1
-  %205 = icmp eq i64 %204, 0
-  br i1 %205, label %206, label %197, !llvm.loop !33
-
-; <label>:206:                                    ; preds = %197, %190
-  %207 = phi i64 [ %191, %190 ], [ %203, %197 ]
-  %208 = icmp ult i64 %193, 3
-  br i1 %208, label %229, label %209
-
-; <label>:209:                                    ; preds = %206
-  br label %210
-
-; <label>:210:                                    ; preds = %210, %209
-  %211 = phi i64 [ %207, %209 ], [ %227, %210 ]
-  %212 = getelementptr inbounds i32, i32* %4, i64 %211
-  %213 = load i32, i32* %212, align 4, !tbaa !11
-  %214 = getelementptr inbounds i32, i32* %16, i64 %211
-  store i32 %213, i32* %214, align 4, !tbaa !11
-  %215 = add nuw nsw i64 %211, 1
-  %216 = getelementptr inbounds i32, i32* %4, i64 %215
-  %217 = load i32, i32* %216, align 4, !tbaa !11
-  %218 = getelementptr inbounds i32, i32* %16, i64 %215
-  store i32 %217, i32* %218, align 4, !tbaa !11
-  %219 = add nsw i64 %211, 2
-  %220 = getelementptr inbounds i32, i32* %4, i64 %219
-  %221 = load i32, i32* %220, align 4, !tbaa !11
-  %222 = getelementptr inbounds i32, i32* %16, i64 %219
-  store i32 %221, i32* %222, align 4, !tbaa !11
-  %223 = add nsw i64 %211, 3
-  %224 = getelementptr inbounds i32, i32* %4, i64 %223
-  %225 = load i32, i32* %224, align 4, !tbaa !11
-  %226 = getelementptr inbounds i32, i32* %16, i64 %223
-  store i32 %225, i32* %226, align 4, !tbaa !11
-  %227 = add nsw i64 %211, 4
-  %228 = icmp eq i64 %227, %102
-  br i1 %228, label %229, label %210, !llvm.loop !34
-
-; <label>:229:                                    ; preds = %206, %210, %94, %188, %90, %100, %25
-  %230 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %5, i64 0, i32 5
-  %231 = load i32, i32* %230, align 8, !tbaa !35
-  %232 = icmp ne i32 %231, 0
-  %233 = zext i1 %232 to i32
-  %234 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 13
-  store i32 2, i32* %234, align 4, !tbaa !36
-  %235 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 14
-  store i32 %233, i32* %235, align 8, !tbaa !37
-  br i1 %232, label %236, label %742
-
-; <label>:236:                                    ; preds = %229
-  %237 = shl nsw i32 %0, 2
-  %238 = sext i32 %237 to i64
-  %239 = tail call i8* @klu_malloc(i64 %238, i64 4, %struct.klu_common_struct* nonnull %5) #3
-  %240 = bitcast i8* %239 to i32*
-  %241 = sext i32 %0 to i64
-  %242 = tail call i8* @klu_malloc(i64 %241, i64 4, %struct.klu_common_struct* nonnull %5) #3
-  %243 = bitcast i8* %242 to i32*
-  %244 = icmp ne i32* %3, null
-  br i1 %244, label %245, label %250
-
-; <label>:245:                                    ; preds = %236
-  %246 = add nsw i32 %22, 1
-  %247 = sext i32 %246 to i64
-  %248 = tail call i8* @klu_malloc(i64 %247, i64 4, %struct.klu_common_struct* nonnull %5) #3
-  %249 = bitcast i8* %248 to i32*
-  br label %250
-
-; <label>:250:                                    ; preds = %236, %245
-  %251 = phi i32* [ %249, %245 ], [ %2, %236 ]
-  %252 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %5, i64 0, i32 11
-  %253 = load i32, i32* %252, align 4, !tbaa !3
-  %254 = icmp slt i32 %253, 0
-  br i1 %254, label %255, label %263
-
-; <label>:255:                                    ; preds = %250
-  %256 = tail call i8* @klu_free(i8* %239, i64 %238, i64 4, %struct.klu_common_struct* nonnull %5) #3
-  %257 = tail call i8* @klu_free(i8* %242, i64 %241, i64 4, %struct.klu_common_struct* nonnull %5) #3
-  br i1 %244, label %258, label %740
-
-; <label>:258:                                    ; preds = %255
-  %259 = bitcast i32* %251 to i8*
-  %260 = add nsw i32 %22, 1
-  %261 = sext i32 %260 to i64
-  %262 = tail call i8* @klu_free(i8* %259, i64 %261, i64 4, %struct.klu_common_struct* nonnull %5) #3
-  br label %740
-
-; <label>:263:                                    ; preds = %250
-  br i1 %244, label %266, label %264
-
-; <label>:264:                                    ; preds = %263
-  %265 = tail call i32 @btf_strongcomp(i32 %0, i32* %1, i32* %251, i32* %16, i32* %13, i32* %18, i32* %240) #3
-  br label %565
-
-; <label>:266:                                    ; preds = %263
-  br i1 %24, label %267, label %318
-
-; <label>:267:                                    ; preds = %266
-  %268 = zext i32 %0 to i64
-  %269 = add nsw i64 %268, -1
-  %270 = and i64 %268, 3
-  %271 = icmp ult i64 %269, 3
-  br i1 %271, label %303, label %272
-
-; <label>:272:                                    ; preds = %267
-  %273 = sub nsw i64 %268, %270
-  br label %274
-
-; <label>:274:                                    ; preds = %274, %272
-  %275 = phi i64 [ 0, %272 ], [ %300, %274 ]
-  %276 = phi i64 [ %273, %272 ], [ %301, %274 ]
-  %277 = getelementptr inbounds i32, i32* %3, i64 %275
-  %278 = load i32, i32* %277, align 4, !tbaa !11
-  %279 = sext i32 %278 to i64
-  %280 = getelementptr inbounds i32, i32* %243, i64 %279
-  %281 = trunc i64 %275 to i32
-  store i32 %281, i32* %280, align 4, !tbaa !11
-  %282 = or i64 %275, 1
-  %283 = getelementptr inbounds i32, i32* %3, i64 %282
-  %284 = load i32, i32* %283, align 4, !tbaa !11
-  %285 = sext i32 %284 to i64
-  %286 = getelementptr inbounds i32, i32* %243, i64 %285
-  %287 = trunc i64 %282 to i32
-  store i32 %287, i32* %286, align 4, !tbaa !11
-  %288 = or i64 %275, 2
-  %289 = getelementptr inbounds i32, i32* %3, i64 %288
-  %290 = load i32, i32* %289, align 4, !tbaa !11
-  %291 = sext i32 %290 to i64
-  %292 = getelementptr inbounds i32, i32* %243, i64 %291
-  %293 = trunc i64 %288 to i32
-  store i32 %293, i32* %292, align 4, !tbaa !11
-  %294 = or i64 %275, 3
-  %295 = getelementptr inbounds i32, i32* %3, i64 %294
-  %296 = load i32, i32* %295, align 4, !tbaa !11
-  %297 = sext i32 %296 to i64
-  %298 = getelementptr inbounds i32, i32* %243, i64 %297
-  %299 = trunc i64 %294 to i32
-  store i32 %299, i32* %298, align 4, !tbaa !11
-  %300 = add nuw nsw i64 %275, 4
-  %301 = add i64 %276, -4
-  %302 = icmp eq i64 %301, 0
-  br i1 %302, label %303, label %274
-
-; <label>:303:                                    ; preds = %274, %267
-  %304 = phi i64 [ 0, %267 ], [ %300, %274 ]
-  %305 = icmp eq i64 %270, 0
-  br i1 %305, label %318, label %306
-
-; <label>:306:                                    ; preds = %303
-  br label %307
-
-; <label>:307:                                    ; preds = %307, %306
-  %308 = phi i64 [ %304, %306 ], [ %315, %307 ]
-  %309 = phi i64 [ %270, %306 ], [ %316, %307 ]
-  %310 = getelementptr inbounds i32, i32* %3, i64 %308
-  %311 = load i32, i32* %310, align 4, !tbaa !11
-  %312 = sext i32 %311 to i64
-  %313 = getelementptr inbounds i32, i32* %243, i64 %312
-  %314 = trunc i64 %308 to i32
-  store i32 %314, i32* %313, align 4, !tbaa !11
-  %315 = add nuw nsw i64 %308, 1
-  %316 = add i64 %309, -1
-  %317 = icmp eq i64 %316, 0
-  br i1 %317, label %318, label %307, !llvm.loop !38
-
-; <label>:318:                                    ; preds = %303, %307, %266
-  %319 = icmp sgt i32 %22, 0
-  br i1 %319, label %320, label %376
-
-; <label>:320:                                    ; preds = %318
-  %321 = zext i32 %22 to i64
-  %322 = add nsw i64 %321, -1
-  %323 = and i64 %321, 3
-  %324 = icmp ult i64 %322, 3
-  br i1 %324, label %360, label %325
-
-; <label>:325:                                    ; preds = %320
-  %326 = sub nsw i64 %321, %323
-  br label %327
-
-; <label>:327:                                    ; preds = %327, %325
-  %328 = phi i64 [ 0, %325 ], [ %357, %327 ]
-  %329 = phi i64 [ %326, %325 ], [ %358, %327 ]
-  %330 = getelementptr inbounds i32, i32* %2, i64 %328
-  %331 = load i32, i32* %330, align 4, !tbaa !11
-  %332 = sext i32 %331 to i64
-  %333 = getelementptr inbounds i32, i32* %243, i64 %332
-  %334 = load i32, i32* %333, align 4, !tbaa !11
-  %335 = getelementptr inbounds i32, i32* %251, i64 %328
-  store i32 %334, i32* %335, align 4, !tbaa !11
-  %336 = or i64 %328, 1
-  %337 = getelementptr inbounds i32, i32* %2, i64 %336
-  %338 = load i32, i32* %337, align 4, !tbaa !11
-  %339 = sext i32 %338 to i64
-  %340 = getelementptr inbounds i32, i32* %243, i64 %339
-  %341 = load i32, i32* %340, align 4, !tbaa !11
-  %342 = getelementptr inbounds i32, i32* %251, i64 %336
-  store i32 %341, i32* %342, align 4, !tbaa !11
-  %343 = or i64 %328, 2
-  %344 = getelementptr inbounds i32, i32* %2, i64 %343
-  %345 = load i32, i32* %344, align 4, !tbaa !11
-  %346 = sext i32 %345 to i64
-  %347 = getelementptr inbounds i32, i32* %243, i64 %346
-  %348 = load i32, i32* %347, align 4, !tbaa !11
-  %349 = getelementptr inbounds i32, i32* %251, i64 %343
-  store i32 %348, i32* %349, align 4, !tbaa !11
-  %350 = or i64 %328, 3
-  %351 = getelementptr inbounds i32, i32* %2, i64 %350
-  %352 = load i32, i32* %351, align 4, !tbaa !11
-  %353 = sext i32 %352 to i64
-  %354 = getelementptr inbounds i32, i32* %243, i64 %353
-  %355 = load i32, i32* %354, align 4, !tbaa !11
-  %356 = getelementptr inbounds i32, i32* %251, i64 %350
-  store i32 %355, i32* %356, align 4, !tbaa !11
-  %357 = add nuw nsw i64 %328, 4
-  %358 = add i64 %329, -4
-  %359 = icmp eq i64 %358, 0
-  br i1 %359, label %360, label %327
-
-; <label>:360:                                    ; preds = %327, %320
-  %361 = phi i64 [ 0, %320 ], [ %357, %327 ]
-  %362 = icmp eq i64 %323, 0
-  br i1 %362, label %376, label %363
-
-; <label>:363:                                    ; preds = %360
-  br label %364
-
-; <label>:364:                                    ; preds = %364, %363
-  %365 = phi i64 [ %361, %363 ], [ %373, %364 ]
-  %366 = phi i64 [ %323, %363 ], [ %374, %364 ]
-  %367 = getelementptr inbounds i32, i32* %2, i64 %365
-  %368 = load i32, i32* %367, align 4, !tbaa !11
-  %369 = sext i32 %368 to i64
-  %370 = getelementptr inbounds i32, i32* %243, i64 %369
-  %371 = load i32, i32* %370, align 4, !tbaa !11
-  %372 = getelementptr inbounds i32, i32* %251, i64 %365
-  store i32 %371, i32* %372, align 4, !tbaa !11
-  %373 = add nuw nsw i64 %365, 1
-  %374 = add i64 %366, -1
-  %375 = icmp eq i64 %374, 0
-  br i1 %375, label %376, label %364, !llvm.loop !39
-
-; <label>:376:                                    ; preds = %360, %364, %318
-  %377 = tail call i32 @btf_strongcomp(i32 %0, i32* %1, i32* %251, i32* %16, i32* %13, i32* %18, i32* %240) #3
-  br i1 %24, label %378, label %618
-
-; <label>:378:                                    ; preds = %376
-  %379 = zext i32 %0 to i64
-  %380 = add nsw i64 %379, -1
-  %381 = and i64 %379, 3
-  %382 = icmp ult i64 %380, 3
-  br i1 %382, label %418, label %383
-
-; <label>:383:                                    ; preds = %378
-  %384 = sub nsw i64 %379, %381
-  br label %385
-
-; <label>:385:                                    ; preds = %385, %383
-  %386 = phi i64 [ 0, %383 ], [ %415, %385 ]
-  %387 = phi i64 [ %384, %383 ], [ %416, %385 ]
-  %388 = getelementptr inbounds i32, i32* %13, i64 %386
-  %389 = load i32, i32* %388, align 4, !tbaa !11
-  %390 = sext i32 %389 to i64
-  %391 = getelementptr inbounds i32, i32* %3, i64 %390
-  %392 = load i32, i32* %391, align 4, !tbaa !11
-  %393 = getelementptr inbounds i32, i32* %240, i64 %386
-  store i32 %392, i32* %393, align 4, !tbaa !11
-  %394 = or i64 %386, 1
-  %395 = getelementptr inbounds i32, i32* %13, i64 %394
-  %396 = load i32, i32* %395, align 4, !tbaa !11
-  %397 = sext i32 %396 to i64
-  %398 = getelementptr inbounds i32, i32* %3, i64 %397
-  %399 = load i32, i32* %398, align 4, !tbaa !11
-  %400 = getelementptr inbounds i32, i32* %240, i64 %394
-  store i32 %399, i32* %400, align 4, !tbaa !11
-  %401 = or i64 %386, 2
-  %402 = getelementptr inbounds i32, i32* %13, i64 %401
-  %403 = load i32, i32* %402, align 4, !tbaa !11
-  %404 = sext i32 %403 to i64
-  %405 = getelementptr inbounds i32, i32* %3, i64 %404
-  %406 = load i32, i32* %405, align 4, !tbaa !11
-  %407 = getelementptr inbounds i32, i32* %240, i64 %401
-  store i32 %406, i32* %407, align 4, !tbaa !11
-  %408 = or i64 %386, 3
-  %409 = getelementptr inbounds i32, i32* %13, i64 %408
-  %410 = load i32, i32* %409, align 4, !tbaa !11
-  %411 = sext i32 %410 to i64
-  %412 = getelementptr inbounds i32, i32* %3, i64 %411
-  %413 = load i32, i32* %412, align 4, !tbaa !11
-  %414 = getelementptr inbounds i32, i32* %240, i64 %408
-  store i32 %413, i32* %414, align 4, !tbaa !11
-  %415 = add nuw nsw i64 %386, 4
-  %416 = add i64 %387, -4
-  %417 = icmp eq i64 %416, 0
-  br i1 %417, label %418, label %385
-
-; <label>:418:                                    ; preds = %385, %378
-  %419 = phi i64 [ 0, %378 ], [ %415, %385 ]
-  %420 = icmp eq i64 %381, 0
-  br i1 %420, label %434, label %421
-
-; <label>:421:                                    ; preds = %418
-  br label %422
-
-; <label>:422:                                    ; preds = %422, %421
-  %423 = phi i64 [ %419, %421 ], [ %431, %422 ]
-  %424 = phi i64 [ %381, %421 ], [ %432, %422 ]
-  %425 = getelementptr inbounds i32, i32* %13, i64 %423
-  %426 = load i32, i32* %425, align 4, !tbaa !11
-  %427 = sext i32 %426 to i64
-  %428 = getelementptr inbounds i32, i32* %3, i64 %427
-  %429 = load i32, i32* %428, align 4, !tbaa !11
-  %430 = getelementptr inbounds i32, i32* %240, i64 %423
-  store i32 %429, i32* %430, align 4, !tbaa !11
-  %431 = add nuw nsw i64 %423, 1
-  %432 = add i64 %424, -1
-  %433 = icmp eq i64 %432, 0
-  br i1 %433, label %434, label %422, !llvm.loop !40
-
-; <label>:434:                                    ; preds = %422, %418
-  br i1 %24, label %435, label %618
-
-; <label>:435:                                    ; preds = %434
-  %436 = zext i32 %0 to i64
-  %437 = icmp ult i32 %0, 8
-  br i1 %437, label %526, label %438
-
-; <label>:438:                                    ; preds = %435
-  %439 = getelementptr i32, i32* %13, i64 %379
-  %440 = bitcast i32* %439 to i8*
-  %441 = shl nuw nsw i64 %379, 2
-  %442 = getelementptr i8, i8* %239, i64 %441
-  %443 = icmp ugt i8* %442, %14
-  %444 = icmp ult i8* %239, %440
-  %445 = and i1 %443, %444
-  br i1 %445, label %526, label %446
-
-; <label>:446:                                    ; preds = %438
-  %447 = and i64 %379, 4294967288
-  %448 = add nsw i64 %447, -8
-  %449 = lshr exact i64 %448, 3
-  %450 = add nuw nsw i64 %449, 1
-  %451 = and i64 %450, 3
-  %452 = icmp ult i64 %448, 24
-  br i1 %452, label %504, label %453
-
-; <label>:453:                                    ; preds = %446
-  %454 = sub nsw i64 %450, %451
-  br label %455
-
-; <label>:455:                                    ; preds = %455, %453
-  %456 = phi i64 [ 0, %453 ], [ %501, %455 ]
-  %457 = phi i64 [ %454, %453 ], [ %502, %455 ]
-  %458 = getelementptr inbounds i32, i32* %240, i64 %456
-  %459 = bitcast i32* %458 to <4 x i32>*
-  %460 = load <4 x i32>, <4 x i32>* %459, align 4, !tbaa !11, !alias.scope !41
-  %461 = getelementptr i32, i32* %458, i64 4
-  %462 = bitcast i32* %461 to <4 x i32>*
-  %463 = load <4 x i32>, <4 x i32>* %462, align 4, !tbaa !11, !alias.scope !41
-  %464 = getelementptr inbounds i32, i32* %13, i64 %456
-  %465 = bitcast i32* %464 to <4 x i32>*
-  store <4 x i32> %460, <4 x i32>* %465, align 4, !tbaa !11, !alias.scope !44, !noalias !41
-  %466 = getelementptr i32, i32* %464, i64 4
-  %467 = bitcast i32* %466 to <4 x i32>*
-  store <4 x i32> %463, <4 x i32>* %467, align 4, !tbaa !11, !alias.scope !44, !noalias !41
-  %468 = or i64 %456, 8
-  %469 = getelementptr inbounds i32, i32* %240, i64 %468
-  %470 = bitcast i32* %469 to <4 x i32>*
-  %471 = load <4 x i32>, <4 x i32>* %470, align 4, !tbaa !11, !alias.scope !41
-  %472 = getelementptr i32, i32* %469, i64 4
-  %473 = bitcast i32* %472 to <4 x i32>*
-  %474 = load <4 x i32>, <4 x i32>* %473, align 4, !tbaa !11, !alias.scope !41
-  %475 = getelementptr inbounds i32, i32* %13, i64 %468
-  %476 = bitcast i32* %475 to <4 x i32>*
-  store <4 x i32> %471, <4 x i32>* %476, align 4, !tbaa !11, !alias.scope !44, !noalias !41
-  %477 = getelementptr i32, i32* %475, i64 4
-  %478 = bitcast i32* %477 to <4 x i32>*
-  store <4 x i32> %474, <4 x i32>* %478, align 4, !tbaa !11, !alias.scope !44, !noalias !41
-  %479 = or i64 %456, 16
-  %480 = getelementptr inbounds i32, i32* %240, i64 %479
-  %481 = bitcast i32* %480 to <4 x i32>*
-  %482 = load <4 x i32>, <4 x i32>* %481, align 4, !tbaa !11, !alias.scope !41
-  %483 = getelementptr i32, i32* %480, i64 4
-  %484 = bitcast i32* %483 to <4 x i32>*
-  %485 = load <4 x i32>, <4 x i32>* %484, align 4, !tbaa !11, !alias.scope !41
-  %486 = getelementptr inbounds i32, i32* %13, i64 %479
-  %487 = bitcast i32* %486 to <4 x i32>*
-  store <4 x i32> %482, <4 x i32>* %487, align 4, !tbaa !11, !alias.scope !44, !noalias !41
-  %488 = getelementptr i32, i32* %486, i64 4
-  %489 = bitcast i32* %488 to <4 x i32>*
-  store <4 x i32> %485, <4 x i32>* %489, align 4, !tbaa !11, !alias.scope !44, !noalias !41
-  %490 = or i64 %456, 24
-  %491 = getelementptr inbounds i32, i32* %240, i64 %490
-  %492 = bitcast i32* %491 to <4 x i32>*
-  %493 = load <4 x i32>, <4 x i32>* %492, align 4, !tbaa !11, !alias.scope !41
-  %494 = getelementptr i32, i32* %491, i64 4
-  %495 = bitcast i32* %494 to <4 x i32>*
-  %496 = load <4 x i32>, <4 x i32>* %495, align 4, !tbaa !11, !alias.scope !41
-  %497 = getelementptr inbounds i32, i32* %13, i64 %490
-  %498 = bitcast i32* %497 to <4 x i32>*
-  store <4 x i32> %493, <4 x i32>* %498, align 4, !tbaa !11, !alias.scope !44, !noalias !41
-  %499 = getelementptr i32, i32* %497, i64 4
-  %500 = bitcast i32* %499 to <4 x i32>*
-  store <4 x i32> %496, <4 x i32>* %500, align 4, !tbaa !11, !alias.scope !44, !noalias !41
-  %501 = add i64 %456, 32
-  %502 = add i64 %457, -4
-  %503 = icmp eq i64 %502, 0
-  br i1 %503, label %504, label %455, !llvm.loop !46
-
-; <label>:504:                                    ; preds = %455, %446
-  %505 = phi i64 [ 0, %446 ], [ %501, %455 ]
-  %506 = icmp eq i64 %451, 0
-  br i1 %506, label %524, label %507
-
-; <label>:507:                                    ; preds = %504
-  br label %508
-
-; <label>:508:                                    ; preds = %508, %507
-  %509 = phi i64 [ %505, %507 ], [ %521, %508 ]
-  %510 = phi i64 [ %451, %507 ], [ %522, %508 ]
-  %511 = getelementptr inbounds i32, i32* %240, i64 %509
-  %512 = bitcast i32* %511 to <4 x i32>*
-  %513 = load <4 x i32>, <4 x i32>* %512, align 4, !tbaa !11, !alias.scope !41
-  %514 = getelementptr i32, i32* %511, i64 4
-  %515 = bitcast i32* %514 to <4 x i32>*
-  %516 = load <4 x i32>, <4 x i32>* %515, align 4, !tbaa !11, !alias.scope !41
-  %517 = getelementptr inbounds i32, i32* %13, i64 %509
-  %518 = bitcast i32* %517 to <4 x i32>*
-  store <4 x i32> %513, <4 x i32>* %518, align 4, !tbaa !11, !alias.scope !44, !noalias !41
-  %519 = getelementptr i32, i32* %517, i64 4
-  %520 = bitcast i32* %519 to <4 x i32>*
-  store <4 x i32> %516, <4 x i32>* %520, align 4, !tbaa !11, !alias.scope !44, !noalias !41
-  %521 = add i64 %509, 8
-  %522 = add i64 %510, -1
-  %523 = icmp eq i64 %522, 0
-  br i1 %523, label %524, label %508, !llvm.loop !47
-
-; <label>:524:                                    ; preds = %508, %504
-  %525 = icmp eq i64 %447, %379
-  br i1 %525, label %565, label %526
-
-; <label>:526:                                    ; preds = %524, %438, %435
-  %527 = phi i64 [ 0, %438 ], [ 0, %435 ], [ %447, %524 ]
-  %528 = add nsw i64 %436, -1
-  %529 = sub nsw i64 %528, %527
-  %530 = and i64 %436, 3
-  %531 = icmp eq i64 %530, 0
-  br i1 %531, label %542, label %532
-
-; <label>:532:                                    ; preds = %526
-  br label %533
-
-; <label>:533:                                    ; preds = %533, %532
-  %534 = phi i64 [ %539, %533 ], [ %527, %532 ]
-  %535 = phi i64 [ %540, %533 ], [ %530, %532 ]
-  %536 = getelementptr inbounds i32, i32* %240, i64 %534
-  %537 = load i32, i32* %536, align 4, !tbaa !11
-  %538 = getelementptr inbounds i32, i32* %13, i64 %534
-  store i32 %537, i32* %538, align 4, !tbaa !11
-  %539 = add nuw nsw i64 %534, 1
-  %540 = add i64 %535, -1
-  %541 = icmp eq i64 %540, 0
-  br i1 %541, label %542, label %533, !llvm.loop !48
-
-; <label>:542:                                    ; preds = %533, %526
-  %543 = phi i64 [ %527, %526 ], [ %539, %533 ]
-  %544 = icmp ult i64 %529, 3
-  br i1 %544, label %565, label %545
-
-; <label>:545:                                    ; preds = %542
-  br label %546
-
-; <label>:546:                                    ; preds = %546, %545
-  %547 = phi i64 [ %543, %545 ], [ %563, %546 ]
-  %548 = getelementptr inbounds i32, i32* %240, i64 %547
-  %549 = load i32, i32* %548, align 4, !tbaa !11
-  %550 = getelementptr inbounds i32, i32* %13, i64 %547
-  store i32 %549, i32* %550, align 4, !tbaa !11
-  %551 = add nuw nsw i64 %547, 1
-  %552 = getelementptr inbounds i32, i32* %240, i64 %551
-  %553 = load i32, i32* %552, align 4, !tbaa !11
-  %554 = getelementptr inbounds i32, i32* %13, i64 %551
-  store i32 %553, i32* %554, align 4, !tbaa !11
-  %555 = add nsw i64 %547, 2
-  %556 = getelementptr inbounds i32, i32* %240, i64 %555
-  %557 = load i32, i32* %556, align 4, !tbaa !11
-  %558 = getelementptr inbounds i32, i32* %13, i64 %555
-  store i32 %557, i32* %558, align 4, !tbaa !11
-  %559 = add nsw i64 %547, 3
-  %560 = getelementptr inbounds i32, i32* %240, i64 %559
-  %561 = load i32, i32* %560, align 4, !tbaa !11
-  %562 = getelementptr inbounds i32, i32* %13, i64 %559
-  store i32 %561, i32* %562, align 4, !tbaa !11
-  %563 = add nsw i64 %547, 4
-  %564 = icmp eq i64 %563, %436
-  br i1 %564, label %565, label %546, !llvm.loop !49
-
-; <label>:565:                                    ; preds = %542, %546, %524, %264
-  %566 = phi i32 [ %265, %264 ], [ %377, %524 ], [ %377, %546 ], [ %377, %542 ]
-  br i1 %24, label %567, label %618
-
-; <label>:567:                                    ; preds = %565
-  %568 = zext i32 %0 to i64
-  %569 = add nsw i64 %568, -1
-  %570 = and i64 %568, 3
-  %571 = icmp ult i64 %569, 3
-  br i1 %571, label %603, label %572
-
-; <label>:572:                                    ; preds = %567
-  %573 = sub nsw i64 %568, %570
-  br label %574
-
-; <label>:574:                                    ; preds = %574, %572
-  %575 = phi i64 [ 0, %572 ], [ %600, %574 ]
-  %576 = phi i64 [ %573, %572 ], [ %601, %574 ]
-  %577 = getelementptr inbounds i32, i32* %13, i64 %575
-  %578 = load i32, i32* %577, align 4, !tbaa !11
-  %579 = sext i32 %578 to i64
-  %580 = getelementptr inbounds i32, i32* %243, i64 %579
-  %581 = trunc i64 %575 to i32
-  store i32 %581, i32* %580, align 4, !tbaa !11
-  %582 = or i64 %575, 1
-  %583 = getelementptr inbounds i32, i32* %13, i64 %582
-  %584 = load i32, i32* %583, align 4, !tbaa !11
-  %585 = sext i32 %584 to i64
-  %586 = getelementptr inbounds i32, i32* %243, i64 %585
-  %587 = trunc i64 %582 to i32
-  store i32 %587, i32* %586, align 4, !tbaa !11
-  %588 = or i64 %575, 2
-  %589 = getelementptr inbounds i32, i32* %13, i64 %588
-  %590 = load i32, i32* %589, align 4, !tbaa !11
-  %591 = sext i32 %590 to i64
-  %592 = getelementptr inbounds i32, i32* %243, i64 %591
-  %593 = trunc i64 %588 to i32
-  store i32 %593, i32* %592, align 4, !tbaa !11
-  %594 = or i64 %575, 3
-  %595 = getelementptr inbounds i32, i32* %13, i64 %594
-  %596 = load i32, i32* %595, align 4, !tbaa !11
-  %597 = sext i32 %596 to i64
-  %598 = getelementptr inbounds i32, i32* %243, i64 %597
-  %599 = trunc i64 %594 to i32
-  store i32 %599, i32* %598, align 4, !tbaa !11
-  %600 = add nuw nsw i64 %575, 4
-  %601 = add i64 %576, -4
-  %602 = icmp eq i64 %601, 0
-  br i1 %602, label %603, label %574
-
-; <label>:603:                                    ; preds = %574, %567
-  %604 = phi i64 [ 0, %567 ], [ %600, %574 ]
-  %605 = icmp eq i64 %570, 0
-  br i1 %605, label %618, label %606
-
-; <label>:606:                                    ; preds = %603
-  br label %607
-
-; <label>:607:                                    ; preds = %607, %606
-  %608 = phi i64 [ %604, %606 ], [ %615, %607 ]
-  %609 = phi i64 [ %570, %606 ], [ %616, %607 ]
-  %610 = getelementptr inbounds i32, i32* %13, i64 %608
-  %611 = load i32, i32* %610, align 4, !tbaa !11
-  %612 = sext i32 %611 to i64
-  %613 = getelementptr inbounds i32, i32* %243, i64 %612
-  %614 = trunc i64 %608 to i32
-  store i32 %614, i32* %613, align 4, !tbaa !11
-  %615 = add nuw nsw i64 %608, 1
-  %616 = add i64 %609, -1
-  %617 = icmp eq i64 %616, 0
-  br i1 %617, label %618, label %607, !llvm.loop !50
-
-; <label>:618:                                    ; preds = %603, %607, %376, %434, %565
-  %619 = phi i32 [ %566, %565 ], [ %377, %434 ], [ %377, %376 ], [ %566, %607 ], [ %566, %603 ]
-  %620 = icmp sgt i32 %619, 0
-  br i1 %620, label %621, label %730
-
-; <label>:621:                                    ; preds = %618
-  %622 = load i32, i32* %18, align 4, !tbaa !11
-  %623 = zext i32 %619 to i64
-  br label %624
-
-; <label>:624:                                    ; preds = %726, %621
-  %625 = phi i32 [ %622, %621 ], [ %631, %726 ]
-  %626 = phi i64 [ 0, %621 ], [ %629, %726 ]
-  %627 = phi i32 [ 1, %621 ], [ %634, %726 ]
-  %628 = phi i32 [ 0, %621 ], [ %727, %726 ]
-  %629 = add nuw nsw i64 %626, 1
-  %630 = getelementptr inbounds i32, i32* %18, i64 %629
-  %631 = load i32, i32* %630, align 4, !tbaa !11
-  %632 = sub nsw i32 %631, %625
-  %633 = icmp sgt i32 %627, %632
-  %634 = select i1 %633, i32 %627, i32 %632
-  %635 = icmp sgt i32 %631, %625
-  br i1 %635, label %636, label %726
-
-; <label>:636:                                    ; preds = %624
-  %637 = sext i32 %625 to i64
-  %638 = sext i32 %631 to i64
-  br label %639
-
-; <label>:639:                                    ; preds = %722, %636
-  %640 = phi i64 [ %637, %636 ], [ %724, %722 ]
-  %641 = phi i32 [ %628, %636 ], [ %723, %722 ]
-  %642 = getelementptr inbounds i32, i32* %16, i64 %640
-  %643 = load i32, i32* %642, align 4, !tbaa !11
-  %644 = add nsw i32 %643, 1
-  %645 = sext i32 %644 to i64
-  %646 = getelementptr inbounds i32, i32* %1, i64 %645
-  %647 = load i32, i32* %646, align 4, !tbaa !11
-  %648 = sext i32 %643 to i64
-  %649 = getelementptr inbounds i32, i32* %1, i64 %648
-  %650 = load i32, i32* %649, align 4, !tbaa !11
-  %651 = icmp slt i32 %650, %647
-  br i1 %651, label %652, label %722
-
-; <label>:652:                                    ; preds = %639
-  %653 = sext i32 %650 to i64
-  %654 = sext i32 %647 to i64
-  %655 = sub nsw i64 %654, %653
-  %656 = add nsw i64 %654, -1
-  %657 = sub nsw i64 %656, %653
-  %658 = and i64 %655, 3
-  %659 = icmp eq i64 %658, 0
-  br i1 %659, label %676, label %660
-
-; <label>:660:                                    ; preds = %652
-  br label %661
-
-; <label>:661:                                    ; preds = %661, %660
-  %662 = phi i64 [ %653, %660 ], [ %673, %661 ]
-  %663 = phi i32 [ %641, %660 ], [ %672, %661 ]
-  %664 = phi i64 [ %658, %660 ], [ %674, %661 ]
-  %665 = getelementptr inbounds i32, i32* %2, i64 %662
-  %666 = load i32, i32* %665, align 4, !tbaa !11
-  %667 = sext i32 %666 to i64
-  %668 = getelementptr inbounds i32, i32* %243, i64 %667
-  %669 = load i32, i32* %668, align 4, !tbaa !11
-  %670 = icmp slt i32 %669, %625
-  %671 = zext i1 %670 to i32
-  %672 = add nsw i32 %663, %671
-  %673 = add nsw i64 %662, 1
-  %674 = add i64 %664, -1
-  %675 = icmp eq i64 %674, 0
-  br i1 %675, label %676, label %661, !llvm.loop !51
-
-; <label>:676:                                    ; preds = %661, %652
-  %677 = phi i32 [ undef, %652 ], [ %672, %661 ]
-  %678 = phi i64 [ %653, %652 ], [ %673, %661 ]
-  %679 = phi i32 [ %641, %652 ], [ %672, %661 ]
-  %680 = icmp ult i64 %657, 3
-  br i1 %680, label %722, label %681
-
-; <label>:681:                                    ; preds = %676
-  br label %682
-
-; <label>:682:                                    ; preds = %682, %681
-  %683 = phi i64 [ %678, %681 ], [ %720, %682 ]
-  %684 = phi i32 [ %679, %681 ], [ %719, %682 ]
-  %685 = getelementptr inbounds i32, i32* %2, i64 %683
-  %686 = load i32, i32* %685, align 4, !tbaa !11
-  %687 = sext i32 %686 to i64
-  %688 = getelementptr inbounds i32, i32* %243, i64 %687
-  %689 = load i32, i32* %688, align 4, !tbaa !11
-  %690 = icmp slt i32 %689, %625
-  %691 = zext i1 %690 to i32
-  %692 = add nsw i32 %684, %691
-  %693 = add nsw i64 %683, 1
-  %694 = getelementptr inbounds i32, i32* %2, i64 %693
-  %695 = load i32, i32* %694, align 4, !tbaa !11
-  %696 = sext i32 %695 to i64
-  %697 = getelementptr inbounds i32, i32* %243, i64 %696
-  %698 = load i32, i32* %697, align 4, !tbaa !11
-  %699 = icmp slt i32 %698, %625
-  %700 = zext i1 %699 to i32
-  %701 = add nsw i32 %692, %700
-  %702 = add nsw i64 %683, 2
-  %703 = getelementptr inbounds i32, i32* %2, i64 %702
-  %704 = load i32, i32* %703, align 4, !tbaa !11
-  %705 = sext i32 %704 to i64
-  %706 = getelementptr inbounds i32, i32* %243, i64 %705
-  %707 = load i32, i32* %706, align 4, !tbaa !11
-  %708 = icmp slt i32 %707, %625
-  %709 = zext i1 %708 to i32
-  %710 = add nsw i32 %701, %709
-  %711 = add nsw i64 %683, 3
-  %712 = getelementptr inbounds i32, i32* %2, i64 %711
-  %713 = load i32, i32* %712, align 4, !tbaa !11
-  %714 = sext i32 %713 to i64
-  %715 = getelementptr inbounds i32, i32* %243, i64 %714
-  %716 = load i32, i32* %715, align 4, !tbaa !11
-  %717 = icmp slt i32 %716, %625
-  %718 = zext i1 %717 to i32
-  %719 = add nsw i32 %710, %718
-  %720 = add nsw i64 %683, 4
-  %721 = icmp eq i64 %720, %654
-  br i1 %721, label %722, label %682
-
-; <label>:722:                                    ; preds = %676, %682, %639
-  %723 = phi i32 [ %641, %639 ], [ %677, %676 ], [ %719, %682 ]
-  %724 = add nsw i64 %640, 1
-  %725 = icmp eq i64 %724, %638
-  br i1 %725, label %726, label %639
-
-; <label>:726:                                    ; preds = %722, %624
-  %727 = phi i32 [ %628, %624 ], [ %723, %722 ]
-  %728 = getelementptr inbounds double, double* %20, i64 %626
-  store double -1.000000e+00, double* %728, align 8, !tbaa !52
-  %729 = icmp eq i64 %629, %623
-  br i1 %729, label %730, label %624
-
-; <label>:730:                                    ; preds = %726, %618
-  %731 = phi i32 [ 0, %618 ], [ %727, %726 ]
-  %732 = phi i32 [ 1, %618 ], [ %634, %726 ]
-  %733 = tail call i8* @klu_free(i8* %239, i64 %238, i64 4, %struct.klu_common_struct* %5) #3
-  %734 = tail call i8* @klu_free(i8* %242, i64 %241, i64 4, %struct.klu_common_struct* %5) #3
-  br i1 %244, label %735, label %946
-
-; <label>:735:                                    ; preds = %730
-  %736 = bitcast i32* %251 to i8*
-  %737 = add nsw i32 %22, 1
-  %738 = sext i32 %737 to i64
-  %739 = tail call i8* @klu_free(i8* %736, i64 %738, i64 4, %struct.klu_common_struct* %5) #3
-  br label %946
-
-; <label>:740:                                    ; preds = %255, %258
-  %741 = call i32 @klu_free_symbolic(%struct.klu_symbolic** nonnull %7, %struct.klu_common_struct* nonnull %5) #3
-  store i32 -2, i32* %252, align 4, !tbaa !3
-  br label %955
-
-; <label>:742:                                    ; preds = %229
-  store i32 0, i32* %18, align 4, !tbaa !11
-  %743 = getelementptr inbounds i32, i32* %18, i64 1
-  store i32 %0, i32* %743, align 4, !tbaa !11
-  store double -1.000000e+00, double* %20, align 8, !tbaa !52
-  br i1 %24, label %744, label %946
-
-; <label>:744:                                    ; preds = %742
-  %745 = icmp eq i32* %3, null
-  %746 = zext i32 %0 to i64
-  %747 = icmp ult i32 %0, 8
-  br i1 %745, label %748, label %820
-
-; <label>:748:                                    ; preds = %744
-  br i1 %747, label %812, label %749
-
-; <label>:749:                                    ; preds = %748
-  %750 = and i64 %746, 4294967288
-  %751 = add nsw i64 %750, -8
-  %752 = lshr exact i64 %751, 3
-  %753 = add nuw nsw i64 %752, 1
-  %754 = and i64 %753, 3
-  %755 = icmp ult i64 %751, 24
-  br i1 %755, label %792, label %756
-
-; <label>:756:                                    ; preds = %749
-  %757 = sub nsw i64 %753, %754
-  br label %758
-
-; <label>:758:                                    ; preds = %758, %756
-  %759 = phi i64 [ 0, %756 ], [ %788, %758 ]
-  %760 = phi <4 x i32> [ <i32 0, i32 1, i32 2, i32 3>, %756 ], [ %789, %758 ]
-  %761 = phi i64 [ %757, %756 ], [ %790, %758 ]
-  %762 = getelementptr inbounds i32, i32* %13, i64 %759
-  %763 = add <4 x i32> %760, <i32 4, i32 4, i32 4, i32 4>
-  %764 = bitcast i32* %762 to <4 x i32>*
-  store <4 x i32> %760, <4 x i32>* %764, align 4, !tbaa !11
-  %765 = getelementptr i32, i32* %762, i64 4
-  %766 = bitcast i32* %765 to <4 x i32>*
-  store <4 x i32> %763, <4 x i32>* %766, align 4, !tbaa !11
-  %767 = or i64 %759, 8
-  %768 = add <4 x i32> %760, <i32 8, i32 8, i32 8, i32 8>
-  %769 = getelementptr inbounds i32, i32* %13, i64 %767
-  %770 = add <4 x i32> %760, <i32 12, i32 12, i32 12, i32 12>
-  %771 = bitcast i32* %769 to <4 x i32>*
-  store <4 x i32> %768, <4 x i32>* %771, align 4, !tbaa !11
-  %772 = getelementptr i32, i32* %769, i64 4
-  %773 = bitcast i32* %772 to <4 x i32>*
-  store <4 x i32> %770, <4 x i32>* %773, align 4, !tbaa !11
-  %774 = or i64 %759, 16
-  %775 = add <4 x i32> %760, <i32 16, i32 16, i32 16, i32 16>
-  %776 = getelementptr inbounds i32, i32* %13, i64 %774
-  %777 = add <4 x i32> %760, <i32 20, i32 20, i32 20, i32 20>
-  %778 = bitcast i32* %776 to <4 x i32>*
-  store <4 x i32> %775, <4 x i32>* %778, align 4, !tbaa !11
-  %779 = getelementptr i32, i32* %776, i64 4
-  %780 = bitcast i32* %779 to <4 x i32>*
-  store <4 x i32> %777, <4 x i32>* %780, align 4, !tbaa !11
-  %781 = or i64 %759, 24
-  %782 = add <4 x i32> %760, <i32 24, i32 24, i32 24, i32 24>
-  %783 = getelementptr inbounds i32, i32* %13, i64 %781
-  %784 = add <4 x i32> %760, <i32 28, i32 28, i32 28, i32 28>
-  %785 = bitcast i32* %783 to <4 x i32>*
-  store <4 x i32> %782, <4 x i32>* %785, align 4, !tbaa !11
-  %786 = getelementptr i32, i32* %783, i64 4
-  %787 = bitcast i32* %786 to <4 x i32>*
-  store <4 x i32> %784, <4 x i32>* %787, align 4, !tbaa !11
-  %788 = add i64 %759, 32
-  %789 = add <4 x i32> %760, <i32 32, i32 32, i32 32, i32 32>
-  %790 = add i64 %761, -4
-  %791 = icmp eq i64 %790, 0
-  br i1 %791, label %792, label %758, !llvm.loop !53
-
-; <label>:792:                                    ; preds = %758, %749
-  %793 = phi i64 [ 0, %749 ], [ %788, %758 ]
-  %794 = phi <4 x i32> [ <i32 0, i32 1, i32 2, i32 3>, %749 ], [ %789, %758 ]
-  %795 = icmp eq i64 %754, 0
-  br i1 %795, label %810, label %796
-
-; <label>:796:                                    ; preds = %792
-  br label %797
-
-; <label>:797:                                    ; preds = %797, %796
-  %798 = phi i64 [ %793, %796 ], [ %806, %797 ]
-  %799 = phi <4 x i32> [ %794, %796 ], [ %807, %797 ]
-  %800 = phi i64 [ %754, %796 ], [ %808, %797 ]
-  %801 = getelementptr inbounds i32, i32* %13, i64 %798
-  %802 = add <4 x i32> %799, <i32 4, i32 4, i32 4, i32 4>
-  %803 = bitcast i32* %801 to <4 x i32>*
-  store <4 x i32> %799, <4 x i32>* %803, align 4, !tbaa !11
-  %804 = getelementptr i32, i32* %801, i64 4
-  %805 = bitcast i32* %804 to <4 x i32>*
-  store <4 x i32> %802, <4 x i32>* %805, align 4, !tbaa !11
-  %806 = add i64 %798, 8
-  %807 = add <4 x i32> %799, <i32 8, i32 8, i32 8, i32 8>
-  %808 = add i64 %800, -1
-  %809 = icmp eq i64 %808, 0
-  br i1 %809, label %810, label %797, !llvm.loop !54
-
-; <label>:810:                                    ; preds = %797, %792
-  %811 = icmp eq i64 %750, %746
-  br i1 %811, label %946, label %812
-
-; <label>:812:                                    ; preds = %810, %748
-  %813 = phi i64 [ 0, %748 ], [ %750, %810 ]
-  br label %814
-
-; <label>:814:                                    ; preds = %812, %814
-  %815 = phi i64 [ %818, %814 ], [ %813, %812 ]
-  %816 = getelementptr inbounds i32, i32* %13, i64 %815
-  %817 = trunc i64 %815 to i32
-  store i32 %817, i32* %816, align 4, !tbaa !11
-  %818 = add nuw nsw i64 %815, 1
-  %819 = icmp eq i64 %818, %746
-  br i1 %819, label %946, label %814, !llvm.loop !55
-
-; <label>:820:                                    ; preds = %744
-  br i1 %747, label %907, label %821
-
-; <label>:821:                                    ; preds = %820
-  %822 = getelementptr i32, i32* %13, i64 %746
-  %823 = getelementptr i32, i32* %3, i64 %746
-  %824 = icmp ult i32* %13, %823
-  %825 = icmp ugt i32* %822, %3
-  %826 = and i1 %824, %825
-  br i1 %826, label %907, label %827
-
-; <label>:827:                                    ; preds = %821
-  %828 = and i64 %746, 4294967288
-  %829 = add nsw i64 %828, -8
-  %830 = lshr exact i64 %829, 3
-  %831 = add nuw nsw i64 %830, 1
-  %832 = and i64 %831, 3
-  %833 = icmp ult i64 %829, 24
-  br i1 %833, label %885, label %834
-
-; <label>:834:                                    ; preds = %827
-  %835 = sub nsw i64 %831, %832
-  br label %836
-
-; <label>:836:                                    ; preds = %836, %834
-  %837 = phi i64 [ 0, %834 ], [ %882, %836 ]
-  %838 = phi i64 [ %835, %834 ], [ %883, %836 ]
-  %839 = getelementptr inbounds i32, i32* %3, i64 %837
-  %840 = bitcast i32* %839 to <4 x i32>*
-  %841 = load <4 x i32>, <4 x i32>* %840, align 4, !tbaa !11, !alias.scope !56
-  %842 = getelementptr i32, i32* %839, i64 4
-  %843 = bitcast i32* %842 to <4 x i32>*
-  %844 = load <4 x i32>, <4 x i32>* %843, align 4, !tbaa !11, !alias.scope !56
-  %845 = getelementptr inbounds i32, i32* %13, i64 %837
-  %846 = bitcast i32* %845 to <4 x i32>*
-  store <4 x i32> %841, <4 x i32>* %846, align 4, !tbaa !11, !alias.scope !59, !noalias !56
-  %847 = getelementptr i32, i32* %845, i64 4
-  %848 = bitcast i32* %847 to <4 x i32>*
-  store <4 x i32> %844, <4 x i32>* %848, align 4, !tbaa !11, !alias.scope !59, !noalias !56
-  %849 = or i64 %837, 8
-  %850 = getelementptr inbounds i32, i32* %3, i64 %849
-  %851 = bitcast i32* %850 to <4 x i32>*
-  %852 = load <4 x i32>, <4 x i32>* %851, align 4, !tbaa !11, !alias.scope !56
-  %853 = getelementptr i32, i32* %850, i64 4
-  %854 = bitcast i32* %853 to <4 x i32>*
-  %855 = load <4 x i32>, <4 x i32>* %854, align 4, !tbaa !11, !alias.scope !56
-  %856 = getelementptr inbounds i32, i32* %13, i64 %849
-  %857 = bitcast i32* %856 to <4 x i32>*
-  store <4 x i32> %852, <4 x i32>* %857, align 4, !tbaa !11, !alias.scope !59, !noalias !56
-  %858 = getelementptr i32, i32* %856, i64 4
-  %859 = bitcast i32* %858 to <4 x i32>*
-  store <4 x i32> %855, <4 x i32>* %859, align 4, !tbaa !11, !alias.scope !59, !noalias !56
-  %860 = or i64 %837, 16
-  %861 = getelementptr inbounds i32, i32* %3, i64 %860
-  %862 = bitcast i32* %861 to <4 x i32>*
-  %863 = load <4 x i32>, <4 x i32>* %862, align 4, !tbaa !11, !alias.scope !56
-  %864 = getelementptr i32, i32* %861, i64 4
-  %865 = bitcast i32* %864 to <4 x i32>*
-  %866 = load <4 x i32>, <4 x i32>* %865, align 4, !tbaa !11, !alias.scope !56
-  %867 = getelementptr inbounds i32, i32* %13, i64 %860
-  %868 = bitcast i32* %867 to <4 x i32>*
-  store <4 x i32> %863, <4 x i32>* %868, align 4, !tbaa !11, !alias.scope !59, !noalias !56
-  %869 = getelementptr i32, i32* %867, i64 4
-  %870 = bitcast i32* %869 to <4 x i32>*
-  store <4 x i32> %866, <4 x i32>* %870, align 4, !tbaa !11, !alias.scope !59, !noalias !56
-  %871 = or i64 %837, 24
-  %872 = getelementptr inbounds i32, i32* %3, i64 %871
-  %873 = bitcast i32* %872 to <4 x i32>*
-  %874 = load <4 x i32>, <4 x i32>* %873, align 4, !tbaa !11, !alias.scope !56
-  %875 = getelementptr i32, i32* %872, i64 4
-  %876 = bitcast i32* %875 to <4 x i32>*
-  %877 = load <4 x i32>, <4 x i32>* %876, align 4, !tbaa !11, !alias.scope !56
-  %878 = getelementptr inbounds i32, i32* %13, i64 %871
-  %879 = bitcast i32* %878 to <4 x i32>*
-  store <4 x i32> %874, <4 x i32>* %879, align 4, !tbaa !11, !alias.scope !59, !noalias !56
-  %880 = getelementptr i32, i32* %878, i64 4
-  %881 = bitcast i32* %880 to <4 x i32>*
-  store <4 x i32> %877, <4 x i32>* %881, align 4, !tbaa !11, !alias.scope !59, !noalias !56
-  %882 = add i64 %837, 32
-  %883 = add i64 %838, -4
-  %884 = icmp eq i64 %883, 0
-  br i1 %884, label %885, label %836, !llvm.loop !61
-
-; <label>:885:                                    ; preds = %836, %827
-  %886 = phi i64 [ 0, %827 ], [ %882, %836 ]
-  %887 = icmp eq i64 %832, 0
-  br i1 %887, label %905, label %888
-
-; <label>:888:                                    ; preds = %885
-  br label %889
-
-; <label>:889:                                    ; preds = %889, %888
-  %890 = phi i64 [ %886, %888 ], [ %902, %889 ]
-  %891 = phi i64 [ %832, %888 ], [ %903, %889 ]
-  %892 = getelementptr inbounds i32, i32* %3, i64 %890
-  %893 = bitcast i32* %892 to <4 x i32>*
-  %894 = load <4 x i32>, <4 x i32>* %893, align 4, !tbaa !11, !alias.scope !56
-  %895 = getelementptr i32, i32* %892, i64 4
-  %896 = bitcast i32* %895 to <4 x i32>*
-  %897 = load <4 x i32>, <4 x i32>* %896, align 4, !tbaa !11, !alias.scope !56
-  %898 = getelementptr inbounds i32, i32* %13, i64 %890
-  %899 = bitcast i32* %898 to <4 x i32>*
-  store <4 x i32> %894, <4 x i32>* %899, align 4, !tbaa !11, !alias.scope !59, !noalias !56
-  %900 = getelementptr i32, i32* %898, i64 4
-  %901 = bitcast i32* %900 to <4 x i32>*
-  store <4 x i32> %897, <4 x i32>* %901, align 4, !tbaa !11, !alias.scope !59, !noalias !56
-  %902 = add i64 %890, 8
-  %903 = add i64 %891, -1
-  %904 = icmp eq i64 %903, 0
-  br i1 %904, label %905, label %889, !llvm.loop !62
-
-; <label>:905:                                    ; preds = %889, %885
-  %906 = icmp eq i64 %828, %746
-  br i1 %906, label %946, label %907
-
-; <label>:907:                                    ; preds = %905, %821, %820
-  %908 = phi i64 [ 0, %821 ], [ 0, %820 ], [ %828, %905 ]
-  %909 = add nsw i64 %746, -1
-  %910 = sub nsw i64 %909, %908
-  %911 = and i64 %746, 3
-  %912 = icmp eq i64 %911, 0
-  br i1 %912, label %923, label %913
-
-; <label>:913:                                    ; preds = %907
-  br label %914
-
-; <label>:914:                                    ; preds = %914, %913
-  %915 = phi i64 [ %920, %914 ], [ %908, %913 ]
-  %916 = phi i64 [ %921, %914 ], [ %911, %913 ]
-  %917 = getelementptr inbounds i32, i32* %3, i64 %915
-  %918 = load i32, i32* %917, align 4, !tbaa !11
-  %919 = getelementptr inbounds i32, i32* %13, i64 %915
-  store i32 %918, i32* %919, align 4, !tbaa !11
-  %920 = add nuw nsw i64 %915, 1
-  %921 = add i64 %916, -1
-  %922 = icmp eq i64 %921, 0
-  br i1 %922, label %923, label %914, !llvm.loop !63
-
-; <label>:923:                                    ; preds = %914, %907
-  %924 = phi i64 [ %908, %907 ], [ %920, %914 ]
-  %925 = icmp ult i64 %910, 3
-  br i1 %925, label %946, label %926
-
-; <label>:926:                                    ; preds = %923
-  br label %927
-
-; <label>:927:                                    ; preds = %927, %926
-  %928 = phi i64 [ %924, %926 ], [ %944, %927 ]
-  %929 = getelementptr inbounds i32, i32* %3, i64 %928
-  %930 = load i32, i32* %929, align 4, !tbaa !11
-  %931 = getelementptr inbounds i32, i32* %13, i64 %928
-  store i32 %930, i32* %931, align 4, !tbaa !11
-  %932 = add nuw nsw i64 %928, 1
-  %933 = getelementptr inbounds i32, i32* %3, i64 %932
-  %934 = load i32, i32* %933, align 4, !tbaa !11
-  %935 = getelementptr inbounds i32, i32* %13, i64 %932
-  store i32 %934, i32* %935, align 4, !tbaa !11
-  %936 = add nsw i64 %928, 2
-  %937 = getelementptr inbounds i32, i32* %3, i64 %936
-  %938 = load i32, i32* %937, align 4, !tbaa !11
-  %939 = getelementptr inbounds i32, i32* %13, i64 %936
-  store i32 %938, i32* %939, align 4, !tbaa !11
-  %940 = add nsw i64 %928, 3
-  %941 = getelementptr inbounds i32, i32* %3, i64 %940
-  %942 = load i32, i32* %941, align 4, !tbaa !11
-  %943 = getelementptr inbounds i32, i32* %13, i64 %940
-  store i32 %942, i32* %943, align 4, !tbaa !11
-  %944 = add nsw i64 %928, 4
-  %945 = icmp eq i64 %944, %746
-  br i1 %945, label %946, label %927, !llvm.loop !64
-
-; <label>:946:                                    ; preds = %923, %927, %814, %905, %810, %742, %730, %735
-  %947 = phi i32 [ %731, %735 ], [ %731, %730 ], [ 0, %742 ], [ 0, %810 ], [ 0, %905 ], [ 0, %814 ], [ 0, %927 ], [ 0, %923 ]
-  %948 = phi i32 [ %732, %735 ], [ %732, %730 ], [ %0, %742 ], [ %0, %810 ], [ %0, %905 ], [ %0, %814 ], [ %0, %927 ], [ %0, %923 ]
-  %949 = phi i32 [ %619, %735 ], [ %619, %730 ], [ 1, %742 ], [ 1, %810 ], [ 1, %905 ], [ 1, %814 ], [ 1, %927 ], [ 1, %923 ]
-  %950 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 11
-  store i32 %949, i32* %950, align 4, !tbaa !65
-  %951 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 12
-  store i32 %948, i32* %951, align 8, !tbaa !66
-  %952 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 2
-  %953 = bitcast double* %952 to <2 x double>*
-  store <2 x double> <double -1.000000e+00, double -1.000000e+00>, <2 x double>* %953, align 8, !tbaa !52
-  %954 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 10
-  store i32 %947, i32* %954, align 8, !tbaa !67
-  br label %955
-
-; <label>:955:                                    ; preds = %740, %6, %946
-  %956 = phi %struct.klu_symbolic* [ %9, %946 ], [ null, %740 ], [ null, %6 ]
-  call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %8) #3
-  ret %struct.klu_symbolic* %956
+  %12 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 7, !dbg !287
+  %13 = load i32*, i32** %12, align 8, !dbg !287, !tbaa !221
+  call void @llvm.dbg.value(metadata i32* %13, metadata !257, metadata !DIExpression()), !dbg !288
+  %14 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 8, !dbg !289
+  %15 = load i32*, i32** %14, align 8, !dbg !289, !tbaa !224
+  call void @llvm.dbg.value(metadata i32* %15, metadata !258, metadata !DIExpression()), !dbg !290
+  %16 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 9, !dbg !291
+  %17 = load i32*, i32** %16, align 8, !dbg !291, !tbaa !227
+  call void @llvm.dbg.value(metadata i32* %17, metadata !259, metadata !DIExpression()), !dbg !292
+  %18 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 4, !dbg !293
+  %19 = load double*, double** %18, align 8, !dbg !293, !tbaa !230
+  call void @llvm.dbg.value(metadata double* %19, metadata !252, metadata !DIExpression()), !dbg !294
+  %20 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 6, !dbg !295
+  %21 = load i32, i32* %20, align 4, !dbg !295, !tbaa !218
+  call void @llvm.dbg.value(metadata i32 %21, metadata !254, metadata !DIExpression()), !dbg !296
+  %22 = icmp eq i32* %4, null, !dbg !297
+  call void @llvm.dbg.value(metadata i32 0, metadata !264, metadata !DIExpression()), !dbg !299
+  call void @llvm.dbg.value(metadata i32 0, metadata !264, metadata !DIExpression()), !dbg !299
+  %23 = icmp sgt i32 %0, 0, !dbg !300
+  br i1 %22, label %24, label %33, !dbg !304
+
+; <label>:24:                                     ; preds = %11
+  br i1 %23, label %25, label %43, !dbg !305
+
+; <label>:25:                                     ; preds = %24
+  %26 = zext i32 %0 to i64
+  br label %27, !dbg !305
+
+; <label>:27:                                     ; preds = %27, %25
+  %28 = phi i64 [ 0, %25 ], [ %31, %27 ]
+  call void @llvm.dbg.value(metadata i64 %28, metadata !264, metadata !DIExpression()), !dbg !299
+  %29 = getelementptr inbounds i32, i32* %15, i64 %28, !dbg !308
+  %30 = trunc i64 %28 to i32, !dbg !311
+  store i32 %30, i32* %29, align 4, !dbg !311, !tbaa !115
+  %31 = add nuw nsw i64 %28, 1, !dbg !312
+  call void @llvm.dbg.value(metadata i32 undef, metadata !264, metadata !DIExpression(DW_OP_plus_uconst, 1, DW_OP_stack_value)), !dbg !299
+  %32 = icmp eq i64 %31, %26, !dbg !313
+  br i1 %32, label %43, label %27, !dbg !305, !llvm.loop !314
+
+; <label>:33:                                     ; preds = %11
+  br i1 %23, label %34, label %43, !dbg !316
+
+; <label>:34:                                     ; preds = %33
+  %35 = zext i32 %0 to i64
+  br label %36, !dbg !316
+
+; <label>:36:                                     ; preds = %36, %34
+  %37 = phi i64 [ 0, %34 ], [ %41, %36 ]
+  call void @llvm.dbg.value(metadata i64 %37, metadata !264, metadata !DIExpression()), !dbg !299
+  %38 = getelementptr inbounds i32, i32* %4, i64 %37, !dbg !317
+  %39 = load i32, i32* %38, align 4, !dbg !317, !tbaa !115
+  %40 = getelementptr inbounds i32, i32* %15, i64 %37, !dbg !319
+  store i32 %39, i32* %40, align 4, !dbg !320, !tbaa !115
+  %41 = add nuw nsw i64 %37, 1, !dbg !321
+  call void @llvm.dbg.value(metadata i32 undef, metadata !264, metadata !DIExpression(DW_OP_plus_uconst, 1, DW_OP_stack_value)), !dbg !299
+  %42 = icmp eq i64 %41, %35, !dbg !322
+  br i1 %42, label %43, label %36, !dbg !316, !llvm.loop !323
+
+; <label>:43:                                     ; preds = %36, %27, %33, %24
+  %44 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %5, i64 0, i32 5, !dbg !325
+  %45 = load i32, i32* %44, align 8, !dbg !325, !tbaa !326
+  call void @llvm.dbg.value(metadata i32 %45, metadata !263, metadata !DIExpression()), !dbg !327
+  %46 = icmp ne i32 %45, 0, !dbg !328
+  %47 = zext i1 %46 to i32, !dbg !328
+  call void @llvm.dbg.value(metadata i32 %47, metadata !263, metadata !DIExpression()), !dbg !327
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic* %9, metadata !251, metadata !DIExpression()), !dbg !282
+  %48 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 13, !dbg !329
+  store i32 2, i32* %48, align 4, !dbg !330, !tbaa !331
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic* %9, metadata !251, metadata !DIExpression()), !dbg !282
+  %49 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %9, i64 0, i32 14, !dbg !332
+  store i32 %47, i32* %49, align 8, !dbg !333, !tbaa !334
+  br i1 %46, label %50, label %218, !dbg !335
+
+; <label>:50:                                     ; preds = %43
+  %51 = shl nsw i32 %0, 2, !dbg !336
+  %52 = sext i32 %51 to i64, !dbg !337
+  %53 = tail call i8* @klu_malloc(i64 %52, i64 4, %struct.klu_common_struct* nonnull %5) #4, !dbg !338
+  %54 = bitcast i8* %53 to i32*, !dbg !338
+  call void @llvm.dbg.value(metadata i32* %54, metadata !268, metadata !DIExpression()), !dbg !339
+  %55 = sext i32 %0 to i64, !dbg !340
+  %56 = tail call i8* @klu_malloc(i64 %55, i64 4, %struct.klu_common_struct* nonnull %5) #4, !dbg !341
+  %57 = bitcast i8* %56 to i32*, !dbg !341
+  call void @llvm.dbg.value(metadata i32* %57, metadata !265, metadata !DIExpression()), !dbg !342
+  %58 = icmp ne i32* %3, null, !dbg !343
+  br i1 %58, label %59, label %64, !dbg !345
+
+; <label>:59:                                     ; preds = %50
+  %60 = add nsw i32 %21, 1, !dbg !346
+  %61 = sext i32 %60 to i64, !dbg !348
+  %62 = tail call i8* @klu_malloc(i64 %61, i64 4, %struct.klu_common_struct* nonnull %5) #4, !dbg !349
+  %63 = bitcast i8* %62 to i32*, !dbg !349
+  call void @llvm.dbg.value(metadata i32* %63, metadata !269, metadata !DIExpression()), !dbg !350
+  br label %64, !dbg !351
+
+; <label>:64:                                     ; preds = %50, %59
+  %65 = phi i32* [ %63, %59 ], [ %2, %50 ], !dbg !352
+  call void @llvm.dbg.value(metadata i32* %65, metadata !269, metadata !DIExpression()), !dbg !350
+  %66 = getelementptr inbounds %struct.klu_common_struct, %struct.klu_common_struct* %5, i64 0, i32 11, !dbg !354
+  %67 = load i32, i32* %66, align 4, !dbg !354, !tbaa !98
+  %68 = icmp slt i32 %67, 0, !dbg !356
+  br i1 %68, label %69, label %77, !dbg !357
+
+; <label>:69:                                     ; preds = %64
+  %70 = tail call i8* @klu_free(i8* %53, i64 %52, i64 4, %struct.klu_common_struct* nonnull %5) #4, !dbg !358
+  %71 = tail call i8* @klu_free(i8* %56, i64 %55, i64 4, %struct.klu_common_struct* nonnull %5) #4, !dbg !360
+  br i1 %58, label %72, label %216, !dbg !361
+
+; <label>:72:                                     ; preds = %69
+  %73 = bitcast i32* %65 to i8*, !dbg !362
+  %74 = add nsw i32 %21, 1, !dbg !365
+  %75 = sext i32 %74 to i64, !dbg !366
+  %76 = tail call i8* @klu_free(i8* %73, i64 %75, i64 4, %struct.klu_common_struct* nonnull %5) #4, !dbg !367
+  br label %216, !dbg !368
+
+; <label>:77:                                     ; preds = %64
+  br i1 %58, label %80, label %78, !dbg !369
+
+; <label>:78:                                     ; preds = %77
+  %79 = tail call i32 @btf_strongcomp(i32 %0, i32* %1, i32* %65, i32* %15, i32* %13, i32* %17, i32* %54) #4, !dbg !370
+  call void @llvm.dbg.value(metadata i32 %108, metadata !253, metadata !DIExpression()), !dbg !371
+  br label %134, !dbg !372
+
+; <label>:80:                                     ; preds = %77
+  call void @llvm.dbg.value(metadata i32 0, metadata !264, metadata !DIExpression()), !dbg !299
+  %81 = icmp sgt i32 %0, 0, !dbg !373
+  br i1 %81, label %82, label %93, !dbg !378
+
+; <label>:82:                                     ; preds = %80
+  %83 = zext i32 %0 to i64
+  br label %84, !dbg !378
+
+; <label>:84:                                     ; preds = %84, %82
+  %85 = phi i64 [ 0, %82 ], [ %91, %84 ]
+  call void @llvm.dbg.value(metadata i64 %85, metadata !264, metadata !DIExpression()), !dbg !299
+  %86 = getelementptr inbounds i32, i32* %3, i64 %85, !dbg !379
+  %87 = load i32, i32* %86, align 4, !dbg !379, !tbaa !115
+  %88 = sext i32 %87 to i64, !dbg !381
+  %89 = getelementptr inbounds i32, i32* %57, i64 %88, !dbg !381
+  %90 = trunc i64 %85 to i32, !dbg !382
+  store i32 %90, i32* %89, align 4, !dbg !382, !tbaa !115
+  %91 = add nuw nsw i64 %85, 1, !dbg !383
+  call void @llvm.dbg.value(metadata i32 undef, metadata !264, metadata !DIExpression(DW_OP_plus_uconst, 1, DW_OP_stack_value)), !dbg !299
+  %92 = icmp eq i64 %91, %83, !dbg !373
+  br i1 %92, label %93, label %84, !dbg !378, !llvm.loop !384
+
+; <label>:93:                                     ; preds = %84, %80
+  call void @llvm.dbg.value(metadata i32 0, metadata !261, metadata !DIExpression()), !dbg !386
+  %94 = icmp sgt i32 %21, 0, !dbg !387
+  br i1 %94, label %95, label %107, !dbg !390
+
+; <label>:95:                                     ; preds = %93
+  %96 = zext i32 %21 to i64
+  br label %97, !dbg !390
+
+; <label>:97:                                     ; preds = %97, %95
+  %98 = phi i64 [ 0, %95 ], [ %105, %97 ]
+  call void @llvm.dbg.value(metadata i64 %98, metadata !261, metadata !DIExpression()), !dbg !386
+  %99 = getelementptr inbounds i32, i32* %2, i64 %98, !dbg !391
+  %100 = load i32, i32* %99, align 4, !dbg !391, !tbaa !115
+  %101 = sext i32 %100 to i64, !dbg !393
+  %102 = getelementptr inbounds i32, i32* %57, i64 %101, !dbg !393
+  %103 = load i32, i32* %102, align 4, !dbg !393, !tbaa !115
+  %104 = getelementptr inbounds i32, i32* %65, i64 %98, !dbg !394
+  store i32 %103, i32* %104, align 4, !dbg !395, !tbaa !115
+  %105 = add nuw nsw i64 %98, 1, !dbg !396
+  call void @llvm.dbg.value(metadata i32 undef, metadata !261, metadata !DIExpression(DW_OP_plus_uconst, 1, DW_OP_stack_value)), !dbg !386
+  %106 = icmp eq i64 %105, %96, !dbg !387
+  br i1 %106, label %107, label %97, !dbg !390, !llvm.loop !397
+
+; <label>:107:                                    ; preds = %97, %93
+  %108 = tail call i32 @btf_strongcomp(i32 %0, i32* %1, i32* %65, i32* %15, i32* %13, i32* %17, i32* %54) #4, !dbg !370
+  call void @llvm.dbg.value(metadata i32 %108, metadata !253, metadata !DIExpression()), !dbg !371
+  br i1 %58, label %109, label %134, !dbg !372
+
+; <label>:109:                                    ; preds = %107
+  call void @llvm.dbg.value(metadata i32 0, metadata !264, metadata !DIExpression()), !dbg !299
+  %110 = icmp sgt i32 %0, 0, !dbg !399
+  br i1 %110, label %111, label %148, !dbg !404
+
+; <label>:111:                                    ; preds = %109
+  %112 = zext i32 %0 to i64
+  br label %113, !dbg !404
+
+; <label>:113:                                    ; preds = %113, %111
+  %114 = phi i64 [ 0, %111 ], [ %121, %113 ]
+  call void @llvm.dbg.value(metadata i64 %114, metadata !264, metadata !DIExpression()), !dbg !299
+  %115 = getelementptr inbounds i32, i32* %13, i64 %114, !dbg !405
+  %116 = load i32, i32* %115, align 4, !dbg !405, !tbaa !115
+  %117 = sext i32 %116 to i64, !dbg !407
+  %118 = getelementptr inbounds i32, i32* %3, i64 %117, !dbg !407
+  %119 = load i32, i32* %118, align 4, !dbg !407, !tbaa !115
+  %120 = getelementptr inbounds i32, i32* %54, i64 %114, !dbg !408
+  store i32 %119, i32* %120, align 4, !dbg !409, !tbaa !115
+  %121 = add nuw nsw i64 %114, 1, !dbg !410
+  call void @llvm.dbg.value(metadata i32 undef, metadata !264, metadata !DIExpression(DW_OP_plus_uconst, 1, DW_OP_stack_value)), !dbg !299
+  %122 = icmp eq i64 %121, %112, !dbg !399
+  br i1 %122, label %123, label %113, !dbg !404, !llvm.loop !411
+
+; <label>:123:                                    ; preds = %113
+  call void @llvm.dbg.value(metadata i32 0, metadata !264, metadata !DIExpression()), !dbg !299
+  %124 = icmp sgt i32 %0, 0, !dbg !413
+  br i1 %124, label %125, label %148, !dbg !416
+
+; <label>:125:                                    ; preds = %123
+  %126 = zext i32 %0 to i64
+  br label %127, !dbg !416
+
+; <label>:127:                                    ; preds = %127, %125
+  %128 = phi i64 [ 0, %125 ], [ %132, %127 ]
+  call void @llvm.dbg.value(metadata i64 %128, metadata !264, metadata !DIExpression()), !dbg !299
+  %129 = getelementptr inbounds i32, i32* %54, i64 %128, !dbg !417
+  %130 = load i32, i32* %129, align 4, !dbg !417, !tbaa !115
+  %131 = getelementptr inbounds i32, i32* %13, i64 %128, !dbg !419
+  store i32 %130, i32* %131, align 4, !dbg !420, !tbaa !115
+  %132 = add nuw nsw i64 %128, 1, !dbg !421
+  call void @llvm.dbg.value(metadata i32 undef, metadata !264, metadata !DIExpression(DW_OP_plus_uconst, 1, DW_OP_stack_value)), !dbg !299
+  %133 = icmp eq i64 %132, %126, !dbg !413
+  br i1 %133, label %134, label %127, !dbg !416, !llvm.loop !422
+
+; <label>:134:                                    ; preds = %127, %78, %107
+  %135 = phi i32 [ %79, %78 ], [ %108, %107 ], [ %108, %127 ]
+  call void @llvm.dbg.value(metadata i32 0, metadata !264, metadata !DIExpression()), !dbg !299
+  %136 = icmp sgt i32 %0, 0, !dbg !424
+  br i1 %136, label %137, label %148, !dbg !427
+
+; <label>:137:                                    ; preds = %134
+  %138 = zext i32 %0 to i64
+  br label %139, !dbg !427
+
+; <label>:139:                                    ; preds = %139, %137
+  %140 = phi i64 [ 0, %137 ], [ %146, %139 ]
+  call void @llvm.dbg.value(metadata i64 %140, metadata !264, metadata !DIExpression()), !dbg !299
+  %141 = getelementptr inbounds i32, i32* %13, i64 %140, !dbg !428
+  %142 = load i32, i32* %141, align 4, !dbg !428, !tbaa !115
+  %143 = sext i32 %142 to i64, !dbg !430
+  %144 = getelementptr inbounds i32, i32* %57, i64 %143, !dbg !430
+  %145 = trunc i64 %140 to i32, !dbg !431
+  store i32 %145, i32* %144, align 4, !dbg !431, !tbaa !115
+  %146 = add nuw nsw i64 %140, 1, !dbg !432
+  call void @llvm.dbg.value(metadata i32 undef, metadata !264, metadata !DIExpression(DW_OP_plus_uconst, 1, DW_OP_stack_value)), !dbg !299
+  %147 = icmp eq i64 %146, %138, !dbg !424
+  br i1 %147, label %148, label %139, !dbg !427, !llvm.loop !433
+
+; <label>:148:                                    ; preds = %139, %109, %123, %134
+  %149 = phi i32 [ %135, %134 ], [ %108, %123 ], [ %108, %109 ], [ %135, %139 ]
+  call void @llvm.dbg.value(metadata i32 0, metadata !260, metadata !DIExpression()), !dbg !435
+  call void @llvm.dbg.value(metadata i32 1, metadata !256, metadata !DIExpression()), !dbg !436
+  call void @llvm.dbg.value(metadata i32 0, metadata !255, metadata !DIExpression()), !dbg !437
+  %150 = icmp sgt i32 %149, 0, !dbg !438
+  br i1 %150, label %151, label %206, !dbg !441
+
+; <label>:151:                                    ; preds = %148
+  %152 = zext i32 %149 to i64
+  br label %153, !dbg !441
+
+; <label>:153:                                    ; preds = %202, %151
+  %154 = phi i64 [ 0, %151 ], [ %159, %202 ]
+  %155 = phi i32 [ 1, %151 ], [ %164, %202 ]
+  %156 = phi i32 [ 0, %151 ], [ %203, %202 ]
+  call void @llvm.dbg.value(metadata i64 %154, metadata !255, metadata !DIExpression()), !dbg !437
+  call void @llvm.dbg.value(metadata i32 %155, metadata !256, metadata !DIExpression()), !dbg !436
+  call void @llvm.dbg.value(metadata i32 %156, metadata !260, metadata !DIExpression()), !dbg !435
+  %157 = getelementptr inbounds i32, i32* %17, i64 %154, !dbg !442
+  %158 = load i32, i32* %157, align 4, !dbg !442, !tbaa !115
+  call void @llvm.dbg.value(metadata i32 %158, metadata !270, metadata !DIExpression()), !dbg !444
+  %159 = add nuw nsw i64 %154, 1, !dbg !445
+  %160 = getelementptr inbounds i32, i32* %17, i64 %159, !dbg !446
+  %161 = load i32, i32* %160, align 4, !dbg !446, !tbaa !115
+  call void @llvm.dbg.value(metadata i32 %161, metadata !271, metadata !DIExpression()), !dbg !447
+  %162 = sub nsw i32 %161, %158, !dbg !448
+  call void @llvm.dbg.value(metadata i32 %162, metadata !272, metadata !DIExpression()), !dbg !449
+  %163 = icmp sgt i32 %155, %162, !dbg !450
+  %164 = select i1 %163, i32 %155, i32 %162, !dbg !450
+  call void @llvm.dbg.value(metadata i32 %158, metadata !264, metadata !DIExpression()), !dbg !299
+  call void @llvm.dbg.value(metadata i32 %156, metadata !260, metadata !DIExpression()), !dbg !435
+  %165 = icmp sgt i32 %161, %158, !dbg !451
+  br i1 %165, label %166, label %202, !dbg !454
+
+; <label>:166:                                    ; preds = %153
+  %167 = sext i32 %158 to i64, !dbg !454
+  %168 = sext i32 %161 to i64
+  br label %169, !dbg !454
+
+; <label>:169:                                    ; preds = %198, %166
+  %170 = phi i64 [ %167, %166 ], [ %200, %198 ]
+  %171 = phi i32 [ %156, %166 ], [ %199, %198 ]
+  call void @llvm.dbg.value(metadata i32 %171, metadata !260, metadata !DIExpression()), !dbg !435
+  call void @llvm.dbg.value(metadata i64 %170, metadata !264, metadata !DIExpression()), !dbg !299
+  %172 = getelementptr inbounds i32, i32* %15, i64 %170, !dbg !455
+  %173 = load i32, i32* %172, align 4, !dbg !455, !tbaa !115
+  call void @llvm.dbg.value(metadata i32 %173, metadata !273, metadata !DIExpression()), !dbg !457
+  %174 = add nsw i32 %173, 1, !dbg !458
+  %175 = sext i32 %174 to i64, !dbg !459
+  %176 = getelementptr inbounds i32, i32* %1, i64 %175, !dbg !459
+  %177 = load i32, i32* %176, align 4, !dbg !459, !tbaa !115
+  call void @llvm.dbg.value(metadata i32 %177, metadata !262, metadata !DIExpression()), !dbg !460
+  %178 = sext i32 %173 to i64, !dbg !461
+  %179 = getelementptr inbounds i32, i32* %1, i64 %178, !dbg !461
+  %180 = load i32, i32* %179, align 4, !dbg !461, !tbaa !115
+  call void @llvm.dbg.value(metadata i32 %180, metadata !261, metadata !DIExpression()), !dbg !386
+  call void @llvm.dbg.value(metadata i32 %171, metadata !260, metadata !DIExpression()), !dbg !435
+  %181 = icmp slt i32 %180, %177, !dbg !463
+  br i1 %181, label %182, label %198, !dbg !465
+
+; <label>:182:                                    ; preds = %169
+  %183 = sext i32 %180 to i64, !dbg !465
+  %184 = sext i32 %177 to i64
+  br label %185, !dbg !465
+
+; <label>:185:                                    ; preds = %185, %182
+  %186 = phi i64 [ %183, %182 ], [ %196, %185 ]
+  %187 = phi i32 [ %171, %182 ], [ %195, %185 ]
+  call void @llvm.dbg.value(metadata i32 %187, metadata !260, metadata !DIExpression()), !dbg !435
+  call void @llvm.dbg.value(metadata i64 %186, metadata !261, metadata !DIExpression()), !dbg !386
+  %188 = getelementptr inbounds i32, i32* %2, i64 %186, !dbg !466
+  %189 = load i32, i32* %188, align 4, !dbg !466, !tbaa !115
+  %190 = sext i32 %189 to i64, !dbg !469
+  %191 = getelementptr inbounds i32, i32* %57, i64 %190, !dbg !469
+  %192 = load i32, i32* %191, align 4, !dbg !469, !tbaa !115
+  %193 = icmp slt i32 %192, %158, !dbg !470
+  %194 = zext i1 %193 to i32, !dbg !471
+  %195 = add nsw i32 %187, %194, !dbg !471
+  %196 = add nsw i64 %186, 1, !dbg !472
+  call void @llvm.dbg.value(metadata i32 %195, metadata !260, metadata !DIExpression()), !dbg !435
+  call void @llvm.dbg.value(metadata i32 undef, metadata !261, metadata !DIExpression(DW_OP_plus_uconst, 1, DW_OP_stack_value)), !dbg !386
+  %197 = icmp eq i64 %196, %184, !dbg !463
+  br i1 %197, label %198, label %185, !dbg !465, !llvm.loop !473
+
+; <label>:198:                                    ; preds = %185, %169
+  %199 = phi i32 [ %171, %169 ], [ %195, %185 ]
+  %200 = add nsw i64 %170, 1, !dbg !475
+  call void @llvm.dbg.value(metadata i32 %199, metadata !260, metadata !DIExpression()), !dbg !435
+  call void @llvm.dbg.value(metadata i32 undef, metadata !264, metadata !DIExpression(DW_OP_plus_uconst, 1, DW_OP_stack_value)), !dbg !299
+  %201 = icmp eq i64 %200, %168, !dbg !451
+  br i1 %201, label %202, label %169, !dbg !454, !llvm.loop !476
+
+; <label>:202:                                    ; preds = %198, %153
+  %203 = phi i32 [ %156, %153 ], [ %199, %198 ]
+  %204 = getelementptr inbounds double, double* %19, i64 %154, !dbg !478
+  store double -1.000000e+00, double* %204, align 8, !dbg !479, !tbaa !480
+  call void @llvm.dbg.value(metadata i32 undef, metadata !255, metadata !DIExpression(DW_OP_plus_uconst, 1, DW_OP_stack_value)), !dbg !437
+  call void @llvm.dbg.value(metadata i32 %164, metadata !256, metadata !DIExpression()), !dbg !436
+  call void @llvm.dbg.value(metadata i32 %203, metadata !260, metadata !DIExpression()), !dbg !435
+  %205 = icmp eq i64 %159, %152, !dbg !438
+  br i1 %205, label %206, label %153, !dbg !441, !llvm.loop !481
+
+; <label>:206:                                    ; preds = %202, %148
+  %207 = phi i32 [ 0, %148 ], [ %203, %202 ]
+  %208 = phi i32 [ 1, %148 ], [ %164, %202 ]
+  call void @llvm.dbg.value(metadata i32 %207, metadata !260, metadata !DIExpression()), !dbg !435
+  call void @llvm.dbg.value(metadata i32 %208, metadata !256, metadata !DIExpression()), !dbg !436
+  %209 = tail call i8* @klu_free(i8* %53, i64 %52, i64 4, %struct.klu_common_struct* %5) #4, !dbg !483
+  %210 = tail call i8* @klu_free(i8* %56, i64 %55, i64 4, %struct.klu_common_struct* %5) #4, !dbg !484
+  br i1 %58, label %211, label %235, !dbg !485
+
+; <label>:211:                                    ; preds = %206
+  %212 = bitcast i32* %65 to i8*, !dbg !486
+  %213 = add nsw i32 %21, 1, !dbg !489
+  %214 = sext i32 %213 to i64, !dbg !490
+  %215 = tail call i8* @klu_free(i8* %212, i64 %214, i64 4, %struct.klu_common_struct* %5) #4, !dbg !491
+  br label %235, !dbg !492
+
+; <label>:216:                                    ; preds = %69, %72
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic** %7, metadata !251, metadata !DIExpression()), !dbg !282
+  %217 = call i32 @klu_free_symbolic(%struct.klu_symbolic** nonnull %7, %struct.klu_common_struct* nonnull %5) #4, !dbg !493
+  store i32 -2, i32* %66, align 4, !dbg !494, !tbaa !98
+  call void @llvm.dbg.value(metadata i32 undef, metadata !253, metadata !DIExpression()), !dbg !371
+  call void @llvm.dbg.value(metadata i32 undef, metadata !256, metadata !DIExpression()), !dbg !436
+  call void @llvm.dbg.value(metadata i32 undef, metadata !260, metadata !DIExpression()), !dbg !435
+  br label %245
+
+; <label>:218:                                    ; preds = %43
+  call void @llvm.dbg.value(metadata i32 0, metadata !260, metadata !DIExpression()), !dbg !435
+  call void @llvm.dbg.value(metadata i32 1, metadata !253, metadata !DIExpression()), !dbg !371
+  call void @llvm.dbg.value(metadata i32 %0, metadata !256, metadata !DIExpression()), !dbg !436
+  store i32 0, i32* %17, align 4, !dbg !495, !tbaa !115
+  %219 = getelementptr inbounds i32, i32* %17, i64 1, !dbg !497
+  store i32 %0, i32* %219, align 4, !dbg !498, !tbaa !115
+  store double -1.000000e+00, double* %19, align 8, !dbg !499, !tbaa !480
+  call void @llvm.dbg.value(metadata i32 0, metadata !264, metadata !DIExpression()), !dbg !299
+  %220 = icmp sgt i32 %0, 0, !dbg !500
+  br i1 %220, label %221, label %235, !dbg !503
+
+; <label>:221:                                    ; preds = %218
+  %222 = icmp eq i32* %3, null
+  %223 = zext i32 %0 to i64
+  br label %224, !dbg !503
+
+; <label>:224:                                    ; preds = %230, %221
+  %225 = phi i64 [ 0, %221 ], [ %233, %230 ]
+  call void @llvm.dbg.value(metadata i64 %225, metadata !264, metadata !DIExpression()), !dbg !299
+  %226 = trunc i64 %225 to i32, !dbg !504
+  br i1 %222, label %230, label %227, !dbg !504
+
+; <label>:227:                                    ; preds = %224
+  %228 = getelementptr inbounds i32, i32* %3, i64 %225, !dbg !506
+  %229 = load i32, i32* %228, align 4, !dbg !506, !tbaa !115
+  br label %230, !dbg !504
+
+; <label>:230:                                    ; preds = %224, %227
+  %231 = phi i32 [ %229, %227 ], [ %226, %224 ], !dbg !504
+  %232 = getelementptr inbounds i32, i32* %13, i64 %225, !dbg !507
+  store i32 %231, i32* %232, align 4, !dbg !508, !tbaa !115
+  %233 = add nuw nsw i64 %225, 1, !dbg !509
+  call void @llvm.dbg.value(metadata i32 undef, metadata !264, metadata !DIExpression(DW_OP_plus_uconst, 1, DW_OP_stack_value)), !dbg !299
+  %234 = icmp eq i64 %233, %223, !dbg !500
+  br i1 %234, label %235, label %224, !dbg !503, !llvm.loop !510
+
+; <label>:235:                                    ; preds = %230, %218, %206, %211
+  %236 = phi i32 [ %207, %211 ], [ %207, %206 ], [ 0, %218 ], [ 0, %230 ]
+  %237 = phi i32 [ %208, %211 ], [ %208, %206 ], [ %0, %218 ], [ %0, %230 ]
+  %238 = phi i32 [ %149, %211 ], [ %149, %206 ], [ 1, %218 ], [ 1, %230 ]
+  call void @llvm.dbg.value(metadata i32 %238, metadata !253, metadata !DIExpression()), !dbg !371
+  call void @llvm.dbg.value(metadata i32 %237, metadata !256, metadata !DIExpression()), !dbg !436
+  call void @llvm.dbg.value(metadata i32 %236, metadata !260, metadata !DIExpression()), !dbg !435
+  %239 = load %struct.klu_symbolic*, %struct.klu_symbolic** %7, align 8, !dbg !512, !tbaa !194
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic* %239, metadata !251, metadata !DIExpression()), !dbg !282
+  %240 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %239, i64 0, i32 11, !dbg !513
+  store i32 %238, i32* %240, align 4, !dbg !514, !tbaa !515
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic* %239, metadata !251, metadata !DIExpression()), !dbg !282
+  %241 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %239, i64 0, i32 12, !dbg !516
+  store i32 %237, i32* %241, align 8, !dbg !517, !tbaa !518
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic* %239, metadata !251, metadata !DIExpression()), !dbg !282
+  %242 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %239, i64 0, i32 2, !dbg !519
+  store double -1.000000e+00, double* %242, align 8, !dbg !520, !tbaa !521
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic* %239, metadata !251, metadata !DIExpression()), !dbg !282
+  %243 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %239, i64 0, i32 3, !dbg !522
+  store double -1.000000e+00, double* %243, align 8, !dbg !523, !tbaa !524
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic* %239, metadata !251, metadata !DIExpression()), !dbg !282
+  %244 = getelementptr inbounds %struct.klu_symbolic, %struct.klu_symbolic* %239, i64 0, i32 10, !dbg !525
+  store i32 %236, i32* %244, align 8, !dbg !526, !tbaa !527
+  call void @llvm.dbg.value(metadata %struct.klu_symbolic* %239, metadata !251, metadata !DIExpression()), !dbg !282
+  br label %245, !dbg !528
+
+; <label>:245:                                    ; preds = %216, %6, %235
+  %246 = phi %struct.klu_symbolic* [ %239, %235 ], [ null, %216 ], [ null, %6 ], !dbg !529
+  call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %8) #4, !dbg !530
+  ret %struct.klu_symbolic* %246, !dbg !530
 }
 
 declare i32 @btf_strongcomp(i32, i32*, i32*, i32*, i32*, i32*, i32*) local_unnamed_addr #2
+
+; Function Attrs: nounwind readnone speculatable
+declare void @llvm.dbg.value(metadata, metadata, metadata) #3
 
 ; Function Attrs: argmemonly nounwind
 declare void @llvm.memset.p0i8.i64(i8* nocapture writeonly, i8, i64, i32, i1) #1
@@ -1506,76 +696,541 @@ declare void @llvm.memset.p0i8.i64(i8* nocapture writeonly, i8, i64, i32, i1) #1
 attributes #0 = { nounwind ssp uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #1 = { argmemonly nounwind }
 attributes #2 = { "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="penryn" "target-features"="+cx16,+fxsr,+mmx,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #3 = { nounwind }
+attributes #3 = { nounwind readnone speculatable }
+attributes #4 = { nounwind }
 
-!llvm.module.flags = !{!0, !1}
-!llvm.ident = !{!2}
+!llvm.dbg.cu = !{!0}
+!llvm.module.flags = !{!7, !8, !9, !10}
+!llvm.ident = !{!11}
 
-!0 = !{i32 1, !"wchar_size", i32 4}
-!1 = !{i32 7, !"PIC Level", i32 2}
-!2 = !{!"Apple LLVM version 10.0.0 (clang-1000.11.45.5)"}
-!3 = !{!4, !8, i64 76}
-!4 = !{!"klu_common_struct", !5, i64 0, !5, i64 8, !5, i64 16, !5, i64 24, !5, i64 32, !8, i64 40, !8, i64 44, !8, i64 48, !9, i64 56, !9, i64 64, !8, i64 72, !8, i64 76, !8, i64 80, !8, i64 84, !8, i64 88, !8, i64 92, !8, i64 96, !5, i64 104, !5, i64 112, !5, i64 120, !5, i64 128, !5, i64 136, !10, i64 144, !10, i64 152}
-!5 = !{!"double", !6, i64 0}
-!6 = !{!"omnipotent char", !7, i64 0}
-!7 = !{!"Simple C/C++ TBAA"}
-!8 = !{!"int", !6, i64 0}
-!9 = !{!"any pointer", !6, i64 0}
-!10 = !{!"long", !6, i64 0}
-!11 = !{!8, !8, i64 0}
-!12 = !{!9, !9, i64 0}
-!13 = !{!14, !8, i64 40}
-!14 = !{!"", !5, i64 0, !5, i64 8, !5, i64 16, !5, i64 24, !9, i64 32, !8, i64 40, !8, i64 44, !9, i64 48, !9, i64 56, !9, i64 64, !8, i64 72, !8, i64 76, !8, i64 80, !8, i64 84, !8, i64 88, !8, i64 92}
-!15 = !{!14, !8, i64 44}
-!16 = !{!14, !9, i64 48}
-!17 = !{!14, !9, i64 56}
-!18 = !{!14, !9, i64 64}
-!19 = !{!14, !9, i64 32}
-!20 = distinct !{!20, !21}
-!21 = !{!"llvm.loop.isvectorized", i32 1}
-!22 = distinct !{!22, !23}
-!23 = !{!"llvm.loop.unroll.disable"}
-!24 = distinct !{!24, !25, !21}
-!25 = !{!"llvm.loop.unroll.runtime.disable"}
-!26 = !{!27}
-!27 = distinct !{!27, !28}
-!28 = distinct !{!28, !"LVerDomain"}
-!29 = !{!30}
-!30 = distinct !{!30, !28}
-!31 = distinct !{!31, !21}
-!32 = distinct !{!32, !23}
-!33 = distinct !{!33, !23}
-!34 = distinct !{!34, !21}
-!35 = !{!4, !8, i64 40}
-!36 = !{!14, !8, i64 84}
-!37 = !{!14, !8, i64 88}
-!38 = distinct !{!38, !23}
-!39 = distinct !{!39, !23}
-!40 = distinct !{!40, !23}
-!41 = !{!42}
-!42 = distinct !{!42, !43}
-!43 = distinct !{!43, !"LVerDomain"}
-!44 = !{!45}
-!45 = distinct !{!45, !43}
-!46 = distinct !{!46, !21}
-!47 = distinct !{!47, !23}
-!48 = distinct !{!48, !23}
-!49 = distinct !{!49, !21}
-!50 = distinct !{!50, !23}
-!51 = distinct !{!51, !23}
-!52 = !{!5, !5, i64 0}
-!53 = distinct !{!53, !21}
-!54 = distinct !{!54, !23}
-!55 = distinct !{!55, !25, !21}
-!56 = !{!57}
-!57 = distinct !{!57, !58}
-!58 = distinct !{!58, !"LVerDomain"}
-!59 = !{!60}
-!60 = distinct !{!60, !58}
-!61 = distinct !{!61, !21}
-!62 = distinct !{!62, !23}
-!63 = distinct !{!63, !23}
-!64 = distinct !{!64, !21}
-!65 = !{!14, !8, i64 76}
-!66 = !{!14, !8, i64 80}
-!67 = !{!14, !8, i64 72}
+!0 = distinct !DICompileUnit(language: DW_LANG_C99, file: !1, producer: "Apple LLVM version 10.0.0 (clang-1000.11.45.5)", isOptimized: true, runtimeVersion: 0, emissionKind: FullDebug, enums: !2, retainedTypes: !3)
+!1 = !DIFile(filename: "klu_analyze_given.c", directory: "/Users/fak/Dropbox/Projects/SparsePerf/SparseSuite/SparseSuite")
+!2 = !{}
+!3 = !{!4, !5}
+!4 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: null, size: 64)
+!5 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !6, size: 64)
+!6 = !DIBasicType(name: "int", size: 32, encoding: DW_ATE_signed)
+!7 = !{i32 2, !"Dwarf Version", i32 4}
+!8 = !{i32 2, !"Debug Info Version", i32 3}
+!9 = !{i32 1, !"wchar_size", i32 4}
+!10 = !{i32 7, !"PIC Level", i32 2}
+!11 = !{!"Apple LLVM version 10.0.0 (clang-1000.11.45.5)"}
+!12 = distinct !DISubprogram(name: "klu_alloc_symbolic", scope: !1, file: !1, line: 17, type: !13, isLocal: false, isDefinition: true, scopeLine: 24, flags: DIFlagPrototyped, isOptimized: true, unit: !0, variables: !73)
+!13 = !DISubroutineType(types: !14)
+!14 = !{!15, !6, !5, !5, !38}
+!15 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !16, size: 64)
+!16 = !DIDerivedType(tag: DW_TAG_typedef, name: "klu_symbolic", file: !17, line: 54, baseType: !18)
+!17 = !DIFile(filename: "./klu.h", directory: "/Users/fak/Dropbox/Projects/SparsePerf/SparseSuite/SparseSuite")
+!18 = distinct !DICompositeType(tag: DW_TAG_structure_type, file: !17, line: 23, size: 768, elements: !19)
+!19 = !{!20, !22, !23, !24, !25, !27, !28, !29, !30, !31, !32, !33, !34, !35, !36, !37}
+!20 = !DIDerivedType(tag: DW_TAG_member, name: "symmetry", scope: !18, file: !17, line: 31, baseType: !21, size: 64)
+!21 = !DIBasicType(name: "double", size: 64, encoding: DW_ATE_float)
+!22 = !DIDerivedType(tag: DW_TAG_member, name: "est_flops", scope: !18, file: !17, line: 32, baseType: !21, size: 64, offset: 64)
+!23 = !DIDerivedType(tag: DW_TAG_member, name: "lnz", scope: !18, file: !17, line: 33, baseType: !21, size: 64, offset: 128)
+!24 = !DIDerivedType(tag: DW_TAG_member, name: "unz", scope: !18, file: !17, line: 33, baseType: !21, size: 64, offset: 192)
+!25 = !DIDerivedType(tag: DW_TAG_member, name: "Lnz", scope: !18, file: !17, line: 34, baseType: !26, size: 64, offset: 256)
+!26 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !21, size: 64)
+!27 = !DIDerivedType(tag: DW_TAG_member, name: "n", scope: !18, file: !17, line: 38, baseType: !6, size: 32, offset: 320)
+!28 = !DIDerivedType(tag: DW_TAG_member, name: "nz", scope: !18, file: !17, line: 39, baseType: !6, size: 32, offset: 352)
+!29 = !DIDerivedType(tag: DW_TAG_member, name: "P", scope: !18, file: !17, line: 40, baseType: !5, size: 64, offset: 384)
+!30 = !DIDerivedType(tag: DW_TAG_member, name: "Q", scope: !18, file: !17, line: 41, baseType: !5, size: 64, offset: 448)
+!31 = !DIDerivedType(tag: DW_TAG_member, name: "R", scope: !18, file: !17, line: 42, baseType: !5, size: 64, offset: 512)
+!32 = !DIDerivedType(tag: DW_TAG_member, name: "nzoff", scope: !18, file: !17, line: 43, baseType: !6, size: 32, offset: 576)
+!33 = !DIDerivedType(tag: DW_TAG_member, name: "nblocks", scope: !18, file: !17, line: 44, baseType: !6, size: 32, offset: 608)
+!34 = !DIDerivedType(tag: DW_TAG_member, name: "maxblock", scope: !18, file: !17, line: 45, baseType: !6, size: 32, offset: 640)
+!35 = !DIDerivedType(tag: DW_TAG_member, name: "ordering", scope: !18, file: !17, line: 46, baseType: !6, size: 32, offset: 672)
+!36 = !DIDerivedType(tag: DW_TAG_member, name: "do_btf", scope: !18, file: !17, line: 47, baseType: !6, size: 32, offset: 704)
+!37 = !DIDerivedType(tag: DW_TAG_member, name: "structural_rank", scope: !18, file: !17, line: 50, baseType: !6, size: 32, offset: 736)
+!38 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !39, size: 64)
+!39 = !DIDerivedType(tag: DW_TAG_typedef, name: "klu_common", file: !17, line: 207, baseType: !40)
+!40 = distinct !DICompositeType(tag: DW_TAG_structure_type, name: "klu_common_struct", file: !17, line: 137, size: 1280, elements: !41)
+!41 = !{!42, !43, !44, !45, !46, !47, !48, !49, !50, !55, !56, !57, !58, !59, !60, !61, !62, !63, !64, !65, !66, !67, !68, !72}
+!42 = !DIDerivedType(tag: DW_TAG_member, name: "tol", scope: !40, file: !17, line: 144, baseType: !21, size: 64)
+!43 = !DIDerivedType(tag: DW_TAG_member, name: "memgrow", scope: !40, file: !17, line: 145, baseType: !21, size: 64, offset: 64)
+!44 = !DIDerivedType(tag: DW_TAG_member, name: "initmem_amd", scope: !40, file: !17, line: 146, baseType: !21, size: 64, offset: 128)
+!45 = !DIDerivedType(tag: DW_TAG_member, name: "initmem", scope: !40, file: !17, line: 147, baseType: !21, size: 64, offset: 192)
+!46 = !DIDerivedType(tag: DW_TAG_member, name: "maxwork", scope: !40, file: !17, line: 148, baseType: !21, size: 64, offset: 256)
+!47 = !DIDerivedType(tag: DW_TAG_member, name: "btf", scope: !40, file: !17, line: 150, baseType: !6, size: 32, offset: 320)
+!48 = !DIDerivedType(tag: DW_TAG_member, name: "ordering", scope: !40, file: !17, line: 151, baseType: !6, size: 32, offset: 352)
+!49 = !DIDerivedType(tag: DW_TAG_member, name: "scale", scope: !40, file: !17, line: 153, baseType: !6, size: 32, offset: 384)
+!50 = !DIDerivedType(tag: DW_TAG_member, name: "user_order", scope: !40, file: !17, line: 157, baseType: !51, size: 64, offset: 448)
+!51 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !52, size: 64)
+!52 = !DISubroutineType(types: !53)
+!53 = !{!6, !6, !5, !5, !5, !54}
+!54 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !40, size: 64)
+!55 = !DIDerivedType(tag: DW_TAG_member, name: "user_data", scope: !40, file: !17, line: 162, baseType: !4, size: 64, offset: 512)
+!56 = !DIDerivedType(tag: DW_TAG_member, name: "halt_if_singular", scope: !40, file: !17, line: 164, baseType: !6, size: 32, offset: 576)
+!57 = !DIDerivedType(tag: DW_TAG_member, name: "status", scope: !40, file: !17, line: 177, baseType: !6, size: 32, offset: 608)
+!58 = !DIDerivedType(tag: DW_TAG_member, name: "nrealloc", scope: !40, file: !17, line: 178, baseType: !6, size: 32, offset: 640)
+!59 = !DIDerivedType(tag: DW_TAG_member, name: "structural_rank", scope: !40, file: !17, line: 180, baseType: !6, size: 32, offset: 672)
+!60 = !DIDerivedType(tag: DW_TAG_member, name: "numerical_rank", scope: !40, file: !17, line: 185, baseType: !6, size: 32, offset: 704)
+!61 = !DIDerivedType(tag: DW_TAG_member, name: "singular_col", scope: !40, file: !17, line: 191, baseType: !6, size: 32, offset: 736)
+!62 = !DIDerivedType(tag: DW_TAG_member, name: "noffdiag", scope: !40, file: !17, line: 196, baseType: !6, size: 32, offset: 768)
+!63 = !DIDerivedType(tag: DW_TAG_member, name: "flops", scope: !40, file: !17, line: 198, baseType: !21, size: 64, offset: 832)
+!64 = !DIDerivedType(tag: DW_TAG_member, name: "rcond", scope: !40, file: !17, line: 199, baseType: !21, size: 64, offset: 896)
+!65 = !DIDerivedType(tag: DW_TAG_member, name: "condest", scope: !40, file: !17, line: 200, baseType: !21, size: 64, offset: 960)
+!66 = !DIDerivedType(tag: DW_TAG_member, name: "rgrowth", scope: !40, file: !17, line: 201, baseType: !21, size: 64, offset: 1024)
+!67 = !DIDerivedType(tag: DW_TAG_member, name: "work", scope: !40, file: !17, line: 202, baseType: !21, size: 64, offset: 1088)
+!68 = !DIDerivedType(tag: DW_TAG_member, name: "memusage", scope: !40, file: !17, line: 204, baseType: !69, size: 64, offset: 1152)
+!69 = !DIDerivedType(tag: DW_TAG_typedef, name: "size_t", file: !70, line: 62, baseType: !71)
+!70 = !DIFile(filename: "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/10.0.0/include/stddef.h", directory: "/Users/fak/Dropbox/Projects/SparsePerf/SparseSuite/SparseSuite")
+!71 = !DIBasicType(name: "long unsigned int", size: 64, encoding: DW_ATE_unsigned)
+!72 = !DIDerivedType(tag: DW_TAG_member, name: "mempeak", scope: !40, file: !17, line: 205, baseType: !69, size: 64, offset: 1216)
+!73 = !{!74, !75, !76, !77, !78, !79, !80, !81, !82, !83, !84, !85, !86, !87}
+!74 = !DILocalVariable(name: "n", arg: 1, scope: !12, file: !1, line: 19, type: !6)
+!75 = !DILocalVariable(name: "Ap", arg: 2, scope: !12, file: !1, line: 20, type: !5)
+!76 = !DILocalVariable(name: "Ai", arg: 3, scope: !12, file: !1, line: 21, type: !5)
+!77 = !DILocalVariable(name: "Common", arg: 4, scope: !12, file: !1, line: 22, type: !38)
+!78 = !DILocalVariable(name: "Symbolic", scope: !12, file: !1, line: 25, type: !15)
+!79 = !DILocalVariable(name: "P", scope: !12, file: !1, line: 26, type: !5)
+!80 = !DILocalVariable(name: "Q", scope: !12, file: !1, line: 26, type: !5)
+!81 = !DILocalVariable(name: "R", scope: !12, file: !1, line: 26, type: !5)
+!82 = !DILocalVariable(name: "Lnz", scope: !12, file: !1, line: 27, type: !26)
+!83 = !DILocalVariable(name: "nz", scope: !12, file: !1, line: 28, type: !6)
+!84 = !DILocalVariable(name: "i", scope: !12, file: !1, line: 28, type: !6)
+!85 = !DILocalVariable(name: "j", scope: !12, file: !1, line: 28, type: !6)
+!86 = !DILocalVariable(name: "p", scope: !12, file: !1, line: 28, type: !6)
+!87 = !DILocalVariable(name: "pend", scope: !12, file: !1, line: 28, type: !6)
+!88 = !DILocation(line: 19, column: 9, scope: !12)
+!89 = !DILocation(line: 20, column: 10, scope: !12)
+!90 = !DILocation(line: 21, column: 10, scope: !12)
+!91 = !DILocation(line: 22, column: 17, scope: !12)
+!92 = !DILocation(line: 25, column: 5, scope: !12)
+!93 = !DILocation(line: 30, column: 16, scope: !94)
+!94 = distinct !DILexicalBlock(scope: !12, file: !1, line: 30, column: 9)
+!95 = !DILocation(line: 30, column: 9, scope: !12)
+!96 = !DILocation(line: 34, column: 13, scope: !12)
+!97 = !DILocation(line: 34, column: 20, scope: !12)
+!98 = !{!99, !103, i64 76}
+!99 = !{!"klu_common_struct", !100, i64 0, !100, i64 8, !100, i64 16, !100, i64 24, !100, i64 32, !103, i64 40, !103, i64 44, !103, i64 48, !104, i64 56, !104, i64 64, !103, i64 72, !103, i64 76, !103, i64 80, !103, i64 84, !103, i64 88, !103, i64 92, !103, i64 96, !100, i64 104, !100, i64 112, !100, i64 120, !100, i64 128, !100, i64 136, !105, i64 144, !105, i64 152}
+!100 = !{!"double", !101, i64 0}
+!101 = !{!"omnipotent char", !102, i64 0}
+!102 = !{!"Simple C/C++ TBAA"}
+!103 = !{!"int", !101, i64 0}
+!104 = !{!"any pointer", !101, i64 0}
+!105 = !{!"long", !101, i64 0}
+!106 = !DILocation(line: 42, column: 11, scope: !107)
+!107 = distinct !DILexicalBlock(scope: !12, file: !1, line: 42, column: 9)
+!108 = !DILocation(line: 42, column: 22, scope: !107)
+!109 = !DILocation(line: 42, column: 16, scope: !107)
+!110 = !DILocation(line: 42, column: 36, scope: !107)
+!111 = !DILocation(line: 45, column: 24, scope: !112)
+!112 = distinct !DILexicalBlock(scope: !107, file: !1, line: 43, column: 5)
+!113 = !DILocation(line: 46, column: 9, scope: !112)
+!114 = !DILocation(line: 49, column: 10, scope: !12)
+!115 = !{!103, !103, i64 0}
+!116 = !DILocation(line: 28, column: 9, scope: !12)
+!117 = !DILocation(line: 50, column: 9, scope: !118)
+!118 = distinct !DILexicalBlock(scope: !12, file: !1, line: 50, column: 9)
+!119 = !DILocation(line: 50, column: 16, scope: !118)
+!120 = !DILocation(line: 50, column: 27, scope: !118)
+!121 = !DILocation(line: 50, column: 21, scope: !118)
+!122 = !DILocation(line: 53, column: 24, scope: !123)
+!123 = distinct !DILexicalBlock(scope: !118, file: !1, line: 51, column: 5)
+!124 = !DILocation(line: 54, column: 9, scope: !123)
+!125 = !DILocation(line: 28, column: 16, scope: !12)
+!126 = !DILocation(line: 57, column: 5, scope: !127)
+!127 = distinct !DILexicalBlock(scope: !12, file: !1, line: 57, column: 5)
+!128 = !DILocation(line: 57, column: 20, scope: !129)
+!129 = distinct !DILexicalBlock(scope: !127, file: !1, line: 57, column: 5)
+!130 = distinct !{!130, !126, !131}
+!131 = !DILocation(line: 65, column: 5, scope: !127)
+!132 = !DILocation(line: 59, column: 13, scope: !133)
+!133 = distinct !DILexicalBlock(scope: !134, file: !1, line: 59, column: 13)
+!134 = distinct !DILexicalBlock(scope: !129, file: !1, line: 58, column: 5)
+!135 = !DILocation(line: 59, column: 27, scope: !133)
+!136 = !DILocation(line: 59, column: 22, scope: !133)
+!137 = !DILocation(line: 59, column: 20, scope: !133)
+!138 = !DILocation(line: 59, column: 13, scope: !134)
+!139 = !DILocation(line: 62, column: 28, scope: !140)
+!140 = distinct !DILexicalBlock(scope: !133, file: !1, line: 60, column: 9)
+!141 = !DILocation(line: 63, column: 13, scope: !140)
+!142 = !DILocation(line: 66, column: 9, scope: !12)
+!143 = !DILocation(line: 26, column: 10, scope: !12)
+!144 = !DILocation(line: 67, column: 17, scope: !145)
+!145 = distinct !DILexicalBlock(scope: !12, file: !1, line: 67, column: 9)
+!146 = !DILocation(line: 67, column: 24, scope: !145)
+!147 = !DILocation(line: 67, column: 9, scope: !12)
+!148 = !DILocation(line: 70, column: 24, scope: !149)
+!149 = distinct !DILexicalBlock(scope: !145, file: !1, line: 68, column: 5)
+!150 = !DILocation(line: 71, column: 9, scope: !149)
+!151 = !DILocation(line: 28, column: 13, scope: !12)
+!152 = !DILocation(line: 73, column: 20, scope: !153)
+!153 = distinct !DILexicalBlock(scope: !154, file: !1, line: 73, column: 5)
+!154 = distinct !DILexicalBlock(scope: !12, file: !1, line: 73, column: 5)
+!155 = !DILocation(line: 73, column: 5, scope: !154)
+!156 = !DILocation(line: 75, column: 15, scope: !157)
+!157 = distinct !DILexicalBlock(scope: !153, file: !1, line: 74, column: 5)
+!158 = !DILocation(line: 77, column: 5, scope: !159)
+!159 = distinct !DILexicalBlock(scope: !12, file: !1, line: 77, column: 5)
+!160 = !DILocation(line: 79, column: 21, scope: !161)
+!161 = distinct !DILexicalBlock(scope: !162, file: !1, line: 78, column: 5)
+!162 = distinct !DILexicalBlock(scope: !159, file: !1, line: 77, column: 5)
+!163 = !DILocation(line: 79, column: 16, scope: !161)
+!164 = !DILocation(line: 28, column: 22, scope: !12)
+!165 = !DILocation(line: 80, column: 18, scope: !166)
+!166 = distinct !DILexicalBlock(scope: !161, file: !1, line: 80, column: 9)
+!167 = !DILocation(line: 28, column: 19, scope: !12)
+!168 = !DILocation(line: 80, column: 29, scope: !169)
+!169 = distinct !DILexicalBlock(scope: !166, file: !1, line: 80, column: 9)
+!170 = !DILocation(line: 80, column: 9, scope: !166)
+!171 = !DILocation(line: 82, column: 17, scope: !172)
+!172 = distinct !DILexicalBlock(scope: !169, file: !1, line: 81, column: 9)
+!173 = !DILocation(line: 83, column: 19, scope: !174)
+!174 = distinct !DILexicalBlock(scope: !172, file: !1, line: 83, column: 17)
+!175 = !DILocation(line: 83, column: 28, scope: !174)
+!176 = !DILocation(line: 83, column: 23, scope: !174)
+!177 = !DILocation(line: 83, column: 36, scope: !174)
+!178 = !DILocation(line: 83, column: 42, scope: !174)
+!179 = !DILocation(line: 83, column: 17, scope: !172)
+!180 = !DILocation(line: 86, column: 17, scope: !181)
+!181 = distinct !DILexicalBlock(scope: !174, file: !1, line: 84, column: 13)
+!182 = !DILocation(line: 87, column: 32, scope: !181)
+!183 = !DILocation(line: 88, column: 17, scope: !181)
+!184 = !DILocation(line: 91, column: 19, scope: !172)
+!185 = !DILocation(line: 80, column: 39, scope: !169)
+!186 = distinct !{!186, !170, !187}
+!187 = !DILocation(line: 92, column: 9, scope: !166)
+!188 = !DILocation(line: 77, column: 20, scope: !162)
+!189 = distinct !{!189, !158, !190}
+!190 = !DILocation(line: 93, column: 5, scope: !159)
+!191 = !DILocation(line: 99, column: 16, scope: !12)
+!192 = !DILocation(line: 25, column: 19, scope: !12)
+!193 = !DILocation(line: 99, column: 14, scope: !12)
+!194 = !{!104, !104, i64 0}
+!195 = !DILocation(line: 100, column: 17, scope: !196)
+!196 = distinct !DILexicalBlock(scope: !12, file: !1, line: 100, column: 9)
+!197 = !DILocation(line: 100, column: 24, scope: !196)
+!198 = !DILocation(line: 100, column: 9, scope: !12)
+!199 = !DILocation(line: 103, column: 9, scope: !200)
+!200 = distinct !DILexicalBlock(scope: !196, file: !1, line: 101, column: 5)
+!201 = !DILocation(line: 104, column: 24, scope: !200)
+!202 = !DILocation(line: 105, column: 9, scope: !200)
+!203 = !DILocation(line: 108, column: 9, scope: !12)
+!204 = !DILocation(line: 26, column: 14, scope: !12)
+!205 = !DILocation(line: 109, column: 22, scope: !12)
+!206 = !DILocation(line: 109, column: 21, scope: !12)
+!207 = !DILocation(line: 109, column: 9, scope: !12)
+!208 = !DILocation(line: 26, column: 18, scope: !12)
+!209 = !DILocation(line: 110, column: 11, scope: !12)
+!210 = !DILocation(line: 27, column: 13, scope: !12)
+!211 = !DILocation(line: 112, column: 5, scope: !12)
+!212 = !DILocation(line: 112, column: 15, scope: !12)
+!213 = !DILocation(line: 112, column: 17, scope: !12)
+!214 = !{!215, !103, i64 40}
+!215 = !{!"", !100, i64 0, !100, i64 8, !100, i64 16, !100, i64 24, !104, i64 32, !103, i64 40, !103, i64 44, !104, i64 48, !104, i64 56, !104, i64 64, !103, i64 72, !103, i64 76, !103, i64 80, !103, i64 84, !103, i64 88, !103, i64 92}
+!216 = !DILocation(line: 113, column: 15, scope: !12)
+!217 = !DILocation(line: 113, column: 18, scope: !12)
+!218 = !{!215, !103, i64 44}
+!219 = !DILocation(line: 114, column: 15, scope: !12)
+!220 = !DILocation(line: 114, column: 17, scope: !12)
+!221 = !{!215, !104, i64 48}
+!222 = !DILocation(line: 115, column: 15, scope: !12)
+!223 = !DILocation(line: 115, column: 17, scope: !12)
+!224 = !{!215, !104, i64 56}
+!225 = !DILocation(line: 116, column: 15, scope: !12)
+!226 = !DILocation(line: 116, column: 17, scope: !12)
+!227 = !{!215, !104, i64 64}
+!228 = !DILocation(line: 117, column: 15, scope: !12)
+!229 = !DILocation(line: 117, column: 19, scope: !12)
+!230 = !{!215, !104, i64 32}
+!231 = !DILocation(line: 119, column: 17, scope: !232)
+!232 = distinct !DILexicalBlock(scope: !12, file: !1, line: 119, column: 9)
+!233 = !DILocation(line: 119, column: 24, scope: !232)
+!234 = !DILocation(line: 119, column: 9, scope: !12)
+!235 = !DILocation(line: 122, column: 9, scope: !236)
+!236 = distinct !DILexicalBlock(scope: !232, file: !1, line: 120, column: 5)
+!237 = !DILocation(line: 123, column: 24, scope: !236)
+!238 = !DILocation(line: 124, column: 9, scope: !236)
+!239 = !DILocation(line: 0, scope: !12)
+!240 = !DILocation(line: 128, column: 1, scope: !12)
+!241 = distinct !DISubprogram(name: "klu_analyze_given", scope: !1, file: !1, line: 135, type: !242, isLocal: false, isDefinition: true, scopeLine: 147, flags: DIFlagPrototyped, isOptimized: true, unit: !0, variables: !244)
+!242 = !DISubroutineType(types: !243)
+!243 = !{!15, !6, !5, !5, !5, !5, !38}
+!244 = !{!245, !246, !247, !248, !249, !250, !251, !252, !253, !254, !255, !256, !257, !258, !259, !260, !261, !262, !263, !264, !265, !268, !269, !270, !271, !272, !273}
+!245 = !DILocalVariable(name: "n", arg: 1, scope: !241, file: !1, line: 139, type: !6)
+!246 = !DILocalVariable(name: "Ap", arg: 2, scope: !241, file: !1, line: 140, type: !5)
+!247 = !DILocalVariable(name: "Ai", arg: 3, scope: !241, file: !1, line: 141, type: !5)
+!248 = !DILocalVariable(name: "Puser", arg: 4, scope: !241, file: !1, line: 142, type: !5)
+!249 = !DILocalVariable(name: "Quser", arg: 5, scope: !241, file: !1, line: 143, type: !5)
+!250 = !DILocalVariable(name: "Common", arg: 6, scope: !241, file: !1, line: 145, type: !38)
+!251 = !DILocalVariable(name: "Symbolic", scope: !241, file: !1, line: 148, type: !15)
+!252 = !DILocalVariable(name: "Lnz", scope: !241, file: !1, line: 149, type: !26)
+!253 = !DILocalVariable(name: "nblocks", scope: !241, file: !1, line: 150, type: !6)
+!254 = !DILocalVariable(name: "nz", scope: !241, file: !1, line: 150, type: !6)
+!255 = !DILocalVariable(name: "block", scope: !241, file: !1, line: 150, type: !6)
+!256 = !DILocalVariable(name: "maxblock", scope: !241, file: !1, line: 150, type: !6)
+!257 = !DILocalVariable(name: "P", scope: !241, file: !1, line: 150, type: !5)
+!258 = !DILocalVariable(name: "Q", scope: !241, file: !1, line: 150, type: !5)
+!259 = !DILocalVariable(name: "R", scope: !241, file: !1, line: 150, type: !5)
+!260 = !DILocalVariable(name: "nzoff", scope: !241, file: !1, line: 150, type: !6)
+!261 = !DILocalVariable(name: "p", scope: !241, file: !1, line: 150, type: !6)
+!262 = !DILocalVariable(name: "pend", scope: !241, file: !1, line: 150, type: !6)
+!263 = !DILocalVariable(name: "do_btf", scope: !241, file: !1, line: 150, type: !6)
+!264 = !DILocalVariable(name: "k", scope: !241, file: !1, line: 150, type: !6)
+!265 = !DILocalVariable(name: "Pinv", scope: !266, file: !1, line: 206, type: !5)
+!266 = distinct !DILexicalBlock(scope: !267, file: !1, line: 200, column: 5)
+!267 = distinct !DILexicalBlock(scope: !241, file: !1, line: 199, column: 9)
+!268 = !DILocalVariable(name: "Work", scope: !266, file: !1, line: 206, type: !5)
+!269 = !DILocalVariable(name: "Bi", scope: !266, file: !1, line: 206, type: !5)
+!270 = !DILocalVariable(name: "k1", scope: !266, file: !1, line: 206, type: !6)
+!271 = !DILocalVariable(name: "k2", scope: !266, file: !1, line: 206, type: !6)
+!272 = !DILocalVariable(name: "nk", scope: !266, file: !1, line: 206, type: !6)
+!273 = !DILocalVariable(name: "oldcol", scope: !266, file: !1, line: 206, type: !6)
+!274 = !DILocation(line: 139, column: 9, scope: !241)
+!275 = !DILocation(line: 140, column: 9, scope: !241)
+!276 = !DILocation(line: 141, column: 9, scope: !241)
+!277 = !DILocation(line: 142, column: 9, scope: !241)
+!278 = !DILocation(line: 143, column: 9, scope: !241)
+!279 = !DILocation(line: 145, column: 17, scope: !241)
+!280 = !DILocation(line: 148, column: 5, scope: !241)
+!281 = !DILocation(line: 156, column: 16, scope: !241)
+!282 = !DILocation(line: 148, column: 19, scope: !241)
+!283 = !DILocation(line: 156, column: 14, scope: !241)
+!284 = !DILocation(line: 157, column: 18, scope: !285)
+!285 = distinct !DILexicalBlock(scope: !241, file: !1, line: 157, column: 9)
+!286 = !DILocation(line: 157, column: 9, scope: !241)
+!287 = !DILocation(line: 161, column: 19, scope: !241)
+!288 = !DILocation(line: 150, column: 40, scope: !241)
+!289 = !DILocation(line: 162, column: 19, scope: !241)
+!290 = !DILocation(line: 150, column: 44, scope: !241)
+!291 = !DILocation(line: 163, column: 19, scope: !241)
+!292 = !DILocation(line: 150, column: 48, scope: !241)
+!293 = !DILocation(line: 164, column: 21, scope: !241)
+!294 = !DILocation(line: 149, column: 13, scope: !241)
+!295 = !DILocation(line: 165, column: 20, scope: !241)
+!296 = !DILocation(line: 150, column: 18, scope: !241)
+!297 = !DILocation(line: 171, column: 15, scope: !298)
+!298 = distinct !DILexicalBlock(scope: !241, file: !1, line: 171, column: 9)
+!299 = !DILocation(line: 150, column: 75, scope: !241)
+!300 = !DILocation(line: 0, scope: !301)
+!301 = distinct !DILexicalBlock(scope: !302, file: !1, line: 180, column: 9)
+!302 = distinct !DILexicalBlock(scope: !303, file: !1, line: 180, column: 9)
+!303 = distinct !DILexicalBlock(scope: !298, file: !1, line: 179, column: 5)
+!304 = !DILocation(line: 171, column: 9, scope: !241)
+!305 = !DILocation(line: 173, column: 9, scope: !306)
+!306 = distinct !DILexicalBlock(scope: !307, file: !1, line: 173, column: 9)
+!307 = distinct !DILexicalBlock(scope: !298, file: !1, line: 172, column: 5)
+!308 = !DILocation(line: 175, column: 13, scope: !309)
+!309 = distinct !DILexicalBlock(scope: !310, file: !1, line: 174, column: 9)
+!310 = distinct !DILexicalBlock(scope: !306, file: !1, line: 173, column: 9)
+!311 = !DILocation(line: 175, column: 19, scope: !309)
+!312 = !DILocation(line: 173, column: 31, scope: !310)
+!313 = !DILocation(line: 173, column: 24, scope: !310)
+!314 = distinct !{!314, !305, !315}
+!315 = !DILocation(line: 176, column: 9, scope: !306)
+!316 = !DILocation(line: 180, column: 9, scope: !302)
+!317 = !DILocation(line: 182, column: 21, scope: !318)
+!318 = distinct !DILexicalBlock(scope: !301, file: !1, line: 181, column: 9)
+!319 = !DILocation(line: 182, column: 13, scope: !318)
+!320 = !DILocation(line: 182, column: 19, scope: !318)
+!321 = !DILocation(line: 180, column: 31, scope: !301)
+!322 = !DILocation(line: 180, column: 24, scope: !301)
+!323 = distinct !{!323, !316, !324}
+!324 = !DILocation(line: 183, column: 9, scope: !302)
+!325 = !DILocation(line: 190, column: 22, scope: !241)
+!326 = !{!99, !103, i64 40}
+!327 = !DILocation(line: 150, column: 67, scope: !241)
+!328 = !DILocation(line: 191, column: 14, scope: !241)
+!329 = !DILocation(line: 192, column: 15, scope: !241)
+!330 = !DILocation(line: 192, column: 24, scope: !241)
+!331 = !{!215, !103, i64 84}
+!332 = !DILocation(line: 193, column: 15, scope: !241)
+!333 = !DILocation(line: 193, column: 22, scope: !241)
+!334 = !{!215, !103, i64 88}
+!335 = !DILocation(line: 199, column: 9, scope: !241)
+!336 = !DILocation(line: 208, column: 29, scope: !266)
+!337 = !DILocation(line: 208, column: 28, scope: !266)
+!338 = !DILocation(line: 208, column: 16, scope: !266)
+!339 = !DILocation(line: 206, column: 21, scope: !266)
+!340 = !DILocation(line: 209, column: 28, scope: !266)
+!341 = !DILocation(line: 209, column: 16, scope: !266)
+!342 = !DILocation(line: 206, column: 14, scope: !266)
+!343 = !DILocation(line: 210, column: 19, scope: !344)
+!344 = distinct !DILexicalBlock(scope: !266, file: !1, line: 210, column: 13)
+!345 = !DILocation(line: 210, column: 13, scope: !266)
+!346 = !DILocation(line: 212, column: 32, scope: !347)
+!347 = distinct !DILexicalBlock(scope: !344, file: !1, line: 211, column: 9)
+!348 = !DILocation(line: 212, column: 30, scope: !347)
+!349 = !DILocation(line: 212, column: 18, scope: !347)
+!350 = !DILocation(line: 206, column: 28, scope: !266)
+!351 = !DILocation(line: 213, column: 9, scope: !347)
+!352 = !DILocation(line: 0, scope: !353)
+!353 = distinct !DILexicalBlock(scope: !344, file: !1, line: 215, column: 9)
+!354 = !DILocation(line: 219, column: 21, scope: !355)
+!355 = distinct !DILexicalBlock(scope: !266, file: !1, line: 219, column: 13)
+!356 = !DILocation(line: 219, column: 28, scope: !355)
+!357 = !DILocation(line: 219, column: 13, scope: !266)
+!358 = !DILocation(line: 222, column: 13, scope: !359)
+!359 = distinct !DILexicalBlock(scope: !355, file: !1, line: 220, column: 9)
+!360 = !DILocation(line: 223, column: 13, scope: !359)
+!361 = !DILocation(line: 224, column: 17, scope: !359)
+!362 = !DILocation(line: 226, column: 27, scope: !363)
+!363 = distinct !DILexicalBlock(scope: !364, file: !1, line: 225, column: 13)
+!364 = distinct !DILexicalBlock(scope: !359, file: !1, line: 224, column: 17)
+!365 = !DILocation(line: 226, column: 33, scope: !363)
+!366 = !DILocation(line: 226, column: 31, scope: !363)
+!367 = !DILocation(line: 226, column: 17, scope: !363)
+!368 = !DILocation(line: 227, column: 13, scope: !363)
+!369 = !DILocation(line: 237, column: 13, scope: !266)
+!370 = !DILocation(line: 254, column: 19, scope: !266)
+!371 = !DILocation(line: 150, column: 9, scope: !241)
+!372 = !DILocation(line: 260, column: 13, scope: !266)
+!373 = !DILocation(line: 239, column: 28, scope: !374)
+!374 = distinct !DILexicalBlock(scope: !375, file: !1, line: 239, column: 13)
+!375 = distinct !DILexicalBlock(scope: !376, file: !1, line: 239, column: 13)
+!376 = distinct !DILexicalBlock(scope: !377, file: !1, line: 238, column: 9)
+!377 = distinct !DILexicalBlock(scope: !266, file: !1, line: 237, column: 13)
+!378 = !DILocation(line: 239, column: 13, scope: !375)
+!379 = !DILocation(line: 241, column: 23, scope: !380)
+!380 = distinct !DILexicalBlock(scope: !374, file: !1, line: 240, column: 13)
+!381 = !DILocation(line: 241, column: 17, scope: !380)
+!382 = !DILocation(line: 241, column: 34, scope: !380)
+!383 = !DILocation(line: 239, column: 35, scope: !374)
+!384 = distinct !{!384, !378, !385}
+!385 = !DILocation(line: 242, column: 13, scope: !375)
+!386 = !DILocation(line: 150, column: 58, scope: !241)
+!387 = !DILocation(line: 243, column: 28, scope: !388)
+!388 = distinct !DILexicalBlock(scope: !389, file: !1, line: 243, column: 13)
+!389 = distinct !DILexicalBlock(scope: !376, file: !1, line: 243, column: 13)
+!390 = !DILocation(line: 243, column: 13, scope: !389)
+!391 = !DILocation(line: 245, column: 32, scope: !392)
+!392 = distinct !DILexicalBlock(scope: !388, file: !1, line: 244, column: 13)
+!393 = !DILocation(line: 245, column: 26, scope: !392)
+!394 = !DILocation(line: 245, column: 17, scope: !392)
+!395 = !DILocation(line: 245, column: 24, scope: !392)
+!396 = !DILocation(line: 243, column: 36, scope: !388)
+!397 = distinct !{!397, !390, !398}
+!398 = !DILocation(line: 246, column: 13, scope: !389)
+!399 = !DILocation(line: 262, column: 28, scope: !400)
+!400 = distinct !DILexicalBlock(scope: !401, file: !1, line: 262, column: 13)
+!401 = distinct !DILexicalBlock(scope: !402, file: !1, line: 262, column: 13)
+!402 = distinct !DILexicalBlock(scope: !403, file: !1, line: 261, column: 9)
+!403 = distinct !DILexicalBlock(scope: !266, file: !1, line: 260, column: 13)
+!404 = !DILocation(line: 262, column: 13, scope: !401)
+!405 = !DILocation(line: 264, column: 35, scope: !406)
+!406 = distinct !DILexicalBlock(scope: !400, file: !1, line: 263, column: 13)
+!407 = !DILocation(line: 264, column: 28, scope: !406)
+!408 = !DILocation(line: 264, column: 17, scope: !406)
+!409 = !DILocation(line: 264, column: 26, scope: !406)
+!410 = !DILocation(line: 262, column: 35, scope: !400)
+!411 = distinct !{!411, !404, !412}
+!412 = !DILocation(line: 265, column: 13, scope: !401)
+!413 = !DILocation(line: 266, column: 28, scope: !414)
+!414 = distinct !DILexicalBlock(scope: !415, file: !1, line: 266, column: 13)
+!415 = distinct !DILexicalBlock(scope: !402, file: !1, line: 266, column: 13)
+!416 = !DILocation(line: 266, column: 13, scope: !415)
+!417 = !DILocation(line: 268, column: 25, scope: !418)
+!418 = distinct !DILexicalBlock(scope: !414, file: !1, line: 267, column: 13)
+!419 = !DILocation(line: 268, column: 17, scope: !418)
+!420 = !DILocation(line: 268, column: 23, scope: !418)
+!421 = !DILocation(line: 266, column: 35, scope: !414)
+!422 = distinct !{!422, !416, !423}
+!423 = !DILocation(line: 269, column: 13, scope: !415)
+!424 = !DILocation(line: 276, column: 24, scope: !425)
+!425 = distinct !DILexicalBlock(scope: !426, file: !1, line: 276, column: 9)
+!426 = distinct !DILexicalBlock(scope: !266, file: !1, line: 276, column: 9)
+!427 = !DILocation(line: 276, column: 9, scope: !426)
+!428 = !DILocation(line: 278, column: 19, scope: !429)
+!429 = distinct !DILexicalBlock(scope: !425, file: !1, line: 277, column: 9)
+!430 = !DILocation(line: 278, column: 13, scope: !429)
+!431 = !DILocation(line: 278, column: 26, scope: !429)
+!432 = !DILocation(line: 276, column: 31, scope: !425)
+!433 = distinct !{!433, !427, !434}
+!434 = !DILocation(line: 279, column: 9, scope: !426)
+!435 = !DILocation(line: 150, column: 51, scope: !241)
+!436 = !DILocation(line: 150, column: 29, scope: !241)
+!437 = !DILocation(line: 150, column: 22, scope: !241)
+!438 = !DILocation(line: 288, column: 32, scope: !439)
+!439 = distinct !DILexicalBlock(scope: !440, file: !1, line: 288, column: 9)
+!440 = distinct !DILexicalBlock(scope: !266, file: !1, line: 288, column: 9)
+!441 = !DILocation(line: 288, column: 9, scope: !440)
+!442 = !DILocation(line: 295, column: 18, scope: !443)
+!443 = distinct !DILexicalBlock(scope: !439, file: !1, line: 289, column: 9)
+!444 = !DILocation(line: 206, column: 32, scope: !266)
+!445 = !DILocation(line: 296, column: 26, scope: !443)
+!446 = !DILocation(line: 296, column: 18, scope: !443)
+!447 = !DILocation(line: 206, column: 36, scope: !266)
+!448 = !DILocation(line: 297, column: 21, scope: !443)
+!449 = !DILocation(line: 206, column: 40, scope: !266)
+!450 = !DILocation(line: 299, column: 24, scope: !443)
+!451 = !DILocation(line: 305, column: 29, scope: !452)
+!452 = distinct !DILexicalBlock(scope: !453, file: !1, line: 305, column: 13)
+!453 = distinct !DILexicalBlock(scope: !443, file: !1, line: 305, column: 13)
+!454 = !DILocation(line: 305, column: 13, scope: !453)
+!455 = !DILocation(line: 307, column: 26, scope: !456)
+!456 = distinct !DILexicalBlock(scope: !452, file: !1, line: 306, column: 13)
+!457 = !DILocation(line: 206, column: 44, scope: !266)
+!458 = !DILocation(line: 308, column: 34, scope: !456)
+!459 = !DILocation(line: 308, column: 24, scope: !456)
+!460 = !DILocation(line: 150, column: 61, scope: !241)
+!461 = !DILocation(line: 309, column: 26, scope: !462)
+!462 = distinct !DILexicalBlock(scope: !456, file: !1, line: 309, column: 17)
+!463 = !DILocation(line: 309, column: 42, scope: !464)
+!464 = distinct !DILexicalBlock(scope: !462, file: !1, line: 309, column: 17)
+!465 = !DILocation(line: 309, column: 17, scope: !462)
+!466 = !DILocation(line: 311, column: 31, scope: !467)
+!467 = distinct !DILexicalBlock(scope: !468, file: !1, line: 311, column: 25)
+!468 = distinct !DILexicalBlock(scope: !464, file: !1, line: 310, column: 17)
+!469 = !DILocation(line: 311, column: 25, scope: !467)
+!470 = !DILocation(line: 311, column: 39, scope: !467)
+!471 = !DILocation(line: 311, column: 25, scope: !468)
+!472 = !DILocation(line: 309, column: 52, scope: !464)
+!473 = distinct !{!473, !465, !474}
+!474 = !DILocation(line: 315, column: 17, scope: !462)
+!475 = !DILocation(line: 305, column: 37, scope: !452)
+!476 = distinct !{!476, !454, !477}
+!477 = !DILocation(line: 316, column: 13, scope: !453)
+!478 = !DILocation(line: 319, column: 13, scope: !443)
+!479 = !DILocation(line: 319, column: 25, scope: !443)
+!480 = !{!100, !100, i64 0}
+!481 = distinct !{!481, !441, !482}
+!482 = !DILocation(line: 320, column: 9, scope: !440)
+!483 = !DILocation(line: 326, column: 9, scope: !266)
+!484 = !DILocation(line: 327, column: 9, scope: !266)
+!485 = !DILocation(line: 328, column: 13, scope: !266)
+!486 = !DILocation(line: 330, column: 23, scope: !487)
+!487 = distinct !DILexicalBlock(scope: !488, file: !1, line: 329, column: 9)
+!488 = distinct !DILexicalBlock(scope: !266, file: !1, line: 328, column: 13)
+!489 = !DILocation(line: 330, column: 29, scope: !487)
+!490 = !DILocation(line: 330, column: 27, scope: !487)
+!491 = !DILocation(line: 330, column: 13, scope: !487)
+!492 = !DILocation(line: 331, column: 9, scope: !487)
+!493 = !DILocation(line: 228, column: 13, scope: !359)
+!494 = !DILocation(line: 229, column: 28, scope: !359)
+!495 = !DILocation(line: 344, column: 15, scope: !496)
+!496 = distinct !DILexicalBlock(scope: !267, file: !1, line: 335, column: 5)
+!497 = !DILocation(line: 345, column: 9, scope: !496)
+!498 = !DILocation(line: 345, column: 15, scope: !496)
+!499 = !DILocation(line: 346, column: 17, scope: !496)
+!500 = !DILocation(line: 352, column: 24, scope: !501)
+!501 = distinct !DILexicalBlock(scope: !502, file: !1, line: 352, column: 9)
+!502 = distinct !DILexicalBlock(scope: !496, file: !1, line: 352, column: 9)
+!503 = !DILocation(line: 352, column: 9, scope: !502)
+!504 = !DILocation(line: 354, column: 21, scope: !505)
+!505 = distinct !DILexicalBlock(scope: !501, file: !1, line: 353, column: 9)
+!506 = !DILocation(line: 354, column: 43, scope: !505)
+!507 = !DILocation(line: 354, column: 13, scope: !505)
+!508 = !DILocation(line: 354, column: 19, scope: !505)
+!509 = !DILocation(line: 352, column: 31, scope: !501)
+!510 = distinct !{!510, !503, !511}
+!511 = !DILocation(line: 355, column: 9, scope: !502)
+!512 = !DILocation(line: 362, column: 5, scope: !241)
+!513 = !DILocation(line: 362, column: 15, scope: !241)
+!514 = !DILocation(line: 362, column: 23, scope: !241)
+!515 = !{!215, !103, i64 76}
+!516 = !DILocation(line: 363, column: 15, scope: !241)
+!517 = !DILocation(line: 363, column: 24, scope: !241)
+!518 = !{!215, !103, i64 80}
+!519 = !DILocation(line: 364, column: 15, scope: !241)
+!520 = !DILocation(line: 364, column: 19, scope: !241)
+!521 = !{!215, !100, i64 16}
+!522 = !DILocation(line: 365, column: 15, scope: !241)
+!523 = !DILocation(line: 365, column: 19, scope: !241)
+!524 = !{!215, !100, i64 24}
+!525 = !DILocation(line: 366, column: 15, scope: !241)
+!526 = !DILocation(line: 366, column: 21, scope: !241)
+!527 = !{!215, !103, i64 72}
+!528 = !DILocation(line: 368, column: 5, scope: !241)
+!529 = !DILocation(line: 0, scope: !359)
+!530 = !DILocation(line: 369, column: 1, scope: !241)

@@ -659,7 +659,7 @@ assignment
     }
     | instruction metadata_kvs
     {
-        $$ = new Assignment ((Instruction)$1);
+        $$ = new Assignment ((Instruction)$1, (SymbolTable<MetaSymbol>)$2);
     }
     | LOCAL_SYMBOL '=' instruction
     {
@@ -667,7 +667,7 @@ assignment
     }
     | LOCAL_SYMBOL '=' instruction metadata_kvs
     {
-        $$ = new Assignment ((LocalSymbol)$1, (Instruction)$3);
+        $$ = new Assignment ((LocalSymbol)$1, (Instruction)$3, (SymbolTable<MetaSymbol>)$4);
     }
     ;
     

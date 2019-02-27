@@ -60,7 +60,13 @@ namespace Tests
                 assemblyName: asmFileName);
 
             var asmPath = Path.Combine (Path.GetTempPath (), asmFileName);
+            var pdbPath = Path.ChangeExtension (asmPath, ".pdb");
+            var mdbPath = asmPath + ".mdb";
             try { File.Delete (asmPath); }
+            catch { }
+            try { File.Delete (pdbPath); }
+            catch { }
+            try { File.Delete (mdbPath); }
             catch { }
             compilation.WriteAssembly (asmPath);
 

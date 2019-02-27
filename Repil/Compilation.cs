@@ -7,6 +7,8 @@ using Repil.Types;
 using Mono.Cecil.Rocks;
 using Mono.Cecil.Cil;
 using System.Text;
+using Mono.Cecil.Mdb;
+using System.Security.Cryptography;
 
 namespace Repil
 {
@@ -75,6 +77,10 @@ namespace Repil
         public MethodReference sysAllocHGlobal;
         public MethodReference sysReAllocHGlobal;
         public MethodReference sysFreeHGlobal;
+        TypeReference sysDebugger;
+        public MethodReference sysDebuggerBreak;
+        TypeReference sysConsole;
+        public MethodReference sysConsoleWriteLine;
 
         readonly Dictionary<(int, string), SimdVector> vectorTypes =
             new Dictionary<(int, string), SimdVector> ();
@@ -239,6 +245,10 @@ namespace Repil
             sysGCHandleType = Import ("System.Runtime.InteropServices.GCHandleType");
             sysGCHandleAlloc = ImportMethod (sysGCHandle, sysGCHandle, "Alloc", sysObj, sysGCHandleType);
             sysGCHandleAddrOfPinnedObject = ImportMethod (sysGCHandle, sysIntPtr, "AddrOfPinnedObject");
+            sysDebugger = Import ("System.Diagnostics.Debugger");
+            sysDebuggerBreak = ImportMethod (sysDebugger, sysVoid, "Break");
+            sysConsole = Import ("System.Console");
+            sysConsoleWriteLine = ImportMethod (sysConsole, sysVoid, "WriteLine", sysString);
             sysSingleIsNaN = ImportMethod (sysSingle, sysBoolean, "IsNaN", sysSingle);
             sysDoubleIsNaN = ImportMethod (sysDouble, sysBoolean, "IsNaN", sysDouble);
             sysNotImpl = Import ("System.NotImplementedException");
@@ -260,6 +270,59 @@ namespace Repil
             sysAllocHGlobal = ImportMethod (sysMarshal, sysIntPtr, "AllocHGlobal", sysIntPtr);
             sysReAllocHGlobal = ImportMethod (sysMarshal, sysIntPtr, "ReAllocHGlobal", sysIntPtr, sysIntPtr);
             sysFreeHGlobal = ImportMethod (sysMarshal, sysVoid, "FreeHGlobal", sysIntPtr);
+        }
+
+        readonly SymbolTable<Mono.Cecil.Cil.Document> fileDocuments = new SymbolTable<Mono.Cecil.Cil.Document> ();
+
+        public Mono.Cecil.Cil.Document GetScopeDocument (Module module, MetaSymbol scopeRef)
+        {
+            if (module.Metadata.TryGetValue (scopeRef, out var scopeO) && scopeO is SymbolTable<object> scope) {
+                if (scope.TryGetValue (Symbol.File, out var fileO) && fileO is MetaSymbol fileRef) {
+                    if (fileDocuments.TryGetValue (fileRef, out var doc))
+                        return doc;
+
+                    if (module.Metadata.TryGetValue (fileRef, out fileO)
+                        && fileO is SymbolTable<object> file
+                        && file.TryGetValue (Symbol.Filename, out var fno)
+                        && file.TryGetValue (Symbol.Directory, out var diro)) {
+
+                        var fullPath = System.IO.Path.Combine (diro.ToString (), fno.ToString ());
+                        //var url = new Uri (fullPath).AbsoluteUri;
+                        var url = fullPath;
+                        doc = new Mono.Cecil.Cil.Document (url);
+                        if (File.Exists (fullPath)) {
+                            doc.HashAlgorithm = DocumentHashAlgorithm.MD5;
+                            doc.Hash = CalculateChecksum (fullPath);
+                        }
+
+                        doc.Language = DocumentLanguage.C;
+
+                        fileDocuments[fileRef] = doc;
+
+                        return doc;
+                    }
+                }
+            }
+            return null;
+        }
+
+        static byte[] CalculateChecksum (string fileName)
+        {
+            byte[] checksum;
+            try {
+                using (StreamReader streamReader = new StreamReader (fileName)) {
+                    using (HashAlgorithm hashAlgorithm = MD5.Create ()) {
+                        checksum = hashAlgorithm.ComputeHash (streamReader.BaseStream);
+                    }
+                }
+            }
+            catch (IOException) {
+                checksum = null;
+            }
+            catch (UnauthorizedAccessException) {
+                checksum = null;
+            }
+            return checksum;
         }
 
         void CompileStructures ()
@@ -977,7 +1040,7 @@ namespace Repil
         {
             var ps = new WriterParameters {
                 WriteSymbols = true,
-                SymbolWriterProvider = new PortablePdbWriterProvider (),
+                SymbolWriterProvider = new MdbWriterProvider (),
             };
             asm.Write (path, ps);
         }
