@@ -405,45 +405,18 @@ namespace Repil
                     }
                     break;
                 case IR.FcmpInstruction fcmp:
-                    EmitValue (fcmp.Op1, fcmp.Type);
-                    EmitValue (fcmp.Op2, fcmp.Type);
                     switch (fcmp.Condition) {
-                        case IR.FcmpCondition.True:
-                            Emit (il.Create (OpCodes.Pop));
-                            Emit (il.Create (OpCodes.Pop));
-                            Emit (il.Create (OpCodes.Ldc_I4_1));
-                            break;
-                        case IR.FcmpCondition.False:
-                            Emit (il.Create (OpCodes.Pop));
-                            Emit (il.Create (OpCodes.Pop));
-                            Emit (il.Create (OpCodes.Ldc_I4_0));
-                            break;
-                        case IR.FcmpCondition.OrderedEqual:
-                            Emit (il.Create (OpCodes.Ceq));
-                            break;
-                        case IR.FcmpCondition.OrderedGreaterThan:
-                            Emit (il.Create (OpCodes.Cgt));
-                            break;
-                        case IR.FcmpCondition.OrderedGreaterThanOrEqual:
-                            Emit (il.Create (OpCodes.Clt));
-                            Emit (il.Create (OpCodes.Ldc_I4_0));
-                            Emit (il.Create (OpCodes.Ceq));
-                            break;
-                        case IR.FcmpCondition.OrderedLessThan:
-                            Emit (il.Create (OpCodes.Clt));
-                            break;
-                        case IR.FcmpCondition.OrderedLessThanOrEqual:
-                            Emit (il.Create (OpCodes.Cgt));
-                            Emit (il.Create (OpCodes.Ldc_I4_0));
-                            Emit (il.Create (OpCodes.Ceq));
-                            break;
                         case IR.FcmpCondition.Ordered:
                             if (((FloatType)fcmp.Type).Bits == 32) {
+                                EmitValue (fcmp.Op1, fcmp.Type);
                                 Emit (il.Create (OpCodes.Call, compilation.sysSingleIsNaN));
+                                EmitValue (fcmp.Op2, fcmp.Type);
                                 Emit (il.Create (OpCodes.Call, compilation.sysSingleIsNaN));
                             }
                             else {
+                                EmitValue (fcmp.Op1, fcmp.Type);
                                 Emit (il.Create (OpCodes.Call, compilation.sysDoubleIsNaN));
+                                EmitValue (fcmp.Op2, fcmp.Type);
                                 Emit (il.Create (OpCodes.Call, compilation.sysDoubleIsNaN));
                             }
                             Emit (il.Create (OpCodes.Or));
@@ -452,41 +425,80 @@ namespace Repil
                             break;
                         case IR.FcmpCondition.Unordered:
                             if (((FloatType)fcmp.Type).Bits == 32) {
+                                EmitValue (fcmp.Op1, fcmp.Type);
                                 Emit (il.Create (OpCodes.Call, compilation.sysSingleIsNaN));
+                                EmitValue (fcmp.Op2, fcmp.Type);
                                 Emit (il.Create (OpCodes.Call, compilation.sysSingleIsNaN));
                             }
                             else {
+                                EmitValue (fcmp.Op1, fcmp.Type);
                                 Emit (il.Create (OpCodes.Call, compilation.sysDoubleIsNaN));
+                                EmitValue (fcmp.Op2, fcmp.Type);
                                 Emit (il.Create (OpCodes.Call, compilation.sysDoubleIsNaN));
                             }
                             Emit (il.Create (OpCodes.Or));
                             break;
-                        case IR.FcmpCondition.UnorderedEqual:
-                            Emit (il.Create (OpCodes.Ceq));
-                            break;
-                        case IR.FcmpCondition.UnorderedNotEqual:
-                            Emit (il.Create (OpCodes.Ceq));
-                            Emit (il.Create (OpCodes.Ldc_I4_0));
-                            Emit (il.Create (OpCodes.Ceq));
-                            break;
-                        case IR.FcmpCondition.UnorderedGreaterThan:
-                            Emit (il.Create (OpCodes.Cgt_Un));
-                            break;
-                        case IR.FcmpCondition.UnorderedGreaterThanOrEqual:
-                            Emit (il.Create (OpCodes.Clt_Un));
-                            Emit (il.Create (OpCodes.Ldc_I4_0));
-                            Emit (il.Create (OpCodes.Ceq));
-                            break;
-                        case IR.FcmpCondition.UnorderedLessThan:
-                            Emit (il.Create (OpCodes.Clt_Un));
-                            break;
-                        case IR.FcmpCondition.UnorderedLessThanOrEqual:
-                            Emit (il.Create (OpCodes.Cgt_Un));
-                            Emit (il.Create (OpCodes.Ldc_I4_0));
-                            Emit (il.Create (OpCodes.Ceq));
-                            break;
                         default:
-                            throw new NotSupportedException ("fcmp condition " + fcmp.Condition);
+                            EmitValue (fcmp.Op1, fcmp.Type);
+                            EmitValue (fcmp.Op2, fcmp.Type);
+                            switch (fcmp.Condition) {
+                                case IR.FcmpCondition.True:
+                                    Emit (il.Create (OpCodes.Pop));
+                                    Emit (il.Create (OpCodes.Pop));
+                                    Emit (il.Create (OpCodes.Ldc_I4_1));
+                                    break;
+                                case IR.FcmpCondition.False:
+                                    Emit (il.Create (OpCodes.Pop));
+                                    Emit (il.Create (OpCodes.Pop));
+                                    Emit (il.Create (OpCodes.Ldc_I4_0));
+                                    break;
+                                case IR.FcmpCondition.OrderedEqual:
+                                    Emit (il.Create (OpCodes.Ceq));
+                                    break;
+                                case IR.FcmpCondition.OrderedGreaterThan:
+                                    Emit (il.Create (OpCodes.Cgt));
+                                    break;
+                                case IR.FcmpCondition.OrderedGreaterThanOrEqual:
+                                    Emit (il.Create (OpCodes.Clt));
+                                    Emit (il.Create (OpCodes.Ldc_I4_0));
+                                    Emit (il.Create (OpCodes.Ceq));
+                                    break;
+                                case IR.FcmpCondition.OrderedLessThan:
+                                    Emit (il.Create (OpCodes.Clt));
+                                    break;
+                                case IR.FcmpCondition.OrderedLessThanOrEqual:
+                                    Emit (il.Create (OpCodes.Cgt));
+                                    Emit (il.Create (OpCodes.Ldc_I4_0));
+                                    Emit (il.Create (OpCodes.Ceq));
+                                    break;
+                                case IR.FcmpCondition.UnorderedEqual:
+                                    Emit (il.Create (OpCodes.Ceq));
+                                    break;
+                                case IR.FcmpCondition.UnorderedNotEqual:
+                                    Emit (il.Create (OpCodes.Ceq));
+                                    Emit (il.Create (OpCodes.Ldc_I4_0));
+                                    Emit (il.Create (OpCodes.Ceq));
+                                    break;
+                                case IR.FcmpCondition.UnorderedGreaterThan:
+                                    Emit (il.Create (OpCodes.Cgt_Un));
+                                    break;
+                                case IR.FcmpCondition.UnorderedGreaterThanOrEqual:
+                                    Emit (il.Create (OpCodes.Clt_Un));
+                                    Emit (il.Create (OpCodes.Ldc_I4_0));
+                                    Emit (il.Create (OpCodes.Ceq));
+                                    break;
+                                case IR.FcmpCondition.UnorderedLessThan:
+                                    Emit (il.Create (OpCodes.Clt_Un));
+                                    break;
+                                case IR.FcmpCondition.UnorderedLessThanOrEqual:
+                                    Emit (il.Create (OpCodes.Cgt_Un));
+                                    Emit (il.Create (OpCodes.Ldc_I4_0));
+                                    Emit (il.Create (OpCodes.Ceq));
+                                    break;
+                                default:
+                                    throw new NotSupportedException ("fcmp condition " + fcmp.Condition);
+                            }
+                            break;
                     }
                     break;
                 case IR.FdivInstruction add:
