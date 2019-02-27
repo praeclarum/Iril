@@ -76,7 +76,7 @@ namespace Repil
                     }
                     else if (compilation.TryGetGlobal(module.Symbol, g.Symbol, out var globalVariableField))
                     {
-                        Emit(il.Create(OpCodes.Ldfld, globalVariableField));
+                        Emit(il.Create(OpCodes.Ldsfld, globalVariableField));
                     }
                     else
                     {
