@@ -14,5 +14,7 @@ namespace Repil.Types
         }
 
         public override long GetByteSize (Module module) => Length * ElementType.GetByteSize (module);
+
+        public override string ToString () => $"[{Length} x {ElementType}]";
     }
 }

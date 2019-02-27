@@ -331,7 +331,7 @@ namespace Repil
             }
             else
             {
-                throw new NotSupportedException("Cannot get 0 for " + type);
+                throw new NotSupportedException("Cannot get zero for " + type);
             }
         }
     }

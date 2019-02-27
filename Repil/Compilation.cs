@@ -542,6 +542,21 @@ namespace Repil
                                 Emit (il.Create (OpCodes.Stsfld, f));
                             }
                             break;
+                        case IR.ZeroConstant c when g.Type is Types.ArrayType art: {
+                                var size = (int)art.Length;
+                                var et = art.ElementType;
+                                var cet = compilation.GetClrType (et);
+                                Emit (il.Create (OpCodes.Ldc_I4, size));
+                                Emit (il.Create (OpCodes.Newarr, cet));
+                                Emit (OpCodes.Ldc_I4_3);
+                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
+                                Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
+                                Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
+                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
+                                Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
+                                Emit (il.Create (OpCodes.Stsfld, f));
+                            }
+                            break;
                         case IR.BytesConstant c: {
                                 var chars = new List<byte> ();
                                 var s = c.Bytes.Text;
