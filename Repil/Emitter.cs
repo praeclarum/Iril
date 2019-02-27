@@ -67,16 +67,17 @@ namespace Repil
                         flt.Value));
                     break;
                 case IR.GetElementPointerValue gep:
-                    EmitGetElementPointer(gep.Pointer, gep.Indices);
+                    EmitGetElementPointer (gep.Pointer, gep.Indices);
                     break;
                 case IR.GlobalValue g:
                     if (compilation.TryGetFunction(g.Symbol, out var ff))
                     {
-                        Emit(il.Create(OpCodes.Ldftn, ff.ILDefinition));
+                        Emit (il.Create (OpCodes.Ldftn, ff.ILDefinition));
                     }
                     else if (compilation.TryGetGlobal(module.Symbol, g.Symbol, out var globalVariableField))
                     {
-                        Emit(il.Create(OpCodes.Ldsfld, globalVariableField));
+                        Emit (il.Create (OpCodes.Ldsflda, globalVariableField));
+                        Emit (il.Create (OpCodes.Conv_U));
                     }
                     else
                     {
@@ -212,7 +213,7 @@ namespace Repil
         protected void EmitGetElementPointer(IR.TypedValue pointer, IR.TypedValue[] indices)
         {
             var t = pointer.Type;
-            EmitTypedValuePointer(pointer);
+            EmitTypedValue (pointer);
             var n = indices.Length;
             for (var i = 0; i < n; i++)
             {
@@ -277,24 +278,6 @@ namespace Repil
                     }
 
                 }
-            }
-        }
-
-        protected void EmitTypedValuePointer(IR.TypedValue value)
-        {
-            EmitValuePointer(value.Value, value.Type);
-        }
-
-        protected void EmitValuePointer(IR.Value value, LType type)
-        {
-            if (value is IR.GlobalValue g)
-            {
-                Emit(il.Create(OpCodes.Ldsflda, compilation.GetGlobal(module.Symbol, g.Symbol)));
-                Emit(il.Create(OpCodes.Conv_U));
-            }
-            else
-            {
-                EmitValue(value, type);
             }
         }
 
