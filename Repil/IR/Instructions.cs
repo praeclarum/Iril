@@ -364,20 +364,21 @@ namespace Repil.IR
             Indices = indices.ToArray ();
         }
 
-        public override string ToString () => $"&{Pointer}[{string.Join (", ", (object[])Indices)}]";
+        public override string ToString () => $"getelementptr {Pointer} [{string.Join (", ", (object[])Indices)}]";
         public override IEnumerable<LocalSymbol> ReferencedLocals =>
             Pointer.ReferencedLocals.Concat (Indices.SelectMany (x => x.Value.ReferencedLocals));
         public override LType ResultType (Module module)
         {
-            var t = Type.Resolve (module);
+            var t = Type;
             foreach (var i in Indices.Skip (1)) {
-                if (t is ArrayType art) {
-                    t = art.ElementType.Resolve (module);
+                var rt = t.Resolve (module);
+                if (rt is ArrayType art) {
+                    t = art.ElementType;
                 }
-                else if (t is LiteralStructureType s) {
+                else if (rt is LiteralStructureType s) {
                     if (i.Value is Constant c) {
                         var e = s.Elements[c.Int32Value];
-                        t = e.Resolve (module);
+                        t = e;
                     }
                     else {
                         throw new Exception ($"Cannot get element {i.Value} at compile time");
