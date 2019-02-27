@@ -29,7 +29,7 @@ namespace Tests
             using (var s = asm.GetManifestResourceStream ("Tests.Inputs." + resourceName)) {
                 var a = new System.IO.Compression.ZipArchive (s, System.IO.Compression.ZipArchiveMode.Read);
                 foreach (var e in a.Entries) {
-                    if (Path.GetExtension (e.Name) == ".ll") {
+                    if (Path.GetExtension (e.Name) == ".ll" && !e.Name.StartsWith (".", System.StringComparison.Ordinal)) {
                         string c;
                         using (var es = e.Open ()) {
                             using (var r = new StreamReader (es))

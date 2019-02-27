@@ -14,6 +14,32 @@ namespace Tests
     public unsafe class EndToEndTests : TestsBase
     {
         [Test]
+        public void Ddaskr ()
+        {
+            var asmFileName = "Ddaskr.dll";
+            var irmods =
+                GetZippedCode ("ddaskr.zip")
+                .Select (x => Repil.Module.Parse (x.Code, x.Name));
+            var compilation = new Compilation (
+                irmods,
+                assemblyName: asmFileName);
+
+            var asmPath = Path.Combine (Path.GetTempPath (), asmFileName);
+            try { File.Delete (asmPath); }
+            catch { }
+            compilation.WriteAssembly (asmPath);
+
+            System.Console.WriteLine (asmPath);
+
+            AssertNoErrors (compilation);
+
+            var asm = Assembly.Load (File.ReadAllBytes (asmPath));
+
+            var types = asm.GetTypes ();
+            Assert.Greater (types.Length, 0);
+        }
+
+        [Test]
         public void SuiteSparse ()
         {
             var asmFileName = "SuiteSparse.dll";

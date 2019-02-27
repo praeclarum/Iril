@@ -58,7 +58,7 @@ namespace Repil
                     module.Symbol = GetIdentifier (module.SourceFilename);
             }
             catch (Exception ex) {
-                var m = $"{ex.Message}\n{lex.Surrounding}";
+                var m = $"{filename}: {ex.Message}\n{lex.Surrounding}";
                 throw new Exception (m, ex);
             }
             return module;

@@ -26,10 +26,12 @@
   <ItemGroup>
     <None Remove="Inputs\**\*.ll" />
     <None Remove="Inputs\sqlite3.ll.zip" />
+    <None Remove="Inputs\ddaskr.zip" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Inputs\**\*.ll" />
     <EmbeddedResource Include="Inputs\sqlite3.ll.zip" />
+    <EmbeddedResource Include="Inputs\ddaskr.zip" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Repil\Repil.csproj" />
