@@ -32,6 +32,7 @@ namespace Tests
             System.Console.WriteLine (asmPath);
 
             AssertNoErrors (compilation);
+            CheckDisassemblyForErrors (asmPath);
 
             var asm = Assembly.Load (File.ReadAllBytes (asmPath));
 
@@ -96,26 +97,10 @@ namespace Tests
             catch { }
             compilation.WriteAssembly (asmPath);
 
-            AssertNoErrors (compilation);
-
-            var disProc = new Process {
-                StartInfo = new ProcessStartInfo {
-                    FileName = "ikdasm",
-                    Arguments = $"\"{asmPath}\"",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    CreateNoWindow = true
-                }
-            };
-            var disAsmB = new StringBuilder ();
-            disProc.Start ();
-            while (!disProc.StandardOutput.EndOfStream) {
-                string line = disProc.StandardOutput.ReadLine ();
-                disAsmB.AppendLine (line);
-            }
-            var disAsm = disAsmB.ToString ();
-            //System.Console.WriteLine (disAsm);
             System.Console.WriteLine (asmPath);
+
+            AssertNoErrors (compilation);
+            CheckDisassemblyForErrors (asmPath);
 
             var asm = Assembly.Load (File.ReadAllBytes (asmPath));
 
@@ -234,6 +219,7 @@ namespace Tests
             System.Console.WriteLine (asmPath);
 
             AssertNoErrors (compilation);
+            CheckDisassemblyForErrors (asmPath);
 
             var asm = Assembly.Load (File.ReadAllBytes (asmPath));
 

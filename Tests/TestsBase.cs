@@ -1,8 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using NUnit.Framework;
 using Repil;
+using System.Text.RegularExpressions;
+using System.Linq;
+using System;
 
 namespace Tests
 {
@@ -81,6 +85,41 @@ namespace Tests
                 File.Delete (input);
                 File.Delete (output);
             }
+        }
+
+        static readonly Regex[] regices = {
+            new Regex (@"//\s*IL_[a-zA-Z0-9]+: Expected.*\n"),
+            new Regex (@"/\*\s*Error.*?\*/"),
+        };
+
+        protected static void CheckDisassemblyForErrors (string asmPath)
+        {
+            var cmd = Path.Combine (Environment.GetEnvironmentVariable ("HOME"), ".dotnet", "tools", "ilspycmd");
+            var disProc = new Process {
+                StartInfo = new ProcessStartInfo {
+                    FileName = cmd,
+                    Arguments = $"\"{asmPath}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                }
+            };
+            var disAsmB = new StringBuilder ();
+            disProc.Start ();
+            while (!disProc.StandardOutput.EndOfStream) {
+                string line = disProc.StandardOutput.ReadLine ();
+                disAsmB.AppendLine (line);
+            }
+            var disAsm = disAsmB.ToString ();
+            //System.Console.WriteLine (disAsm);
+
+            var errorsq =
+                from r in regices
+                from m in r.Matches (disAsm).Cast<Match> ()
+                select m.Value.Trim();
+
+            var errors = errorsq.ToList ();
+            Assert.AreEqual (0, errors.Count, errors.Count + " Errors: " + string.Join ("\n", errors.Take(100)));
         }
     }
 }
