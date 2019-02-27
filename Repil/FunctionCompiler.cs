@@ -108,18 +108,18 @@ namespace Repil
                         continue;
 
                     // Make sure it's used only once
-                    var referencedOnce = symbol != LocalSymbol.None && localCounts.ContainsKey (symbol) && localCounts[symbol] == 1;
+                    var referencedOnce = localCounts.ContainsKey (symbol) && localCounts[symbol] == 1;
 
                     var should = false;
                     if (referencedOnce) {
-                        should = false;
+                        should = a.Instruction.IsIdempotent (function.IRDefinition);
                         // Make sure its use is before a state-changing instruction
                         var j = i + 1;
                         for (; j < b.Assignments.Length && should; j++) {
                             if (b.Assignments[j].Instruction.ReferencedLocals.Contains (symbol)) {
                                 break;
                             }
-                            if (!b.Assignments[j].Instruction.IsIdempotent) {
+                            if (!b.Assignments[j].Instruction.IsIdempotent (function.IRDefinition)) {
                                 should = false;
                                 break;
                             }

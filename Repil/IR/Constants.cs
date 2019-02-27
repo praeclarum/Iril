@@ -16,6 +16,7 @@ namespace Repil.IR
 
     public abstract class SimpleConstant : Constant
     {
+        public override bool IsIdempotent (FunctionDefinition function) => true;
     }
 
     public abstract class ComplexConstant : Constant

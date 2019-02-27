@@ -10,6 +10,8 @@ namespace Repil.IR
         public virtual IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
 
         public virtual int GetInt32Value (Module module) => 0;
+
+        public virtual bool IsIdempotent (FunctionDefinition function) => false;
     }
 
     public class ArrayConstant : Value
@@ -48,6 +50,7 @@ namespace Repil.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
+        public override bool IsIdempotent (FunctionDefinition function) => Value.Value.IsIdempotent (function);
     }
 
     public class LabelValue : Value
@@ -75,6 +78,11 @@ namespace Repil.IR
             get {
                 yield return Symbol;
             }
+        }
+
+        public override bool IsIdempotent (FunctionDefinition function)
+        {
+            return true;
         }
 
         public override string ToString () => Symbol.ToString ();
@@ -170,18 +178,12 @@ namespace Repil.IR
             Pointer.ReferencedLocals.Concat (Indices.SelectMany (x => x.Value.ReferencedLocals));
     }
 
-    public class IntToPointerValue : Value
+    public class IntToPointerValue : ConversionValue
     {
-        public readonly TypedValue Value;
-        public readonly LType Type;
-
         public IntToPointerValue (TypedValue value, LType type)
+            : base (value, type)
         {
-            Value = value ?? throw new ArgumentNullException (nameof (value));
-            Type = type ?? throw new ArgumentNullException (nameof (type));
         }
-
-        public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
     }
 
     public class VectorConstant : Value
