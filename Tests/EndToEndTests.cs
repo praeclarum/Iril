@@ -158,7 +158,7 @@ namespace Tests
             var tol = commont.GetField ("tol").GetValue (common);
             Assert.AreEqual (0.001, tol);
 
-            var testSolve = false;
+            var testSolve = true;
             if (testSolve) {
                 var n = 5;
                 var b = new[] { 8.0, 45.0, -3.0, 3.0, 19.0 };
@@ -177,12 +177,39 @@ namespace Tests
                     hai.AddrOfPinnedObject (),
                     hcommon.AddrOfPinnedObject (),
                 });
-                Assert.AreNotEqual (IntPtr.Zero, (IntPtr)Pointer.Unbox (rklu_analyze));
+                var psymbolic = Pointer.Unbox (rklu_analyze);
+                Assert.AreNotEqual (IntPtr.Zero, (IntPtr)psymbolic);
+
+                var rklu_factor = klu_factor.Invoke (null, new object[] {
+                    hap.AddrOfPinnedObject (),
+                    hai.AddrOfPinnedObject (),
+                    hax.AddrOfPinnedObject (),
+                    rklu_analyze,
+                    hcommon.AddrOfPinnedObject (),
+                });
+                var pnumeric = Pointer.Unbox (rklu_factor);
+                Assert.AreNotEqual (IntPtr.Zero, (IntPtr)pnumeric);
+
+                var rklu_solve = klu_solve.Invoke (null, new object[] {
+                    rklu_analyze,
+                    rklu_factor,
+                    n,
+                    1,
+                    hb.AddrOfPinnedObject (),
+                    hcommon.AddrOfPinnedObject (),
+                });
+                Assert.AreEqual (1, rklu_solve);
 
                 hb.Free ();
                 hap.Free ();
                 hai.Free ();
                 hax.Free ();
+
+                Assert.AreEqual (1.0, b[0], 1.0e-8);
+                Assert.AreEqual (2.0, b[1], 1.0e-8);
+                Assert.AreEqual (3.0, b[2], 1.0e-8);
+                Assert.AreEqual (4.0, b[3], 1.0e-8);
+                Assert.AreEqual (5.0, b[4], 1.0e-8);
             }
 
             hcommon.Free ();
