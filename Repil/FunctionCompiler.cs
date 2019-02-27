@@ -1354,10 +1354,17 @@ namespace Repil
                         return;
                     default:
                         if (compilation.TryGetFunction (gv.Symbol, out var m)) {
+
                             foreach (var a in call.Arguments) {
                                 EmitValue (a.Value, a.Type);
                             }
                             Emit (il.Create (OpCodes.Call, m.ILDefinition));
+
+                            // LLVM allows for return type mismatches with void
+                            if (m.ILDefinition.ReturnType.FullName == "System.Void" && !(call.ReturnType is VoidType)) {
+                                EmitZeroValue (call.ReturnType);
+                            }
+
                             return;
                         }
                         break;
