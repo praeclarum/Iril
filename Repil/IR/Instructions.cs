@@ -172,11 +172,11 @@ namespace Repil.IR
                 switch (g.Symbol.Text) {
                     case "@llvm.dbg.declare":
                     case "@llvm.dbg.value":
-                    case "@llvm.fabs.f64":
-                    case "@llvm.sqrt.f64":
-                    case "@llvm.ceil.f64":
-                    case "@llvm.pow.f64":
-                        return false;
+                    //case "@llvm.fabs.f64":
+                    //case "@llvm.sqrt.f64":
+                    //case "@llvm.ceil.f64":
+                    //case "@llvm.pow.f64":
+                        return true;
                 }
             }
             return false;
