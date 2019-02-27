@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 using Repil.IR;
 
@@ -76,8 +77,11 @@ namespace Repil
 
         bool IsAliveInBlock (LocalSymbol variable, BlockInfo bi)
         {
-            if (bi.AliveCache.TryGetValue (variable, out var isAlive))
-                return isAlive;
+            bool isAlive;
+            lock (bi) {
+                if (bi.AliveCache.TryGetValue (variable, out isAlive))
+                    return isAlive;
+            }
 
             //
             // Easy case, this block uses or defines the variable
@@ -85,7 +89,9 @@ namespace Repil
             isAlive = bi.References.Contains (variable) || bi.Definitions.Contains (variable);
             if (isAlive) {
                 // Ensure the reference is made so that deep searches get saved
-                bi.AliveCache[variable] = true;
+                lock (bi) {
+                    bi.AliveCache[variable] = true;
+                }
                 return true;
             }
 
@@ -94,15 +100,19 @@ namespace Repil
             //
             var visitedBlocks = new HashSet<LocalSymbol> ();
             isAlive = DetermineIsAliveInBlock (variable, bi, visitedBlocks);
-            bi.AliveCache[variable] = isAlive;
+            lock (bi) {
+                bi.AliveCache[variable] = isAlive;
+            }
             return isAlive;
         }
 
         bool DetermineIsAliveInBlock (LocalSymbol variable, BlockInfo block, HashSet<LocalSymbol> visitedBlocks)
         {
             if (visitedBlocks.Contains (block.Symbol)) {
-                if (block.AliveCache.TryGetValue (variable, out var a))
-                    return a;
+                lock (block) {
+                    if (block.AliveCache.TryGetValue (variable, out var a))
+                        return a;
+                }
                 //throw new Exception ("Cycle");
                 return false;
             }
@@ -134,18 +144,23 @@ namespace Repil
 
         public bool VariablesInterfere (LocalSymbol symbol, IEnumerable<LocalSymbol> otherSymbols)
         {
-            foreach (var ikv in infos) {
+            var interfere = false;
+            Parallel.ForEach (infos, ikv => {
+                if (interfere)
+                    return;
                 var block = ikv.Value;
                 var symAlive = IsAliveInBlock (symbol, block);
                 //Console.WriteLine ($"b={block.Symbol}, v={symbol} => {symAlive}");
                 if (symAlive) {
                     foreach (var otherSymbol in otherSymbols) {
-                        if (IsAliveInBlock (otherSymbol, block))
-                            return true;
+                        if (IsAliveInBlock (otherSymbol, block)) {
+                            interfere = true;
+                            return;
+                        }
                     }
                 }
-            }
-            return false;
+            });
+            return interfere;
         }
     }
 }
