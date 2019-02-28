@@ -175,11 +175,6 @@ namespace Repil
             }
 
             //
-            // Add tracing
-            //
-
-
-            //
             // Create target instructions for each block
             //
             foreach (var b in f.Blocks) {
@@ -187,6 +182,9 @@ namespace Repil
                 il.Append (i);
                 blockFirstInstr[b.Symbol] = i;
 
+                //
+                // Trace
+                //
                 il.Append (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
                 i = il.Create (OpCodes.Call, compilation.sysConsoleWriteLine);
                 il.Append (i);

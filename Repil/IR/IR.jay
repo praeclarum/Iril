@@ -340,51 +340,51 @@ function_type_arg
 function_definition
     : DEFINE return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (IEnumerable<Parameter>)$4, (List<Block>)$8);
+        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (IEnumerable<Parameter>)$4, (List<Block>)$8, isExternal: true);
     }
     | DEFINE return_type GLOBAL_SYMBOL parameters attribute_group_refs metadata_kvs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (IEnumerable<Parameter>)$4, (List<Block>)$8, (SymbolTable<MetaSymbol>)$6);
+        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (IEnumerable<Parameter>)$4, (List<Block>)$8, isExternal: true, (SymbolTable<MetaSymbol>)$6);
     }
     | DEFINE return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (IEnumerable<Parameter>)$4, (List<Block>)$9, (SymbolTable<MetaSymbol>)$7);
+        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (IEnumerable<Parameter>)$4, (List<Block>)$9, isExternal: true, (SymbolTable<MetaSymbol>)$7);
     }
     | DEFINE NOALIAS return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$9);
+        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$9, isExternal: true);
     }
     | DEFINE NOALIAS return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$10, (SymbolTable<MetaSymbol>)$8);
+        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$10, isExternal: true, (SymbolTable<MetaSymbol>)$8);
     }
     | DEFINE linkage return_type GLOBAL_SYMBOL parameters attribute_group_refs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$8);
+        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$8, isExternal: (bool)$2);
     }
     | DEFINE linkage return_type GLOBAL_SYMBOL parameters attribute_group_refs metadata_kvs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$9, (SymbolTable<MetaSymbol>)$7);
+        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$9, isExternal: (bool)$2, (SymbolTable<MetaSymbol>)$7);
     }
     | DEFINE linkage parameter_attribute return_type GLOBAL_SYMBOL parameters attribute_group_refs metadata_kvs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6, (List<Block>)$10, (SymbolTable<MetaSymbol>)$8);
+        $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6, (List<Block>)$10, isExternal: (bool)$2, (SymbolTable<MetaSymbol>)$8);
     }
     | DEFINE linkage return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$10, (SymbolTable<MetaSymbol>)$8);
+        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$10, isExternal: (bool)$2, (SymbolTable<MetaSymbol>)$8);
     }
     | DEFINE linkage calling_convention return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6, (List<Block>)$10);
+        $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6, (List<Block>)$10, isExternal: (bool)$2);
     }
     | DEFINE linkage calling_convention parameter_attribute return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$5, (GlobalSymbol)$6, (IEnumerable<Parameter>)$7, (List<Block>)$12, (SymbolTable<MetaSymbol>)$10);
+        $$ = new FunctionDefinition ((LType)$5, (GlobalSymbol)$6, (IEnumerable<Parameter>)$7, (List<Block>)$12, isExternal: (bool)$2, (SymbolTable<MetaSymbol>)$10);
     }
     | DEFINE linkage calling_convention return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6, (List<Block>)$11, (SymbolTable<MetaSymbol>)$9);
+        $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6, (List<Block>)$11, isExternal: (bool)$2, (SymbolTable<MetaSymbol>)$9);
     }
     ;
     

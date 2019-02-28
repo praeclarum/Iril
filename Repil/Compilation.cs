@@ -138,8 +138,9 @@ namespace Repil
             FindSystemTypes ();
             CompileStructures ();
             EmitSyscalls ();
-            FindFunctions ();
             EmitGlobalVariables ();
+            FindFunctions ();
+            EmitGlobalInitializers ();
             CompileFunctions ();
         }
 
@@ -368,6 +369,9 @@ namespace Repil
             }
         }
 
+        readonly List<Action> globalInits = new List<Action> ();
+        readonly SymbolTable<TypeDefinition> moduleTypes = new SymbolTable<TypeDefinition> ();
+
         void EmitGlobalVariables ()
         {
             //var publicGlobalsType = new TypeDefinition (namespac, "Globals", TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, sysObj);
@@ -378,7 +382,7 @@ namespace Repil
             //
             foreach (var m in Modules) {
 
-                if (m.GlobalVariables.All (x => x.Value.IsExternal))
+                if (m.GlobalVariables.All (x => x.Value.IsExternal) && m.FunctionDefinitions.All (x => x.Value.IsExternal))
                     continue;
 
                 if (!globals.TryGetValue (m.Symbol, out var mglobals)) {
@@ -386,14 +390,15 @@ namespace Repil
                     globals.Add (m.Symbol, mglobals);
                 }
 
-                var isPrivate = false;//m.GlobalVariables.All (x => x.Value.IsExternal || x.Value.IsPrivate);
+                var allVarsPrivate = m.GlobalVariables.All (x => x.Value.IsExternal || x.Value.IsPrivate);
 
-                var moduleGlobalsType = new TypeDefinition (
+                var moduleType = new TypeDefinition (
                     namespac, m.Symbol.ToString (),
                     TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract | TypeAttributes.Sealed
-                    | (isPrivate ? 0 : TypeAttributes.Public),
+                    | (allVarsPrivate ? 0 : TypeAttributes.Public),
                     sysObj);
-                mod.Types.Add (moduleGlobalsType);
+                mod.Types.Add (moduleType);
+                moduleTypes.Add (m.Symbol, moduleType);
 
                 List<(IR.GlobalVariable, FieldDefinition)> needsInit
                     = new List<(IR.GlobalVariable, FieldDefinition)> ();
@@ -414,7 +419,7 @@ namespace Repil
                         gname,
                         FieldAttributes.Static | (FieldAttributes.Public), gtype);
 
-                    moduleGlobalsType.Fields.Add (field);
+                    moduleType.Fields.Add (field);
                     mglobals.Add (symbol, field);
 
                     if (g.Initializer != null) {
@@ -423,7 +428,7 @@ namespace Repil
                 }
 
                 if (needsInit.Count > 0) {
-                    EmitGlobalInitializers (m, moduleGlobalsType, needsInit);
+                    globalInits.Add (() => EmitGlobalInitializers (m, moduleType, needsInit));
                 }
             }
 
@@ -462,6 +467,13 @@ namespace Repil
                         ErrorMessage ($"Global variable `{symbol}` is undefined");
                     }
                 }
+            }
+        }
+
+        void EmitGlobalInitializers ()
+        {
+            foreach (var i in globalInits) {
+                i ();
             }
         }
 
@@ -624,7 +636,8 @@ namespace Repil
 
         void EmitSyscalls ()
         {
-            var syscallstd = new TypeDefinition (namespac, "Syscalls", TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, sysObj);
+            var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract | TypeAttributes.Sealed;
+            var syscallstd = new TypeDefinition ("", "<CrtImplementationDetails>", tattrs, sysObj);
             mod.Types.Add (syscallstd);
 
             syscalls = new Syscalls (this, syscallstd);
@@ -646,6 +659,9 @@ namespace Repil
             var funcstd = new TypeDefinition (namespac, "Functions", TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, sysObj);
             mod.Types.Add (funcstd);
 
+            //
+            // Generate method definitions
+            //
             foreach (var m in Modules) {
                 foreach (var iskv in m.FunctionDefinitions) {
                     var f = iskv.Value;
@@ -667,7 +683,8 @@ namespace Repil
                     if (dbgMeth.TryGetValue (Symbol.Name, out var o)) {
                         tname = o.ToString ();
                     }
-                    var mattrs = MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.Static;
+                    var declaringType = f.IsExternal ? funcstd : moduleTypes[m.Symbol];
+                    var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Static;
                     var md = new MethodDefinition (tname, mattrs, GetClrType (f.ReturnType));
 
                     //
@@ -706,7 +723,7 @@ namespace Repil
                         paramSyms[fp.Symbol] = p;
                     }
 
-                    funcstd.Methods.Add (md);
+                    declaringType.Methods.Add (md);
 
                     methodDefs[iskv.Key] = new DefinedFunction {
                         Symbol = iskv.Key,
@@ -718,6 +735,9 @@ namespace Repil
                 }
             }
 
+            //
+            // Generate method definitions for declations
+            //
             foreach (var m in Modules) {
                 foreach (var iskv in m.FunctionDeclarations) {
                     if (iskv.Key.Text.StartsWith ("@llvm.", StringComparison.Ordinal))
@@ -728,7 +748,8 @@ namespace Repil
                     var f = iskv.Value;
                     var tname = GetIdentifier (iskv.Key);
 
-                    var md = new MethodDefinition (tname, MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.Static, GetClrType (f.ReturnType));
+                    var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Static;
+                    var md = new MethodDefinition (tname, mattrs, GetClrType (f.ReturnType));
 
                     //
                     // Create parameters
@@ -952,7 +973,7 @@ namespace Repil
         {
             var tname = $"Vector{key.Length}{elementType.Name}";
 
-            var td = new TypeDefinition (namespac, tname, TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.Public, sysVal);
+            var td = new TypeDefinition (namespac, tname, TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout, sysVal);
 
             for (var i = 0; i < key.Length; i++) {
                 var f = new FieldDefinition ("E" + i, FieldAttributes.Public, elementType);

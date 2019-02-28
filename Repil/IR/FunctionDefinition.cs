@@ -12,11 +12,13 @@ namespace Repil.IR
         public readonly Parameter[] Parameters;
         public readonly Block[] Blocks;
         public readonly SymbolTable<MetaSymbol> MetaRefs;
+        public readonly bool IsExternal;
 
-        public FunctionDefinition (LType returnType, GlobalSymbol symbol, IEnumerable<Parameter> parameters, IEnumerable<Block> blocks, SymbolTable<MetaSymbol> metaRefs = null)
+        public FunctionDefinition (LType returnType, GlobalSymbol symbol, IEnumerable<Parameter> parameters, IEnumerable<Block> blocks, bool isExternal, SymbolTable<MetaSymbol> metaRefs = null)
         {
             ReturnType = returnType;
             Symbol = symbol;
+            IsExternal = isExternal;
 
             var implicitLocalCounter = 0;
 
