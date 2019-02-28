@@ -183,11 +183,16 @@ namespace Repil
                 //
                 // Trace
                 //
-                //il.Append (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
-                //i = il.Create (OpCodes.Call, compilation.sysConsoleWriteLine);
-                //il.Append (i);
+                il.Append (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
+                i = il.Create (OpCodes.Call, compilation.sysConsoleWriteLine);
+                il.Append (i);
+
+                //
+                // Break
+                //
                 //i = il.Create (OpCodes.Call, compilation.sysDebuggerBreak);
                 //il.Append (i);
+
                 blockHeadLastInstr[b.Symbol] = i;
             }
 
@@ -1359,6 +1364,9 @@ namespace Repil
                             // LLVM allows for return type mismatches with void
                             if (m.ILDefinition.ReturnType.FullName == "System.Void" && !(call.ReturnType is VoidType)) {
                                 EmitZeroValue (call.ReturnType);
+                            }
+                            else if (m.ILDefinition.ReturnType.FullName != "System.Void" && (call.ReturnType is VoidType)) {
+                                Emit (OpCodes.Pop);
                             }
 
                             return;

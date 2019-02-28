@@ -90,7 +90,7 @@ namespace Tests
         static readonly Regex[] regices = {
             //False positive, IL Spy doesn't handle pointer args right
             //new Regex (@"//\s*IL_[a-zA-Z0-9]+: Expected.*\n"),
-
+            new Regex (@"//\s*IL_[a-zA-Z0-9]+: Incompatible.*\n"),
             new Regex (@"/\*\s*Error.*?\*/"),
         };
 
