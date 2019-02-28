@@ -2,22 +2,79 @@
 using System.IO;
 using Repil;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace Cli
 {
     class Program
     {
-        static void Main(string[] args)
+        static int Main(string[] args)
         {
-            var files =
-                from f in Directory.GetFiles ("/Users/fak/Dropbox/Projects/SparsePerf/SparseSuite/SparseSuite", "*.ll")
-                let code = File.ReadAllText (f)
-                let m = Module.Parse (code, f)
-                select m;
+            //
+            // Inputs
+            //
+            var files = new List<string> ();
+            var outName = "";
 
-            var comp = new Compilation (files, "SuiteSparse.dll");
+            //
+            // Parse command line
+            //
+            for (int i = 0; i < args.Length;) {
+                var a = args[i];
+                if (a[0] == '-') {
+                    if (a == "-o") {
+                        if (i + 1 < args.Length) {
+                            outName = args[i + 1];
+                        }
+                        i += 2;
+                    }
+                    else {
+                        i++;
+                    }
+                }
+                else {
+                    files.Add (a);
+                    i++;
+                }
+            }
 
-            comp.WriteAssembly ("SuiteSparse.dll");
+            //
+            // Early out
+            //
+            if (files.Count == 0) {
+                Console.WriteLine ("No inputs");
+                return 1;
+            }
+
+            //
+            // Cleanup input
+            //
+            if (string.IsNullOrWhiteSpace (outName)) {
+                outName = Path.ChangeExtension (Path.GetFileName (files[0]), ".dll");
+            }
+
+            //
+            // Parse
+            //
+            Console.WriteLine ($"Parsing {files.Count} files...");
+            var llfiles = files.Where (x => Path.GetExtension (x) == ".ll");
+            var modules = llfiles.AsParallel ().Select (x => {
+                var code = File.ReadAllText (x);
+                return Module.Parse (code, x);
+            });
+
+            //
+            // Compile
+            //
+            Console.WriteLine ("Compiling...");
+            var comp = new Compilation (modules, outName);
+
+            //
+            // Output
+            //
+            Console.WriteLine ($"Writing {outName}...");
+            comp.WriteAssembly (outName);
+            return 0;
         }
     }
 }

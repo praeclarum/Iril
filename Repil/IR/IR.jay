@@ -147,6 +147,10 @@ global_variable
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, (Value)$6, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$4);
     }
+    | GLOBAL_SYMBOL '=' linkage global_kind type ',' ALIGN INTEGER
+    {
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, null, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$4);
+    }
     ;
     
 global_kind

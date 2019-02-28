@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <PreBuildEvent>cd $(SolutionDir) &amp;&amp; make Repil/IR/Parser.cs</PreBuildEvent>
+    <PreBuildEvent>cd /Users/fak/Dropbox/Projects/Repil &amp;&amp; make Repil/IR/Parser.cs</PreBuildEvent>
   </PropertyGroup>
   
   <ItemGroup>
