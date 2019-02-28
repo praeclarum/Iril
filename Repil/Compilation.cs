@@ -86,11 +86,14 @@ namespace Repil
         readonly Dictionary<(int, string), SimdVector> vectorTypes =
             new Dictionary<(int, string), SimdVector> ();
 
-        readonly SymbolTable<DefinedFunction> methodDefs =
+        readonly SymbolTable<DefinedFunction> externalMethodDefs =
             new SymbolTable<DefinedFunction> ();
+        readonly SymbolTable<SymbolTable<DefinedFunction>> moduleMethodDefs =
+            new SymbolTable<SymbolTable<DefinedFunction>> ();
 
-        public bool TryGetFunction (Symbol symbol, out DefinedFunction function) =>
-            methodDefs.TryGetValue (symbol, out function);
+        public bool TryGetFunction (Module module, Symbol symbol, out DefinedFunction function) =>
+            (moduleMethodDefs.TryGetValue (module.Symbol, out var mdefs) && mdefs.TryGetValue (symbol, out function))
+            || externalMethodDefs.TryGetValue(symbol, out function);
 
         readonly SymbolTable<SymbolTable<FieldDefinition>> globals =
             new SymbolTable<SymbolTable<FieldDefinition>> ();
@@ -644,7 +647,7 @@ namespace Repil
             syscalls.Emit ();
 
             foreach (var iskv in syscalls.Calls) {
-                methodDefs[iskv.Key] = new DefinedFunction {
+                externalMethodDefs[iskv.Key] = new DefinedFunction {
                     Symbol = iskv.Key,
                     IRModule = null,
                     IRDefinition = null,
@@ -725,13 +728,24 @@ namespace Repil
 
                     declaringType.Methods.Add (md);
 
-                    methodDefs[iskv.Key] = new DefinedFunction {
+                    var def = new DefinedFunction {
                         Symbol = iskv.Key,
                         IRModule = m,
                         IRDefinition = f,
                         ILDefinition = md,
                         ParamSyms = paramSyms,
                     };
+
+                    if (f.IsExternal) {
+                        externalMethodDefs[def.Symbol] = def;
+                    }
+                    else {
+                        if (!moduleMethodDefs.TryGetValue (m.Symbol, out var mdefs)) {
+                            mdefs = new SymbolTable<DefinedFunction> ();
+                            moduleMethodDefs.Add (m.Symbol, mdefs);
+                        }
+                        mdefs[def.Symbol] = def;
+                    }
                 }
             }
 
@@ -742,7 +756,7 @@ namespace Repil
                 foreach (var iskv in m.FunctionDeclarations) {
                     if (iskv.Key.Text.StartsWith ("@llvm.", StringComparison.Ordinal))
                         continue;
-                    if (methodDefs.ContainsKey (iskv.Key))
+                    if (externalMethodDefs.ContainsKey (iskv.Key))
                         continue;
 
                     var f = iskv.Value;
@@ -766,7 +780,7 @@ namespace Repil
 
                     funcstd.Methods.Add (md);
 
-                    methodDefs[iskv.Key] = new DefinedFunction {
+                    externalMethodDefs[iskv.Key] = new DefinedFunction {
                         Symbol = iskv.Key,
                         IRModule = m,
                         //IRDeclaration = f,
@@ -779,24 +793,30 @@ namespace Repil
 
         void CompileFunctions ()
         {
-            foreach (var m in methodDefs) {
+            var methods =
+                externalMethodDefs.Values.Concat (
+                    from mdefs in moduleMethodDefs.Values
+                    from m in mdefs.Values
+                    select m).ToList ();
 
-                if (m.Value.ILDefinition.HasBody && m.Value.ILDefinition.Body.Instructions.Count > 0)
+            foreach (var m in methods) {
+
+                if (m.ILDefinition.HasBody && m.ILDefinition.Body.Instructions.Count > 0)
                     continue;
 
-                if (m.Value.IRDefinition != null) {
+                if (m.IRDefinition != null) {
                     try {
                         compiledFunctionCount++;
-                        var fc = new FunctionCompiler (this, m.Value);
+                        var fc = new FunctionCompiler (this, m);
                         fc.CompileFunction ();
                     }
                     catch (Exception ex) {
-                        ErrorMessage ($"Failed to compile {m.Key}: {ex.Message}", ex);
-                        CompileFailedFunction (m.Value, ex);
+                        ErrorMessage ($"Failed to compile {m.Symbol}: {ex.Message}", ex);
+                        CompileFailedFunction (m, ex);
                     }
                 }
                 else {
-                    CompileMissingFunction (m.Value);
+                    CompileMissingFunction (m);
                 }
             }
         }

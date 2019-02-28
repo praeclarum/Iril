@@ -70,7 +70,7 @@ namespace Repil
                     EmitGetElementPointer (gep.Pointer, gep.Indices);
                     break;
                 case IR.GlobalValue g:
-                    if (compilation.TryGetFunction(g.Symbol, out var ff))
+                    if (compilation.TryGetFunction(module, g.Symbol, out var ff))
                     {
                         Emit (il.Create (OpCodes.Ldftn, ff.ILDefinition));
                     }

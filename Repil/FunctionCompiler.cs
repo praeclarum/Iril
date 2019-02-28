@@ -1354,11 +1354,12 @@ namespace Repil
                         Emit (il.Create (OpCodes.Cpblk));
                         return;
                     default:
-                        if (compilation.TryGetFunction (gv.Symbol, out var m)) {
+                        if (compilation.TryGetFunction (module, gv.Symbol, out var m)) {
 
                             foreach (var a in call.Arguments) {
                                 EmitValue (a.Value, a.Type);
                             }
+
                             Emit (il.Create (OpCodes.Call, m.ILDefinition));
 
                             // LLVM allows for return type mismatches with void
