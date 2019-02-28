@@ -46,14 +46,23 @@ namespace Repil
                         .SelectMany (x => x.ReferencedLocals.Distinct ())
                         .Distinct ()),
                     Definitions = new HashSet<LocalSymbol> (
-                        b.Assignments.Where (x => x.Result != LocalSymbol.None)
+                        b.Assignments.Where (x => !(x.Instruction is PhiInstruction) && x.Result != LocalSymbol.None)
                         .Select (x => x.Result)),
                     Nexts = new HashSet<LocalSymbol> (b.Terminator.NextLabelSymbols),
                 };
                 infos[b.Symbol] = i;
 
                 //
-                // Add phi variables to liveliness
+                // Add phi assignments to ensure they're alive
+                //
+                foreach (var a in b.Assignments) {
+                    if (a.Instruction is PhiInstruction) {
+                        i.References.Add (a.Result);
+                    }
+                }
+
+                //
+                // Add phi referenced variables to liveliness
                 //
                 foreach (var ob in f.Blocks) {
                     if (ReferenceEquals (ob, b))
@@ -66,6 +75,7 @@ namespace Repil
                                     && l.Symbol == b.Symbol
                                     && v.Value is LocalValue val) {
 
+                                    i.References.Add (a.Result);
                                     i.References.Add (val.Symbol);
                                 }
                             }

@@ -144,9 +144,7 @@ namespace Repil
                     if (a.HasResult && a.Instruction is IR.PhiInstruction phi) {
                         var irtype = a.Instruction.ResultType (function.IRModule);
                         var ctype = compilation.GetClrType (irtype);
-                        //var local = GetFreeVariable (symbol, ctype, true);
-                        var local = new VariableDefinition (ctype);
-                        body.Variables.Add (local);
+                        var local = GetFreeVariable (symbol, ctype);
                         phiLocals[a.Result] = local;
                         //var name = "phi" + a.Result.Text.Substring (1);
                         //var dbg = new VariableDebugInformation (local, name);
@@ -164,7 +162,7 @@ namespace Repil
                     if (a.HasResult && !ShouldInline (symbol) && !(a.Instruction is IR.PhiInstruction)) {
                         var irtype = a.Instruction.ResultType (function.IRModule);
                         var ctype = compilation.GetClrType (irtype);
-                        var local = GetFreeVariable (symbol, ctype, false);
+                        var local = GetFreeVariable (symbol, ctype);
                         locals[a.Result] = local;
                         //var name = "local" + symbol.Text.Substring (1);
                         //var dbg = new VariableDebugInformation (local, name);
@@ -185,9 +183,9 @@ namespace Repil
                 //
                 // Trace
                 //
-                il.Append (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
-                i = il.Create (OpCodes.Call, compilation.sysConsoleWriteLine);
-                il.Append (i);
+                //il.Append (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
+                //i = il.Create (OpCodes.Call, compilation.sysConsoleWriteLine);
+                //il.Append (i);
                 //i = il.Create (OpCodes.Call, compilation.sysDebuggerBreak);
                 //il.Append (i);
                 blockHeadLastInstr[b.Symbol] = i;
@@ -1399,17 +1397,15 @@ namespace Repil
             public VariableDefinition Variable;
             public TypeReference ClrType => Variable.VariableType;
         }
-        readonly Dictionary<string, List<SharedVariable>> phiVariablesByType =
-            new Dictionary<string, List<SharedVariable>> ();
         readonly Dictionary<string, List<SharedVariable>> sharedVariablesByType =
             new Dictionary<string, List<SharedVariable>> ();
 
-        VariableDefinition GetFreeVariable (LocalSymbol symbol, TypeReference clrType, bool isPhi)
+        VariableDefinition GetFreeVariable (LocalSymbol symbol, TypeReference clrType)
         {
             //
             // Get the right list
             //
-            var types = isPhi ? phiVariablesByType : sharedVariablesByType;
+            var types = sharedVariablesByType;
             var living = liveliness;
 
             if (!types.TryGetValue (clrType.FullName, out var variables)) {
