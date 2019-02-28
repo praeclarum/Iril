@@ -181,14 +181,14 @@ namespace Repil
                 blockFirstInstr[b.Symbol] = i;
 
                 //
-                // Trace
+                // Block Trace
                 //
-                il.Append (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
-                i = il.Create (OpCodes.Call, compilation.sysConsoleWriteLine);
-                il.Append (i);
+                //il.Append (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
+                //i = il.Create (OpCodes.Call, compilation.sysConsoleWriteLine);
+                //il.Append (i);
 
                 //
-                // Break
+                // Block Debugger Break
                 //
                 //i = il.Create (OpCodes.Call, compilation.sysDebuggerBreak);
                 //il.Append (i);
