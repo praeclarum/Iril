@@ -191,8 +191,9 @@ namespace Repil
             {
                 var et = types.First (x =>
                     x.FullName == name);
-                //var t = et.Resolve ();
+                var rt = et.Resolve ();
                 var t = new TypeReference (et.Namespace, et.Name, sysAsm.MainModule, scope);
+                t.IsValueType = rt.IsValueType;
                 return mod.ImportReference (t);
             }
             MethodReference ImportMethod (TypeReference declType, TypeReference returnType, string name, params TypeReference[] argTypes)
