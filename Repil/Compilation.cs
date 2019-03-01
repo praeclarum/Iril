@@ -95,22 +95,22 @@ namespace Repil
             (moduleMethodDefs.TryGetValue (module.Symbol, out var mdefs) && mdefs.TryGetValue (symbol, out function))
             || externalMethodDefs.TryGetValue(symbol, out function);
 
-        readonly SymbolTable<SymbolTable<FieldDefinition>> globals =
-            new SymbolTable<SymbolTable<FieldDefinition>> ();
+        readonly SymbolTable<SymbolTable<(IR.GlobalVariable Global, FieldDefinition Field)>> globals =
+            new SymbolTable<SymbolTable<(IR.GlobalVariable, FieldDefinition)>> ();
 
         int compiledFunctionCount;
 
         public int CompiledFunctionCount => compiledFunctionCount;
 
-        public bool TryGetGlobal (Symbol module, Symbol symbol, out FieldDefinition global)
+        public bool TryGetGlobal (Symbol module, Symbol symbol, out (IR.GlobalVariable Global, FieldDefinition Field) global)
         {
             if (globals.TryGetValue (module, out var mglobals))
                 return mglobals.TryGetValue (symbol, out global);
-            global = null;
+            global = (null, null);
             return false;
         }
 
-        public FieldDefinition GetGlobal (Symbol module, Symbol symbol) => globals[module][symbol];
+        public FieldDefinition GetGlobal (Symbol module, Symbol symbol) => globals[module][symbol].Field;
 
         Syscalls syscalls;
 
@@ -390,7 +390,7 @@ namespace Repil
                     continue;
 
                 if (!globals.TryGetValue (m.Symbol, out var mglobals)) {
-                    mglobals = new SymbolTable<FieldDefinition> ();
+                    mglobals = new SymbolTable<(IR.GlobalVariable Global, FieldDefinition Field)> ();
                     globals.Add (m.Symbol, mglobals);
                 }
 
@@ -424,7 +424,7 @@ namespace Repil
                         FieldAttributes.Static | (FieldAttributes.Public), gtype);
 
                     moduleType.Fields.Add (field);
-                    mglobals.Add (symbol, field);
+                    mglobals.Add (symbol, (g, field));
 
                     if (g.Initializer != null) {
                         needsInit.Add ((g, field));
@@ -445,7 +445,7 @@ namespace Repil
                     continue;
 
                 if (!globals.TryGetValue (m.Symbol, out var mglobals)) {
-                    mglobals = new SymbolTable<FieldDefinition> ();
+                    mglobals = new SymbolTable<(IR.GlobalVariable Global, FieldDefinition Field)> ();
                     globals.Add (m.Symbol, mglobals);
                 }
 
@@ -461,10 +461,10 @@ namespace Repil
                     var field = from ms in globals.Values
                                 from mkv in ms
                                 let mg = mkv.Value
-                                where mg.IsPublic && mg.Name == ident
+                                where mg.Field.IsPublic && mg.Field.Name == ident
                                 select mg;
                     var f = field.FirstOrDefault ();
-                    if (f != null) {
+                    if (f.Field != null) {
                         mglobals.Add (symbol, f);
                     }
                     else {

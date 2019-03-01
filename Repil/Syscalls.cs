@@ -28,6 +28,9 @@ namespace Repil
             EmitMalloc ();
             EmitPrintf ();
             EmitRealloc ();
+            EmitMemsetPattern (4);
+            EmitMemsetPattern (8);
+            EmitMemsetPattern (16);
         }
 
         MethodDefinition NewMethod (Symbol symbol, LType returnType, params (string, LType)[] parameters)
@@ -122,6 +125,61 @@ namespace Repil
             il.Append (il.Create (OpCodes.Call, compilation.sysIntPtrFromPointer));
             il.Append (il.Create (OpCodes.Call, compilation.sysFreeHGlobal));
             il.Append (il.Create (OpCodes.Ret));
+            b.Optimize ();
+        }
+
+        void EmitMemsetPattern (int patternLength)
+        {
+            var m = NewMethod (
+                "@memset_pattern" + patternLength, Types.VoidType.Void,
+                ("b", Types.PointerType.I8Pointer),
+                ("pattern" + patternLength, Types.PointerType.I8Pointer),
+                ("len", Types.IntegerType.I64));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+
+            b.Variables.Add (new VariableDefinition (compilation.GetClrType (Types.PointerType.I8Pointer)));
+            b.Variables.Add (new VariableDefinition (compilation.sysUInt32));
+
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Stloc_0));
+            il.Append (il.Create (OpCodes.Ldarg_2));
+            il.Append (il.Create (OpCodes.Conv_U4));
+            il.Append (il.Create (OpCodes.Stloc_1));
+            var loopCheck = il.Create (OpCodes.Ldloc_1);
+            il.Append (il.Create (OpCodes.Br, loopCheck));
+
+            var loop = il.Create (OpCodes.Ldloc_0);
+            il.Append (loop);
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Ldc_I4, patternLength));
+            il.Append (il.Create (OpCodes.Cpblk));
+
+            il.Append (il.Create (OpCodes.Ldloc_0));
+            il.Append (il.Create (OpCodes.Ldc_I4, patternLength));
+            il.Append (il.Create (OpCodes.Add));
+            il.Append (il.Create (OpCodes.Stloc_0));
+            il.Append (il.Create (OpCodes.Ldloc_1));
+            il.Append (il.Create (OpCodes.Ldc_I4, patternLength));
+            il.Append (il.Create (OpCodes.Sub));
+            il.Append (il.Create (OpCodes.Stloc_1));
+
+            il.Append (loopCheck);
+            il.Append (il.Create (OpCodes.Ldc_I4, patternLength));
+            il.Append (il.Create (OpCodes.Bge_Un, loop));
+
+            il.Append (il.Create (OpCodes.Ldloc_1));
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            var ret = il.Create (OpCodes.Ret);
+            il.Append (il.Create (OpCodes.Ble_Un, ret));
+
+            il.Append (il.Create (OpCodes.Ldloc_0));
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Ldloc_1));
+            il.Append (il.Create (OpCodes.Cpblk));
+
+            il.Append (ret);
+
             b.Optimize ();
         }
     }

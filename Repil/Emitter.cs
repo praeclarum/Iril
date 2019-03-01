@@ -74,10 +74,15 @@ namespace Repil
                     {
                         Emit (il.Create (OpCodes.Ldftn, ff.ILDefinition));
                     }
-                    else if (compilation.TryGetGlobal(module.Symbol, g.Symbol, out var globalVariableField))
+                    else if (compilation.TryGetGlobal(module.Symbol, g.Symbol, out var globalVariable))
                     {
-                        Emit (il.Create (OpCodes.Ldsflda, globalVariableField));
-                        Emit (il.Create (OpCodes.Conv_U));
+                        if (globalVariable.Global.Type is Types.ArrayType) {
+                            Emit (il.Create (OpCodes.Ldsfld, globalVariable.Field));
+                        }
+                        else {
+                            Emit (il.Create (OpCodes.Ldsflda, globalVariable.Field));
+                            Emit (il.Create (OpCodes.Conv_U));
+                        }
                     }
                     else
                     {
