@@ -94,23 +94,13 @@ namespace Repil
                 }
             }
 
-            HashSet<Symbol> phiValues = new HashSet<Symbol> ();
-
             //
-            // Create phi locals
+            // Mark which instructions are used for phi
             //
+            var phiValues = new HashSet<Symbol> ();
             foreach (var b in f.Blocks) {
                 foreach (var a in b.Assignments) {
-                    var symbol = a.Result;
                     if (a.HasResult && a.Instruction is IR.PhiInstruction phi) {
-                        var irtype = a.Instruction.ResultType (function.IRModule);
-                        var ctype = compilation.GetClrType (irtype);
-                        var local = GetFreeVariable (symbol, ctype);
-                        phiLocals[a.Result] = local;
-                        //var name = "phi" + a.Result.Text.Substring (1);
-                        //var dbg = new VariableDebugInformation (local, name);
-                        //vdbgs.Add (dbg);
-
                         foreach (var pv in phi.Values) {
                             if (pv.Value is LocalValue lv) {
                                 phiValues.Add (lv.Symbol);
@@ -176,6 +166,30 @@ namespace Repil
                         //var dbg = new VariableDebugInformation (local, name);
                         //vdbgs.Add (dbg);
                     
+                    }
+                }
+            }
+
+            //
+            // Create phi locals
+            //
+            foreach (var b in f.Blocks) {
+                foreach (var a in b.Assignments) {
+                    var symbol = a.Result;
+                    if (a.HasResult && a.Instruction is IR.PhiInstruction phi) {
+                        var irtype = a.Instruction.ResultType (function.IRModule);
+                        var ctype = compilation.GetClrType (irtype);
+                        var local = GetFreeVariable (symbol, ctype);
+                        phiLocals[a.Result] = local;
+                        //var name = "phi" + a.Result.Text.Substring (1);
+                        //var dbg = new VariableDebugInformation (local, name);
+                        //vdbgs.Add (dbg);
+
+                        foreach (var pv in phi.Values) {
+                            if (pv.Value is LocalValue lv) {
+                                phiValues.Add (lv.Symbol);
+                            }
+                        }
                     }
                 }
             }
