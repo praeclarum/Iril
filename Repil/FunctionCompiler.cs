@@ -94,6 +94,32 @@ namespace Repil
                 }
             }
 
+            HashSet<Symbol> phiValues = new HashSet<Symbol> ();
+
+            //
+            // Create phi locals
+            //
+            foreach (var b in f.Blocks) {
+                foreach (var a in b.Assignments) {
+                    var symbol = a.Result;
+                    if (a.HasResult && a.Instruction is IR.PhiInstruction phi) {
+                        var irtype = a.Instruction.ResultType (function.IRModule);
+                        var ctype = compilation.GetClrType (irtype);
+                        var local = GetFreeVariable (symbol, ctype);
+                        phiLocals[a.Result] = local;
+                        //var name = "phi" + a.Result.Text.Substring (1);
+                        //var dbg = new VariableDebugInformation (local, name);
+                        //vdbgs.Add (dbg);
+
+                        foreach (var pv in phi.Values) {
+                            if (pv.Value is LocalValue lv) {
+                                phiValues.Add (lv.Symbol);
+                            }
+                        }
+                    }
+                }
+            }
+
             //
             // Determine whether assignments can be inlined
             //
@@ -112,7 +138,7 @@ namespace Repil
 
                     var should = false;
                     if (referencedOnce) {
-                        should = a.Instruction.IsIdempotent (function.IRDefinition);
+                        should = !phiValues.Contains(symbol) && a.Instruction.IsIdempotent (function.IRDefinition);
                         // Make sure its use is before a state-changing instruction
                         var j = i + 1;
                         for (; j < b.Assignments.Length && should; j++) {
@@ -134,24 +160,6 @@ namespace Repil
             }
 
             var vdbgs = new List<VariableDebugInformation> ();
-
-            //
-            // Create phi locals
-            //
-            foreach (var b in f.Blocks) {
-                foreach (var a in b.Assignments) {
-                    var symbol = a.Result;
-                    if (a.HasResult && a.Instruction is IR.PhiInstruction phi) {
-                        var irtype = a.Instruction.ResultType (function.IRModule);
-                        var ctype = compilation.GetClrType (irtype);
-                        var local = GetFreeVariable (symbol, ctype);
-                        phiLocals[a.Result] = local;
-                        //var name = "phi" + a.Result.Text.Substring (1);
-                        //var dbg = new VariableDebugInformation (local, name);
-                        //vdbgs.Add (dbg);
-                    }
-                }
-            }
 
             //
             // Create variables for non-inlined assignments
@@ -183,9 +191,9 @@ namespace Repil
                 //
                 // Block Trace
                 //
-                il.Append (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
-                i = il.Create (OpCodes.Call, compilation.sysConsoleWriteLine);
-                il.Append (i);
+                //il.Append (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
+                //i = il.Create (OpCodes.Call, compilation.sysConsoleWriteLine);
+                //il.Append (i);
 
                 //
                 // Block Debugger Break
