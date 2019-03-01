@@ -82,7 +82,7 @@ namespace Repil.IR
 
         public override bool IsIdempotent (FunctionDefinition function)
         {
-            return true;
+            return !function.Phis.ContainsKey (Symbol);
         }
 
         public override string ToString () => Symbol.ToString ();

@@ -254,7 +254,7 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
         public override LType ResultType (Module module) => IntegerType.I1;
-        //public override bool IsIdempotent (FunctionDefinition function) => Op1.IsIdempotent (function) && Op2.IsIdempotent (function);
+        public override bool IsIdempotent (FunctionDefinition function) => Op1.IsIdempotent (function) && Op2.IsIdempotent (function);
     }
 
     public enum FcmpCondition
@@ -420,7 +420,7 @@ namespace Repil.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Op1.ReferencedLocals.Concat (Op2.ReferencedLocals);
         public override LType ResultType (Module module) => IntegerType.I1;
-        //public override bool IsIdempotent (FunctionDefinition function) => Op1.IsIdempotent (function) && Op2.IsIdempotent (function);
+        public override bool IsIdempotent (FunctionDefinition function) => Op1.IsIdempotent (function) && Op2.IsIdempotent (function);
     }
 
     public enum IcmpCondition

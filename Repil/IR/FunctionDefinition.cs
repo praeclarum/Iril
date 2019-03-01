@@ -13,6 +13,7 @@ namespace Repil.IR
         public readonly Block[] Blocks;
         public readonly SymbolTable<MetaSymbol> MetaRefs;
         public readonly bool IsExternal;
+        public readonly SymbolTable<Assignment> Phis;
 
         public FunctionDefinition (LType returnType, GlobalSymbol symbol, IEnumerable<Parameter> parameters, IEnumerable<Block> blocks, bool isExternal, SymbolTable<MetaSymbol> metaRefs = null)
         {
@@ -48,6 +49,15 @@ namespace Repil.IR
             Parameters = ps.ToArray ();
             Blocks = bs.ToArray ();
             MetaRefs = metaRefs ?? new SymbolTable<MetaSymbol> ();
+
+            Phis = new SymbolTable<Assignment> ();
+            foreach (var b in blocks) {
+                foreach (var a in b.Assignments) {
+                    if (a.HasResult && a.Instruction is PhiInstruction) {
+                        Phis[a.Result] = a;
+                    }
+                }
+            }
         }
 
         public override string ToString () =>
