@@ -1035,7 +1035,7 @@ namespace Repil
             // Generate operations
             //
             var unopMethods = new[] {
-                ("ToInt8", OpCodes.Conv_I1, new VectorType (irType.Length, IntegerType.I1)),
+                ("ToInt8", OpCodes.Conv_I1, new VectorType (irType.Length, IntegerType.I8)),
                 ("ToInt16", OpCodes.Conv_I2, new VectorType (irType.Length, IntegerType.I16)),
                 ("ToInt32", OpCodes.Conv_I4, new VectorType (irType.Length, IntegerType.I32)),
                 ("ToInt64", OpCodes.Conv_I8, new VectorType (irType.Length, IntegerType.I64)),
@@ -1061,28 +1061,40 @@ namespace Repil
                 td.Methods.Add (mop);
                 typeof (SimdVector).GetField (name).SetValue (r, mop);
             }
-            var opMethods = new[] {
-                ("Add", OpCodes.Add),
-                ("Subtract", OpCodes.Sub),
-                ("Multiply", OpCodes.Mul),
-                ("Divide", OpCodes.Div),
+            MethodReference cmpctor = null;
+            if (elementType.FullName != "System.Boolean") {
+                var cmpt = GetClrType (new VectorType (irType.Length, IntegerType.I1));
+                cmpctor = cmpt.Resolve ().Methods.First (x => x.Name == ".ctor" && x.Parameters.Count > 0);
+            }
+            var opMethods = new (string, MethodReference, OpCode[])[] {
+                ("Add", ctor, new[] { OpCodes.Add }),
+                ("Subtract", ctor, new[] { OpCodes.Sub }),
+                ("Multiply", ctor, new[] { OpCodes.Mul }),
+                ("Divide", ctor, new[] { OpCodes.Div }),
+                ("IcmpNotEqual", cmpctor, new[] { OpCodes.Ceq, OpCodes.Ldc_I4_0, OpCodes.Ceq }),
+                ("IcmpSignedLessThan", cmpctor, new[] { OpCodes.Clt }),
+                ("IcmpSignedGreaterThan", cmpctor, new[] { OpCodes.Cgt }),
             };
-            foreach (var (name, opcode) in opMethods)
+            foreach (var (name, c, opcodes) in opMethods)
             {
-                var mop = new MethodDefinition (name, MethodAttributes.Public | MethodAttributes.Static, td);
+                if (c == null)
+                    continue;
+                var mop = new MethodDefinition (name, MethodAttributes.Public | MethodAttributes.Static, c.DeclaringType);
                 mop.Parameters.Add (new ParameterDefinition ("a", ParameterAttributes.None, td));
                 mop.Parameters.Add (new ParameterDefinition ("b", ParameterAttributes.None, td));
 
-                var body = new MethodBody (ctor);
+                var body = new MethodBody (mop);
                 var il = body.GetILProcessor ();
                 for (var i = 0; i < key.Length; i++) {
                     il.Append (il.Create (OpCodes.Ldarg_0));
                     il.Append (il.Create (OpCodes.Ldfld, td.Fields[i]));
                     il.Append (il.Create (OpCodes.Ldarg_1));
                     il.Append (il.Create (OpCodes.Ldfld, td.Fields[i]));
-                    il.Append (il.Create (opcode));
+                    foreach (var opcode in opcodes) {
+                        il.Append (il.Create (opcode));
+                    }
                 }
-                il.Append (il.Create (OpCodes.Newobj, ctor));
+                il.Append (il.Create (OpCodes.Newobj, c));
                 il.Append (il.Create (OpCodes.Ret));
                 body.Optimize ();
 
@@ -1090,7 +1102,6 @@ namespace Repil
                 td.Methods.Add (mop);
                 typeof (SimdVector).GetField (name).SetValue (r, mop);
             }
-
 
             return r;
         }

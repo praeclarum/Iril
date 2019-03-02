@@ -37,6 +37,8 @@ namespace Repil
         public MethodReference ToInt8, ToInt16, ToInt32, ToInt64;
         public MethodReference Add, Subtract;
         public MethodReference Multiply, Divide;
+
+        public MethodReference IcmpNotEqual, IcmpSignedLessThan, IcmpSignedGreaterThan;
     }
 
     class FunctionCompiler : Emitter
@@ -157,7 +159,11 @@ namespace Repil
             foreach (var b in f.Blocks) {
                 foreach (var a in b.Assignments) {
                     var symbol = a.Result;
-                    if (a.HasResult && !ShouldInline (symbol) && !(a.Instruction is IR.PhiInstruction)) {
+                    if (a.HasResult
+                        && !ShouldInline (symbol)
+                        && !(a.Instruction is IR.PhiInstruction)
+                        && localCounts[a.Result] > 0) {
+
                         var irtype = a.Instruction.ResultType (function.IRModule);
                         var ctype = compilation.GetClrType (irtype);
                         var local = GetFreeVariable (symbol, ctype);
@@ -299,14 +305,12 @@ namespace Repil
 
                         var doc = compilation.GetScopeDocument (module, scopeRef);
                         if (doc != null) {
-                            //method.DebugInformation.
                             var sp = new SequencePoint (cinstr, doc);
                             sp.StartLine = line.Int32Value;
                             sp.EndLine = line.Int32Value;
                             sp.StartColumn = column.Int32Value;
                             sp.EndColumn = column.Int32Value + 1;
                             method.DebugInformation.SequencePoints.Add (sp);
-                            Console.WriteLine ("DEBUG: " + sp);
                         }
                     }
                 }
@@ -428,101 +432,7 @@ namespace Repil
                     }
                     break;
                 case IR.FcmpInstruction fcmp:
-                    switch (fcmp.Condition) {
-                        case IR.FcmpCondition.Ordered:
-                            if (((FloatType)fcmp.Type).Bits == 32) {
-                                EmitValue (fcmp.Op1, fcmp.Type);
-                                Emit (il.Create (OpCodes.Call, compilation.sysSingleIsNaN));
-                                EmitValue (fcmp.Op2, fcmp.Type);
-                                Emit (il.Create (OpCodes.Call, compilation.sysSingleIsNaN));
-                            }
-                            else {
-                                EmitValue (fcmp.Op1, fcmp.Type);
-                                Emit (il.Create (OpCodes.Call, compilation.sysDoubleIsNaN));
-                                EmitValue (fcmp.Op2, fcmp.Type);
-                                Emit (il.Create (OpCodes.Call, compilation.sysDoubleIsNaN));
-                            }
-                            Emit (il.Create (OpCodes.Or));
-                            Emit (il.Create (OpCodes.Ldc_I4_0));
-                            Emit (il.Create (OpCodes.Ceq));
-                            break;
-                        case IR.FcmpCondition.Unordered:
-                            if (((FloatType)fcmp.Type).Bits == 32) {
-                                EmitValue (fcmp.Op1, fcmp.Type);
-                                Emit (il.Create (OpCodes.Call, compilation.sysSingleIsNaN));
-                                EmitValue (fcmp.Op2, fcmp.Type);
-                                Emit (il.Create (OpCodes.Call, compilation.sysSingleIsNaN));
-                            }
-                            else {
-                                EmitValue (fcmp.Op1, fcmp.Type);
-                                Emit (il.Create (OpCodes.Call, compilation.sysDoubleIsNaN));
-                                EmitValue (fcmp.Op2, fcmp.Type);
-                                Emit (il.Create (OpCodes.Call, compilation.sysDoubleIsNaN));
-                            }
-                            Emit (il.Create (OpCodes.Or));
-                            break;
-                        default:
-                            EmitValue (fcmp.Op1, fcmp.Type);
-                            EmitValue (fcmp.Op2, fcmp.Type);
-                            switch (fcmp.Condition) {
-                                case IR.FcmpCondition.True:
-                                    Emit (il.Create (OpCodes.Pop));
-                                    Emit (il.Create (OpCodes.Pop));
-                                    Emit (il.Create (OpCodes.Ldc_I4_1));
-                                    break;
-                                case IR.FcmpCondition.False:
-                                    Emit (il.Create (OpCodes.Pop));
-                                    Emit (il.Create (OpCodes.Pop));
-                                    Emit (il.Create (OpCodes.Ldc_I4_0));
-                                    break;
-                                case IR.FcmpCondition.OrderedEqual:
-                                    Emit (il.Create (OpCodes.Ceq));
-                                    break;
-                                case IR.FcmpCondition.OrderedGreaterThan:
-                                    Emit (il.Create (OpCodes.Cgt));
-                                    break;
-                                case IR.FcmpCondition.OrderedGreaterThanOrEqual:
-                                    Emit (il.Create (OpCodes.Clt));
-                                    Emit (il.Create (OpCodes.Ldc_I4_0));
-                                    Emit (il.Create (OpCodes.Ceq));
-                                    break;
-                                case IR.FcmpCondition.OrderedLessThan:
-                                    Emit (il.Create (OpCodes.Clt));
-                                    break;
-                                case IR.FcmpCondition.OrderedLessThanOrEqual:
-                                    Emit (il.Create (OpCodes.Cgt));
-                                    Emit (il.Create (OpCodes.Ldc_I4_0));
-                                    Emit (il.Create (OpCodes.Ceq));
-                                    break;
-                                case IR.FcmpCondition.UnorderedEqual:
-                                    Emit (il.Create (OpCodes.Ceq));
-                                    break;
-                                case IR.FcmpCondition.UnorderedNotEqual:
-                                    Emit (il.Create (OpCodes.Ceq));
-                                    Emit (il.Create (OpCodes.Ldc_I4_0));
-                                    Emit (il.Create (OpCodes.Ceq));
-                                    break;
-                                case IR.FcmpCondition.UnorderedGreaterThan:
-                                    Emit (il.Create (OpCodes.Cgt_Un));
-                                    break;
-                                case IR.FcmpCondition.UnorderedGreaterThanOrEqual:
-                                    Emit (il.Create (OpCodes.Clt_Un));
-                                    Emit (il.Create (OpCodes.Ldc_I4_0));
-                                    Emit (il.Create (OpCodes.Ceq));
-                                    break;
-                                case IR.FcmpCondition.UnorderedLessThan:
-                                    Emit (il.Create (OpCodes.Clt_Un));
-                                    break;
-                                case IR.FcmpCondition.UnorderedLessThanOrEqual:
-                                    Emit (il.Create (OpCodes.Cgt_Un));
-                                    Emit (il.Create (OpCodes.Ldc_I4_0));
-                                    Emit (il.Create (OpCodes.Ceq));
-                                    break;
-                                default:
-                                    throw new NotSupportedException ("fcmp condition " + fcmp.Condition);
-                            }
-                            break;
-                    }
+                    EmitFcmp (fcmp);
                     break;
                 case IR.FdivInstruction add:
                     if (add.Type is Types.VectorType) {
@@ -623,50 +533,7 @@ namespace Repil
                     EmitGetElementPointer (gep.Pointer, gep.Indices);
                     break;
                 case IR.IcmpInstruction icmp:
-                    EmitValue (icmp.Op1, icmp.Type);
-                    EmitValue (icmp.Op2, icmp.Type);
-                    switch (icmp.Condition) {
-                        case IR.IcmpCondition.Equal:
-                            Emit (il.Create (OpCodes.Ceq));
-                            break;
-                        case IR.IcmpCondition.NotEqual:
-                            Emit (il.Create (OpCodes.Ceq));
-                            Emit (il.Create (OpCodes.Ldc_I4_0));
-                            Emit (il.Create (OpCodes.Ceq));
-                            break;
-                        case IR.IcmpCondition.UnsignedGreaterThan:
-                            Emit (il.Create (OpCodes.Cgt_Un));
-                            break;
-                        case IR.IcmpCondition.UnsignedGreaterThanOrEqual:
-                            Emit (il.Create (OpCodes.Clt_Un));
-                            Emit (il.Create (OpCodes.Ldc_I4_0));
-                            Emit (il.Create (OpCodes.Ceq));
-                            break;
-                        case IR.IcmpCondition.UnsignedLessThan:
-                            Emit (il.Create (OpCodes.Clt_Un));
-                            break;
-                        case IR.IcmpCondition.UnsignedLessThanOrEqual:
-                            Emit (il.Create (OpCodes.Cgt_Un));
-                            Emit (il.Create (OpCodes.Ldc_I4_0));
-                            Emit (il.Create (OpCodes.Ceq));
-                            break;
-                        case IR.IcmpCondition.SignedGreaterThan:
-                            Emit (il.Create (OpCodes.Cgt));
-                            break;
-                        case IR.IcmpCondition.SignedGreaterThanOrEqual:
-                            Emit (il.Create (OpCodes.Clt));
-                            Emit (il.Create (OpCodes.Ldc_I4_0));
-                            Emit (il.Create (OpCodes.Ceq));
-                            break;
-                        case IR.IcmpCondition.SignedLessThan:
-                            Emit (il.Create (OpCodes.Clt));
-                            break;
-                        case IR.IcmpCondition.SignedLessThanOrEqual:
-                            Emit (il.Create (OpCodes.Cgt));
-                            Emit (il.Create (OpCodes.Ldc_I4_0));
-                            Emit (il.Create (OpCodes.Ceq));
-                            break;
-                    }
+                    EmitIcmp (icmp);
                     break;
                 case IR.InsertElementInstruction insertElement:
                     EmitTypedValue (insertElement.Value);
@@ -862,9 +729,14 @@ namespace Repil
                     EmitStore (store);
                     break;
                 case IR.SubInstruction sub:
-                    EmitValue (sub.Op1, sub.Type);
-                    EmitValue (sub.Op2, sub.Type);
-                    Emit (il.Create (OpCodes.Sub));
+                    if (sub.Type is Types.VectorType) {
+                        EmitVectorOp (OpCodes.Sub, sub.Op1, sub.Op2, (Types.VectorType)sub.Type);
+                    }
+                    else {
+                        EmitValue (sub.Op1, sub.Type);
+                        EmitValue (sub.Op2, sub.Type);
+                        Emit (il.Create (OpCodes.Sub));
+                    }
                     break;
                 case IR.SwitchInstruction sw:
                     EmitSwitch (sw, nextBlock);
@@ -971,6 +843,185 @@ namespace Repil
                 default:
                     throw new NotImplementedException (instruction.ToString ());
             }
+        }
+
+        private void EmitIcmp (IcmpInstruction icmp)
+        {
+            EmitValue (icmp.Op1, icmp.Type);
+            EmitValue (icmp.Op2, icmp.Type);
+            if (icmp.Type is VectorType v) {
+                EmitVIcmp (icmp, v);
+                return;
+            }
+            switch (icmp.Condition) {
+                case IR.IcmpCondition.Equal:
+                    Emit (il.Create (OpCodes.Ceq));
+                    break;
+                case IR.IcmpCondition.NotEqual:
+                    Emit (il.Create (OpCodes.Ceq));
+                    Emit (il.Create (OpCodes.Ldc_I4_0));
+                    Emit (il.Create (OpCodes.Ceq));
+                    break;
+                case IR.IcmpCondition.UnsignedGreaterThan:
+                    Emit (il.Create (OpCodes.Cgt_Un));
+                    break;
+                case IR.IcmpCondition.UnsignedGreaterThanOrEqual:
+                    Emit (il.Create (OpCodes.Clt_Un));
+                    Emit (il.Create (OpCodes.Ldc_I4_0));
+                    Emit (il.Create (OpCodes.Ceq));
+                    break;
+                case IR.IcmpCondition.UnsignedLessThan:
+                    Emit (il.Create (OpCodes.Clt_Un));
+                    break;
+                case IR.IcmpCondition.UnsignedLessThanOrEqual:
+                    Emit (il.Create (OpCodes.Cgt_Un));
+                    Emit (il.Create (OpCodes.Ldc_I4_0));
+                    Emit (il.Create (OpCodes.Ceq));
+                    break;
+                case IR.IcmpCondition.SignedGreaterThan:
+                    Emit (il.Create (OpCodes.Cgt));
+                    break;
+                case IR.IcmpCondition.SignedGreaterThanOrEqual:
+                    Emit (il.Create (OpCodes.Clt));
+                    Emit (il.Create (OpCodes.Ldc_I4_0));
+                    Emit (il.Create (OpCodes.Ceq));
+                    break;
+                case IR.IcmpCondition.SignedLessThan:
+                    Emit (il.Create (OpCodes.Clt));
+                    break;
+                case IR.IcmpCondition.SignedLessThanOrEqual:
+                    Emit (il.Create (OpCodes.Cgt));
+                    Emit (il.Create (OpCodes.Ldc_I4_0));
+                    Emit (il.Create (OpCodes.Ceq));
+                    break;
+            }
+        }
+
+        private void EmitFcmp (FcmpInstruction fcmp)
+        {
+            switch (fcmp.Condition) {
+                case IR.FcmpCondition.Ordered:
+                    if (((FloatType)fcmp.Type).Bits == 32) {
+                        EmitValue (fcmp.Op1, fcmp.Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysSingleIsNaN));
+                        EmitValue (fcmp.Op2, fcmp.Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysSingleIsNaN));
+                    }
+                    else {
+                        EmitValue (fcmp.Op1, fcmp.Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysDoubleIsNaN));
+                        EmitValue (fcmp.Op2, fcmp.Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysDoubleIsNaN));
+                    }
+                    Emit (il.Create (OpCodes.Or));
+                    Emit (il.Create (OpCodes.Ldc_I4_0));
+                    Emit (il.Create (OpCodes.Ceq));
+                    break;
+                case IR.FcmpCondition.Unordered:
+                    if (((FloatType)fcmp.Type).Bits == 32) {
+                        EmitValue (fcmp.Op1, fcmp.Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysSingleIsNaN));
+                        EmitValue (fcmp.Op2, fcmp.Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysSingleIsNaN));
+                    }
+                    else {
+                        EmitValue (fcmp.Op1, fcmp.Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysDoubleIsNaN));
+                        EmitValue (fcmp.Op2, fcmp.Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysDoubleIsNaN));
+                    }
+                    Emit (il.Create (OpCodes.Or));
+                    break;
+                default:
+                    EmitValue (fcmp.Op1, fcmp.Type);
+                    EmitValue (fcmp.Op2, fcmp.Type);
+                    if (fcmp.Type is VectorType v) {
+                        EmitVFcmp (fcmp, v);
+                        return;
+                    }
+                    switch (fcmp.Condition) {
+                        case IR.FcmpCondition.True:
+                            Emit (il.Create (OpCodes.Pop));
+                            Emit (il.Create (OpCodes.Pop));
+                            Emit (il.Create (OpCodes.Ldc_I4_1));
+                            break;
+                        case IR.FcmpCondition.False:
+                            Emit (il.Create (OpCodes.Pop));
+                            Emit (il.Create (OpCodes.Pop));
+                            Emit (il.Create (OpCodes.Ldc_I4_0));
+                            break;
+                        case IR.FcmpCondition.OrderedEqual:
+                            Emit (il.Create (OpCodes.Ceq));
+                            break;
+                        case IR.FcmpCondition.OrderedGreaterThan:
+                            Emit (il.Create (OpCodes.Cgt));
+                            break;
+                        case IR.FcmpCondition.OrderedGreaterThanOrEqual:
+                            Emit (il.Create (OpCodes.Clt));
+                            Emit (il.Create (OpCodes.Ldc_I4_0));
+                            Emit (il.Create (OpCodes.Ceq));
+                            break;
+                        case IR.FcmpCondition.OrderedLessThan:
+                            Emit (il.Create (OpCodes.Clt));
+                            break;
+                        case IR.FcmpCondition.OrderedLessThanOrEqual:
+                            Emit (il.Create (OpCodes.Cgt));
+                            Emit (il.Create (OpCodes.Ldc_I4_0));
+                            Emit (il.Create (OpCodes.Ceq));
+                            break;
+                        case IR.FcmpCondition.UnorderedEqual:
+                            Emit (il.Create (OpCodes.Ceq));
+                            break;
+                        case IR.FcmpCondition.UnorderedNotEqual:
+                            Emit (il.Create (OpCodes.Ceq));
+                            Emit (il.Create (OpCodes.Ldc_I4_0));
+                            Emit (il.Create (OpCodes.Ceq));
+                            break;
+                        case IR.FcmpCondition.UnorderedGreaterThan:
+                            Emit (il.Create (OpCodes.Cgt_Un));
+                            break;
+                        case IR.FcmpCondition.UnorderedGreaterThanOrEqual:
+                            Emit (il.Create (OpCodes.Clt_Un));
+                            Emit (il.Create (OpCodes.Ldc_I4_0));
+                            Emit (il.Create (OpCodes.Ceq));
+                            break;
+                        case IR.FcmpCondition.UnorderedLessThan:
+                            Emit (il.Create (OpCodes.Clt_Un));
+                            break;
+                        case IR.FcmpCondition.UnorderedLessThanOrEqual:
+                            Emit (il.Create (OpCodes.Cgt_Un));
+                            Emit (il.Create (OpCodes.Ldc_I4_0));
+                            Emit (il.Create (OpCodes.Ceq));
+                            break;
+                        default:
+                            throw new NotSupportedException ("fcmp condition " + fcmp.Condition);
+                    }
+                    break;
+            }
+        }
+
+        void EmitVIcmp (IcmpInstruction icmp, VectorType type)
+        {
+            var v = GetVectorType (type);
+
+            switch (icmp.Condition) {
+                case IcmpCondition.NotEqual:
+                    Emit (il.Create (OpCodes.Call, v.IcmpNotEqual));
+                    break;
+                case IcmpCondition.SignedGreaterThan:
+                    Emit (il.Create (OpCodes.Call, v.IcmpSignedGreaterThan));
+                    break;
+                case IcmpCondition.SignedLessThan:
+                    Emit (il.Create (OpCodes.Call, v.IcmpSignedLessThan));
+                    break;
+                default:
+                    throw new NotSupportedException ($"Vector icmp {icmp.Condition}");
+            }
+        }
+
+        void EmitVFcmp (FcmpInstruction fcmp, VectorType v)
+        {
+            throw new NotSupportedException ($"Vector fcmp {fcmp.Condition}");
         }
 
         protected override void EmitLocalValue (IR.LocalValue local)
@@ -1241,7 +1292,7 @@ namespace Repil
         {
             if (condition is IR.LocalValue local && ShouldInline (local.Symbol)) {
                 var a = function.IRDefinition.GetAssignment (local);
-                if (a.Instruction is IR.IcmpInstruction icmp) {
+                if (a.Instruction is IR.IcmpInstruction icmp && !(icmp.Type is VectorType)) {
                     var op = OpCodes.Brtrue;
                     switch (icmp.Condition) {
                         case IR.IcmpCondition.Equal:

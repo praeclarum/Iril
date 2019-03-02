@@ -146,7 +146,7 @@ namespace Tests
 
             var testSolve = true;
             if (testSolve) {
-                var p = Problem.Simple;
+                var p = Problem.Easy;
                 var n = p.N;
                 var b = p.B;
                 var ap = p.Ap;
@@ -237,7 +237,7 @@ namespace Tests
             public readonly int[] Ai;
             public readonly double[] Ax;
 
-            public static Problem Simple = new Problem (
+            public static Problem Easy = new Problem (
                 5,
                 new[] { 0, 2, 5, 9, 10, 12 },
                 new[] { 0, 1, 0, 2, 4, 1, 2, 3, 4, 2, 1, 4 },
