@@ -38,7 +38,10 @@ namespace Repil
         public MethodReference Add, Subtract;
         public MethodReference Multiply, Divide;
 
+        public MethodReference FcmpOrderedGreaterThan, FcmpOrderedLessThan;
         public MethodReference IcmpNotEqual, IcmpSignedLessThan, IcmpSignedGreaterThan;
+
+        public MethodReference Select;
     }
 
     class FunctionCompiler : Emitter
@@ -211,9 +214,9 @@ namespace Repil
                 //
                 // Block Trace
                 //
-                //il.Append (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
-                //i = il.Create (OpCodes.Call, compilation.sysConsoleWriteLine);
-                //il.Append (i);
+                il.Append (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
+                i = il.Create (OpCodes.Call, compilation.sysConsoleWriteLine);
+                il.Append (i);
 
                 //
                 // Block Debugger Break
@@ -648,7 +651,11 @@ namespace Repil
                             throw new NotSupportedException ($"Cannot sext {sext.Type}");
                     }
                     break;
-                case IR.SelectInstruction sel: {
+                case IR.SelectInstruction sel:
+                    if (sel.Type is VectorType selV) {
+                        EmitVSelect (sel, selV);
+                    }
+                    else {
                         var end = il.Create (OpCodes.Nop);
                         var trueI = il.Create (OpCodes.Nop);
 
@@ -845,6 +852,15 @@ namespace Repil
             }
         }
 
+        void EmitVSelect (SelectInstruction sel, VectorType type)
+        {
+            EmitValue (sel.Condition, sel.Type);
+            EmitTypedValue (sel.Value1);
+            EmitTypedValue (sel.Value2);
+            var v = GetVectorType ((VectorType)sel.Value1.Type);
+            Emit (il.Create (OpCodes.Call, v.Select));
+        }
+
         private void EmitIcmp (IcmpInstruction icmp)
         {
             EmitValue (icmp.Op1, icmp.Type);
@@ -1019,9 +1035,17 @@ namespace Repil
             }
         }
 
-        void EmitVFcmp (FcmpInstruction fcmp, VectorType v)
+        void EmitVFcmp (FcmpInstruction fcmp, VectorType type)
         {
-            throw new NotSupportedException ($"Vector fcmp {fcmp.Condition}");
+            var v = GetVectorType (type);
+
+            switch (fcmp.Condition) {
+                case FcmpCondition.OrderedLessThan:
+                    Emit (il.Create (OpCodes.Call, v.FcmpOrderedLessThan));
+                    break;
+                default:
+                    throw new NotSupportedException ($"Vector fcmp {fcmp.Condition}");
+            }
         }
 
         protected override void EmitLocalValue (IR.LocalValue local)

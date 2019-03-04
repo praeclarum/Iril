@@ -1074,6 +1074,8 @@ namespace Repil
                 ("IcmpNotEqual", cmpctor, new[] { OpCodes.Ceq, OpCodes.Ldc_I4_0, OpCodes.Ceq }),
                 ("IcmpSignedLessThan", cmpctor, new[] { OpCodes.Clt }),
                 ("IcmpSignedGreaterThan", cmpctor, new[] { OpCodes.Cgt }),
+                ("FcmpOrderedLessThan", cmpctor, new[] { OpCodes.Clt }),
+                ("FcmpOrderedGreaterThan", cmpctor, new[] { OpCodes.Cgt }),
             };
             foreach (var (name, c, opcodes) in opMethods)
             {
@@ -1101,6 +1103,41 @@ namespace Repil
                 mop.Body = body;
                 td.Methods.Add (mop);
                 typeof (SimdVector).GetField (name).SetValue (r, mop);
+            }
+
+            var select = new MethodDefinition ("Select", MethodAttributes.Public | MethodAttributes.Static, ctor.DeclaringType);
+            {
+                var btd = GetClrType (new VectorType (key.Length, Types.IntegerType.I1)).Resolve ();
+                select.Parameters.Add (new ParameterDefinition ("s", ParameterAttributes.None, btd));
+                select.Parameters.Add (new ParameterDefinition ("a", ParameterAttributes.None, td));
+                select.Parameters.Add (new ParameterDefinition ("b", ParameterAttributes.None, td));
+
+                var body = new MethodBody (select);
+                var il = body.GetILProcessor ();
+                var next = il.Create (OpCodes.Ldarg_0);
+                var last = il.Create (OpCodes.Newobj, ctor);
+                for (var i = 0; i < key.Length; i++) {
+                    il.Append (next);
+                    var loadTrue = il.Create (OpCodes.Ldarg_1);
+                    next = i + 1 < key.Length ? il.Create (OpCodes.Ldarg_0) : last;
+
+                    il.Append (il.Create (OpCodes.Ldfld, btd.Fields[i]));
+                    il.Append (il.Create (OpCodes.Brtrue, loadTrue));
+
+                    il.Append (il.Create (OpCodes.Ldarg_2));
+                    il.Append (il.Create (OpCodes.Ldfld, td.Fields[i]));
+                    il.Append (il.Create (OpCodes.Br, next));
+
+                    il.Append (loadTrue);
+                    il.Append (il.Create (OpCodes.Ldfld, td.Fields[i]));
+                }
+                il.Append (next);
+                il.Append (il.Create (OpCodes.Ret));
+                body.Optimize ();
+
+                select.Body = body;
+                td.Methods.Add (select);
+                r.Select = select;
             }
 
             return r;

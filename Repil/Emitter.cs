@@ -299,7 +299,14 @@ namespace Repil
             }
             else if (type is Types.IntegerType intt)
             {
-                Emit(il.Create(OpCodes.Ldc_I4_0));
+                switch (intt.Bits) {
+                    default:
+                        Emit (il.Create (OpCodes.Ldc_I4_0));
+                        break;
+                    case 64:
+                        Emit (il.Create (OpCodes.Ldc_I8, 0L));
+                        break;
+                }
             }
             else if (type is Types.PointerType ptr)
             {
