@@ -794,7 +794,7 @@ namespace Repil
                     externalMethodDefs[iskv.Key] = new DefinedFunction {
                         Symbol = iskv.Key,
                         IRModule = m,
-                        //IRDeclaration = f,
+                        IRDeclaration = f,
                         ILDefinition = md,
                         ParamSyms = paramSyms,
                     };

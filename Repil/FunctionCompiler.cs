@@ -16,7 +16,7 @@ namespace Repil
     {
         public Symbol Symbol;
         public Repil.Module IRModule;
-        //public IR.FunctionDeclaration IRDeclaration;
+        public IR.FunctionDeclaration IRDeclaration;
         public IR.FunctionDefinition IRDefinition;
         public MethodDefinition ILDefinition;
         public SymbolTable<ParameterDefinition> ParamSyms;
@@ -1376,14 +1376,14 @@ namespace Repil
                         return;
                     case "@llvm.ceil.f64":
                         EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
-                        Emit (il.Create (OpCodes.Call, compilation.sysMathAbsD));
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathCeilD));
                         return;
                     case "@llvm.ceil.v2f64" when call.Arguments[0].Type is VectorType ceilVt:
                         EmitVectorFunc (call.Arguments[0].Value, ceilVt, compilation.sysMathCeilD);
                         return;
                     case "@llvm.fabs.f64":
                         EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
-                        Emit (il.Create (OpCodes.Call, compilation.sysMathCeilD));
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathAbsD));
                         return;
                     case "@llvm.sqrt.f64":
                         EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
@@ -1457,8 +1457,34 @@ namespace Repil
                     default:
                         if (compilation.TryGetFunction (module, gv.Symbol, out var m)) {
 
-                            foreach (var a in call.Arguments) {
+                            var ps = m.ILDefinition.Parameters;
+                            var nps = ps.Count;
+                            var hasVarArgs =
+                                nps > 0
+                                && ps[nps - 1].ParameterType.IsArray
+                                && ps[nps - 1].ParameterType.GetElementType().FullName == "System.Object";
+                            if (hasVarArgs)
+                                nps--;
+                            if (call.Arguments.Length < nps) {
+                                throw new InvalidOperationException ($"Too few arguments to {function.IRDefinition.Symbol}");
+                            }
+
+                            for (var i = 0; i < nps; i++) {
+                                var a = call.Arguments[i];
                                 EmitValue (a.Value, a.Type);
+                            }
+                            if (hasVarArgs) {
+                                var numVarArgs = call.Arguments.Length - nps;
+                                Emit (il.Create (OpCodes.Ldc_I4, numVarArgs));
+                                Emit (il.Create (OpCodes.Newarr, compilation.sysObj));
+                                for (var i = 0; i < numVarArgs; i++) {
+                                    Emit (il.Create (OpCodes.Dup));
+                                    var a = call.Arguments[nps + i];
+                                    Emit (il.Create (OpCodes.Ldc_I4, i));
+                                    EmitValue (a.Value, a.Type);
+                                    EmitBox (a.Type);
+                                    Emit (il.Create (OpCodes.Stelem_Any, compilation.sysObj));
+                                }
                             }
 
                             Emit (il.Create (OpCodes.Call, m.ILDefinition));
