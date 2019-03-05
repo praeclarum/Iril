@@ -144,6 +144,19 @@ namespace Repil.IR
         {
             return new Block (newSymbol, Assignments, Terminator);
         }
+
+        public IEnumerable<LocalSymbol> PhiPredecessors {
+            get {
+                var q = from a in Assignments
+                        let phi = a.Instruction as PhiInstruction
+                        where phi != null
+                        from v in phi.Values
+                        let label = v.Label as LocalValue
+                        where label != null
+                        select label.Symbol;
+                return q.Distinct ();
+            }
+        }
     }
 
     public class Assignment

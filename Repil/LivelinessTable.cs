@@ -16,6 +16,7 @@ namespace Repil
             public Block Block;
             public HashSet<LocalSymbol> References;
             public HashSet<LocalSymbol> Definitions;
+            public HashSet<LocalSymbol> PhiDefinitions;
             public HashSet<LocalSymbol> Nexts;
 
             public LocalSymbol Symbol => Block.Symbol;
@@ -46,7 +47,10 @@ namespace Repil
                         .SelectMany (x => x.ReferencedLocals.Distinct ())
                         .Distinct ()),
                     Definitions = new HashSet<LocalSymbol> (
-                        b.Assignments.Where (x => !(x.Instruction is PhiInstruction) && x.Result != LocalSymbol.None)
+                        b.Assignments.Where (x => !(x.Instruction is PhiInstruction) && x.HasResult)
+                        .Select (x => x.Result)),
+                    PhiDefinitions = new HashSet<LocalSymbol> (
+                        b.Assignments.Where (x => x.Instruction is PhiInstruction && x.HasResult)
                         .Select (x => x.Result)),
                     Nexts = new HashSet<LocalSymbol> (b.Terminator.NextLabelSymbols),
                 };
@@ -96,7 +100,9 @@ namespace Repil
             //
             // Easy case, this block uses or defines the variable
             //
-            isAlive = bi.References.Contains (variable) || bi.Definitions.Contains (variable);
+            isAlive = bi.References.Contains (variable)
+                      || bi.Definitions.Contains (variable)
+                      || bi.PhiDefinitions.Contains (variable);
             if (isAlive) {
                 // Ensure the reference is made so that deep searches get saved
                 lock (bi) {
@@ -127,6 +133,12 @@ namespace Repil
                 return false;
             }
             visitedBlocks.Add (block.Symbol);
+
+            //
+            // Easy case, this block declares this phi variable
+            //
+            if (block.PhiDefinitions.Contains (variable))
+                return true;
 
             //
             // Easy case, this block declares the variable

@@ -57,6 +57,7 @@ namespace Repil
         readonly SymbolTable<bool> shouldInline = new SymbolTable<bool> ();
         readonly Dictionary<(string, int), VariableDefinition> vectorTemps = new Dictionary<(string, int), VariableDefinition> ();
         readonly SymbolTable<CecilInstruction> blockFirstInstr = new SymbolTable<CecilInstruction> ();
+        readonly SymbolTable<SymbolTable<CecilInstruction>> blockPredInstr = new SymbolTable<SymbolTable<CecilInstruction>> ();
         readonly SymbolTable<CecilInstruction> blockHeadLastInstr = new SymbolTable<CecilInstruction> ();
         readonly SymbolTable<CecilInstruction> blockLastInstr = new SymbolTable<CecilInstruction> ();
 
@@ -189,6 +190,8 @@ namespace Repil
                         var irtype = a.Instruction.ResultType (function.IRModule);
                         var ctype = compilation.GetClrType (irtype);
                         var local = GetFreeVariable (symbol, ctype);
+                        //var local = new VariableDefinition (ctype);
+                        //body.Variables.Add (local);
                         phiLocals[a.Result] = local;
                         //var name = "phi" + a.Result.Text.Substring (1);
                         //var dbg = new VariableDebugInformation (local, name);
@@ -203,13 +206,41 @@ namespace Repil
                 }
             }
 
-            var shouldTrace = false; //f.Symbol != Symbol.Intern ("@ftrace");
+            var shouldTrace = false;
 
             //
             // Create target instructions for each block
             //
             foreach (var b in f.Blocks) {
-                var i = il.Create (OpCodes.Nop);
+                var phipreds = b.PhiPredecessors.ToList ();
+
+                var firstI = il.Create (OpCodes.Nop);
+                var i = firstI;
+
+                if (phipreds.Count > 0) {
+                    var phis = b.Assignments.Where (x => x.Instruction is PhiInstruction).ToList ();
+                    var pis = new SymbolTable<CecilInstruction> ();
+                    blockPredInstr[b.Symbol] = pis;
+                    for (var j = 0; j < phipreds.Count; j++) {
+                        var pred = phipreds[j];
+                        i = il.Create (OpCodes.Nop);
+                        pis[pred] = i;
+                        il.Append (i);
+                        foreach (var oa in phis) {
+                            var phi = (PhiInstruction)oa.Instruction;
+                            var phiV = phi.Values.First (x => ((LocalValue)x.Label).Symbol == pred).Value;
+                            var phiLocal = GetPhiLocal (oa.Result);
+                            prev = i;
+                            EmitValue (phiV, phi.Type);
+                            Emit (il.Create (OpCodes.Stloc, phiLocal));
+                        }
+                        if (j + 1 < phipreds.Count) {
+                            il.Append (il.Create (OpCodes.Br, firstI));
+                        }
+                    }
+                }
+
+                i = firstI;
                 il.Append (i);
                 blockFirstInstr[b.Symbol] = i;
 
@@ -247,7 +278,7 @@ namespace Repil
                     if (!ShouldInline (a.Result)
                         && !(a.Instruction is IR.PhiInstruction)) {
 
-                        EmitInstruction (a.Result, a.Instruction, nextBlock);
+                        EmitInstruction (a.Result, a.Instruction, b, nextBlock);
 
                         if (a.HasDebugSymbol) {
                             //sqpts.Add ((prev, a.DebugSymbol));
@@ -270,30 +301,23 @@ namespace Repil
                 // Emit phi variables
                 //
                 foreach (var ob in f.Blocks) {
+                    var phiVs = new List<(IR.Assignment Assignment, IR.PhiInstruction Phi, IR.Value)> ();
                     foreach (var oa in ob.Assignments) {
                         if (oa.Result != LocalSymbol.None && oa.Instruction is IR.PhiInstruction phi) {
-                            var phiV = phi.Values.FirstOrDefault (x => x.Label is IR.LocalValue l && l.Symbol == b.Symbol);
-                            if (phiV != null) {
-                                var phiLocal = GetPhiLocal (oa.Result);
-                                if (phiV.Value is IR.LocalValue lv
-                                    && phiLocals.TryGetValue (lv.Symbol, out var vd)
-                                    && ReferenceEquals (phiLocal, vd)) {
-
-                                    // Redundant assignment
-                                }
-                                else {
-                                    EmitValue (phiV.Value, phi.Type);
-                                    Emit (il.Create (OpCodes.Stloc, phiLocal));
-                                }
+                            var vs = phi.Values.Where (x => x.Label is IR.LocalValue l && l.Symbol == b.Symbol);
+                            foreach (var v in vs) {
+                                phiVs.Add ((oa, phi, v.Value));
                             }
                         }
                     }
+                    //EmitPhis (phiVs);
+
                 }
 
                 //
                 // Emit terminator
                 //
-                EmitInstruction (LocalSymbol.None, b.Terminator, nextBlock);
+                EmitInstruction (LocalSymbol.None, b.Terminator, b, nextBlock);
 
                 blockLastInstr[b.Symbol] = prev;
             }
@@ -350,6 +374,55 @@ namespace Repil
             md.Body = body;
         }
 
+        void EmitPhis (List<(Assignment Assignment, PhiInstruction Phi, Value Value)> phiVs)
+        {
+            // Recursive phis need to be handled specially
+            // Make sure to emit all reads before overwriting the phi
+            // Start by making a list of all the reads
+            var phiSyms = new HashSet<LocalSymbol> (phiVs.Select (x => x.Assignment.Result));
+            var phiRs = new SymbolTable<List<Symbol>> ();
+            var phiIndex = new SymbolTable<int> ();
+            foreach (var s in phiSyms) {
+                phiRs[s] = new List<Symbol> ();
+            }
+            for (var i = 0; i < phiVs.Count; i++) {
+                var p = phiVs[i];
+                phiIndex[p.Assignment.Result] = i;
+                foreach (var v in p.Phi.Values) {
+                    if (v.Value is LocalValue lv && phiSyms.Contains (lv.Symbol)) {
+                        phiRs[lv.Symbol].Add (p.Assignment.Result);
+                    }
+                }
+            }
+
+            var ok = true;
+            while (ok && phiRs.Count > 0) {
+                var reads = phiRs.Where (x => x.Value.Count == 0).ToList ();
+                if (reads.Count > 0) {
+                    foreach (var r in reads) {
+                        var index = phiIndex[r.Key];
+                        phiRs.Remove (r.Key);
+                        EmitPhiRead (index);
+                        var sym = phiVs[index].Assignment.Result;
+                        foreach (var rr in phiRs) {
+                            rr.Value.Remove (sym);
+                        }
+                    }
+                }
+                else {
+                    throw new NotSupportedException ("Mutually recursive phi values");
+                }
+            }
+
+            void EmitPhiRead (int index)
+            {
+                var (oa, phi, phiV) = phiVs[index];
+                var phiLocal = GetPhiLocal (oa.Result);
+                EmitValue (phiV, phi.Type);
+                Emit (il.Create (OpCodes.Stloc, phiLocal));
+            }
+        }
+
         bool HasLocal (LocalSymbol symbol)
         {
             return locals.ContainsKey (symbol);
@@ -365,7 +438,7 @@ namespace Repil
             return phiLocals[assignment];
         }
 
-        void EmitInstruction (LocalSymbol assignedSymbol, IR.Instruction instruction, IR.Block nextBlock)
+        void EmitInstruction (LocalSymbol assignedSymbol, IR.Instruction instruction, IR.Block block, IR.Block nextBlock)
         {
             switch (instruction) {
                 case IR.AddInstruction add:
@@ -406,9 +479,9 @@ namespace Repil
                     EmitCall (call);
                     break;
                 case IR.ConditionalBrInstruction cbr:
-                    EmitBrtrue (cbr.Condition, Types.IntegerType.I1, GetLabel (cbr.IfTrue));
-                    if (cbr.IfFalse.Symbol != nextBlock?.Symbol)
-                        Emit (il.Create (OpCodes.Br, GetLabel (cbr.IfFalse)));
+                    EmitBrtrue (cbr.Condition, Types.IntegerType.I1, GetLabel (cbr.IfTrue, block));
+                    //if (cbr.IfFalse.Symbol != nextBlock?.Symbol)
+                    Emit (il.Create (OpCodes.Br, GetLabel (cbr.IfFalse, block)));
                     break;
                 case IR.DivInstruction div:
                     if (div.Type is Types.VectorType) {
@@ -750,7 +823,7 @@ namespace Repil
                     }
                     break;
                 case IR.SwitchInstruction sw:
-                    EmitSwitch (sw, nextBlock);
+                    EmitSwitch (sw, nextBlock, block);
                     break;
                 case IR.TruncInstruction trunc:
                     EmitTypedValue (trunc.Value);
@@ -804,8 +877,8 @@ namespace Repil
                     }
                     break;
                 case IR.UnconditionalBrInstruction br:
-                    if (br.Destination.Symbol != nextBlock?.Symbol)
-                        Emit (il.Create (OpCodes.Br, GetLabel (br.Destination)));
+                    //if (br.Destination.Symbol != nextBlock?.Symbol)
+                    Emit (il.Create (OpCodes.Br, GetLabel (br.Destination, block)));
                     break;
                 case IR.UnreachableInstruction unreach:
                     break;
@@ -1065,7 +1138,7 @@ namespace Repil
                 }
                 else {
                     var a = function.IRDefinition.GetAssignment (local);
-                    EmitInstruction (a.Result, a.Instruction, null);
+                    EmitInstruction (a.Result, a.Instruction, null, null);
                 }
             }
         }
@@ -1192,7 +1265,7 @@ namespace Repil
             }
         }
 
-        void EmitSwitch (IR.SwitchInstruction sw, IR.Block nextBlock)
+        void EmitSwitch (IR.SwitchInstruction sw, IR.Block block, IR.Block nextBlock)
         {
             var rem = new List<IR.SwitchCase> (sw.Cases.OrderBy (x => x.Value.Constant.Int32Value));
 
@@ -1215,7 +1288,7 @@ namespace Repil
                 if (endIndex > 1) {
                     var labels =
                         rem.Take (endIndex)
-                        .Select (x => GetLabel (x.Label))
+                        .Select (x => GetLabel (x.Label, block))
                         .ToArray ();
                     if (offset != 0) {
                         Emit (il.Create (OpCodes.Sub));
@@ -1228,13 +1301,13 @@ namespace Repil
                     if (offset == 0) {
                         EmitValue (new IR.IntegerConstant (0), c.Value.Type);
                     }
-                    Emit (il.Create (OpCodes.Beq, GetLabel (c.Label)));
+                    Emit (il.Create (OpCodes.Beq, GetLabel (c.Label, block)));
                     rem.RemoveAt (0);
                 }
             }
 
-            if (nextBlock.Symbol != sw.DefaultLabel.Symbol)
-                Emit (il.Create (OpCodes.Br, GetLabel (sw.DefaultLabel)));
+            //if (nextBlock.Symbol != sw.DefaultLabel.Symbol)
+            Emit (il.Create (OpCodes.Br, GetLabel (sw.DefaultLabel, block)));
         }
 
         VariableDefinition GetVectorTempVariable (SimdVector type, IR.Value value, int uid)
@@ -1547,8 +1620,12 @@ namespace Repil
             }
         }
 
-        CecilInstruction GetLabel (IR.LabelValue label)
+        CecilInstruction GetLabel (IR.LabelValue label, IR.Block fromBlock)
         {
+            if (blockPredInstr.TryGetValue (label.Symbol, out var preds)) {
+                if (preds.TryGetValue (fromBlock.Symbol, out var i))
+                    return i;
+            }
             return blockFirstInstr[label.Symbol];
         }
 
