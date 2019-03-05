@@ -827,6 +827,10 @@ terminator_instruction
     {
         $$ = new SwitchInstruction ((TypedValue)$2, (LabelValue)$4, (List<SwitchCase>)$6);
     }
+    | UNREACHABLE
+    {
+        $$ = UnreachableInstruction.Unreachable;
+    }
     ;
     
 instruction

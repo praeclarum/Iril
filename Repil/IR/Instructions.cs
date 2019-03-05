@@ -569,6 +569,17 @@ namespace Repil.IR
         }
     }
 
+    public class UnreachableInstruction : TerminatorInstruction
+    {
+        public static readonly UnreachableInstruction Unreachable = new UnreachableInstruction ();
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
+
+        public override IEnumerable<LocalSymbol> NextLabelSymbols => Enumerable.Empty<LocalSymbol> ();
+
+        public override LType ResultType (Module module) => VoidType.Void;
+    }
+
     public class UremInstruction : BinaryInstruction
     {
         public UremInstruction (LType type, Value op1, Value op2)

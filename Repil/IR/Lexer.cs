@@ -143,6 +143,7 @@ namespace Repil.IR
             { Symbol.Intern ("returned"), Token.RETURNED },
             { Symbol.Intern ("fence"), Token.FENCE },
             { Symbol.Intern ("seq_cst"), Token.SEQ_CST },
+            { Symbol.Intern ("unreachable"), Token.UNREACHABLE },
         };
 
         public Lexer (string llvm)

@@ -203,7 +203,7 @@ namespace Repil
                 }
             }
 
-            var shouldTrace = false;// f.Symbol != Symbol.Intern ("@ftrace");
+            var shouldTrace = false; //f.Symbol != Symbol.Intern ("@ftrace");
 
             //
             // Create target instructions for each block
@@ -806,6 +806,8 @@ namespace Repil
                 case IR.UnconditionalBrInstruction br:
                     if (br.Destination.Symbol != nextBlock?.Symbol)
                         Emit (il.Create (OpCodes.Br, GetLabel (br.Destination)));
+                    break;
+                case IR.UnreachableInstruction unreach:
                     break;
                 case IR.UremInstruction urem:
                     if (urem.Type is Types.VectorType) {
@@ -1474,17 +1476,7 @@ namespace Repil
                                 EmitValue (a.Value, a.Type);
                             }
                             if (hasVarArgs) {
-                                var numVarArgs = call.Arguments.Length - nps;
-                                Emit (il.Create (OpCodes.Ldc_I4, numVarArgs));
-                                Emit (il.Create (OpCodes.Newarr, compilation.sysObj));
-                                for (var i = 0; i < numVarArgs; i++) {
-                                    Emit (il.Create (OpCodes.Dup));
-                                    var a = call.Arguments[nps + i];
-                                    Emit (il.Create (OpCodes.Ldc_I4, i));
-                                    EmitValue (a.Value, a.Type);
-                                    EmitBox (a.Type);
-                                    Emit (il.Create (OpCodes.Stelem_Any, compilation.sysObj));
-                                }
+                                EmitVarArgs (call, nps);
                             }
 
                             Emit (il.Create (OpCodes.Call, m.ILDefinition));
@@ -1525,23 +1517,34 @@ namespace Repil
                     EmitValue (a.Value, a.Type);
                 }
                 if (hasVarArgs) {
-                    var numVarArgs = call.Arguments.Length - nps;
-                    Emit (il.Create (OpCodes.Ldc_I4, numVarArgs));
-                    Emit (il.Create (OpCodes.Newarr, compilation.sysObj));
-                    for (var i = 0; i < numVarArgs; i++) {
-                        Emit (il.Create (OpCodes.Dup));
-                        var a = call.Arguments[nps + i];
-                        Emit (il.Create (OpCodes.Ldc_I4, i));
-                        EmitValue (a.Value, a.Type);
-                        EmitBox (a.Type);
-                        Emit (il.Create (OpCodes.Stelem_Any, compilation.sysObj));
-                    }
+                    EmitVarArgs (call, nps);
                 }
                 EmitValue (lv, ltype);
                 Emit (il.Create (OpCodes.Calli, CreateCallSite (ft)));
                 return;
             }
             throw new NotSupportedException ("Cannot call " + call.Pointer);
+        }
+
+        private void EmitVarArgs (CallInstruction call, int numFixedArgs)
+        {
+            var numVarArgs = call.Arguments.Length - numFixedArgs;
+            Emit (il.Create (OpCodes.Ldc_I4, numVarArgs));
+            Emit (il.Create (OpCodes.Newarr, compilation.sysObj));
+            for (var i = 0; i < numVarArgs; i++) {
+                Emit (il.Create (OpCodes.Dup));
+                var a = call.Arguments[numFixedArgs + i];
+                Emit (il.Create (OpCodes.Ldc_I4, i));
+                EmitValue (a.Value, a.Type);
+                if (a.Type is Types.PointerType) {
+                    Emit (il.Create (OpCodes.Call, compilation.sysIntPtrFromPointer));
+                    Emit (il.Create (OpCodes.Box, compilation.sysIntPtr));
+                }
+                else {
+                    EmitBox (a.Type);
+                }
+                Emit (il.Create (OpCodes.Stelem_Any, compilation.sysObj));
+            }
         }
 
         CecilInstruction GetLabel (IR.LabelValue label)

@@ -62,6 +62,8 @@ namespace Repil
         TypeReference sysNotSupp;
         MethodReference sysNotSuppCtor;
         TypeReference sysMath;
+        TypeReference sysException;
+        public MethodReference sysExceptionCtor;
         public MethodReference sysMathAbsD;
         public MethodReference sysMathCeilD;
         public MethodReference sysMathFloorD;
@@ -266,6 +268,8 @@ namespace Repil
             sysConsoleWriteLine = ImportMethod (sysConsole, sysVoid, "WriteLine", sysString);
             sysSingleIsNaN = ImportMethod (sysSingle, sysBoolean, "IsNaN", sysSingle);
             sysDoubleIsNaN = ImportMethod (sysDouble, sysBoolean, "IsNaN", sysDouble);
+            sysException = Import ("System.Exception");
+            sysExceptionCtor = ImportMethod (sysException, sysVoid, ".ctor", sysString);
             sysNotImpl = Import ("System.NotImplementedException");
             sysNotImplCtor = ImportMethod (sysNotImpl, sysVoid, ".ctor");
             sysNotSupp = Import ("System.NotSupportedException");

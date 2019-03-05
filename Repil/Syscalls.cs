@@ -23,6 +23,7 @@ namespace Repil
 
         public void Emit()
         {
+            EmitAssertRtn ();
             EmitCalloc ();
             EmitFree ();
             EmitMalloc ();
@@ -52,6 +53,24 @@ namespace Repil
             syscallsType.Methods.Add (md);
             Calls[symbol] = md;
             return md;
+        }
+
+        void EmitAssertRtn ()
+        {
+            var m = NewMethod (
+                "@__assert_rtn", Types.VoidType.Void,
+                ("function", Types.PointerType.I8Pointer),
+                ("file", Types.PointerType.I8Pointer),
+                ("line", Types.IntegerType.I32),
+                ("expression", Types.PointerType.I8Pointer));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+
+            il.Append (il.Create (OpCodes.Ldstr, "Assert failed"));
+            il.Append (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
+            il.Append (il.Create (OpCodes.Throw));
+
+            b.Optimize ();
         }
 
         void EmitCalloc ()
@@ -91,6 +110,14 @@ namespace Repil
             il.Append (il.Create (OpCodes.Ldarg_0));
             il.Append (il.Create (OpCodes.Call, compilation.sysIntPtrFromInt64));
             il.Append (il.Create (OpCodes.Call, compilation.sysAllocHGlobal));
+
+            //il.Append (il.Create (OpCodes.Dup));
+            //il.Append (il.Create (OpCodes.Ldc_I4_0));
+            //il.Append (il.Create (OpCodes.Conv_U1));
+            //il.Append (il.Create (OpCodes.Ldarg_0));
+            //il.Append (il.Create (OpCodes.Conv_U4));
+            //il.Append (il.Create (OpCodes.Initblk));
+
             il.Append (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
             il.Append (il.Create (OpCodes.Ret));
             b.Optimize ();
