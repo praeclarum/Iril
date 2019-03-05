@@ -26,7 +26,11 @@ namespace Repil
             EmitCalloc ();
             EmitFree ();
             EmitMalloc ();
+            EmitVFPrintf ();
             EmitPrintf ();
+            EmitVPrintf ();
+            EmitPutchar ();
+            EmitPuts ();
             EmitRealloc ();
             EmitMemsetPattern (4);
             EmitMemsetPattern (8);
@@ -92,11 +96,110 @@ namespace Repil
             b.Optimize ();
         }
 
-        void EmitPrintf ()
+        void EmitVFPrintf ()
         {
-            var m = NewMethod ("@printf", Types.VoidType.Void, ("format", Types.PointerType.I8Pointer), ("arguments", VarArgsType.VarArgs));
+            var m = NewMethod ("@vfprintf", Types.IntegerType.I32, ("stream", Types.PointerType.I8Pointer), ("format", Types.PointerType.I8Pointer), ("arguments", VarArgsType.VarArgs));
             var b = m.Body;
             var il = b.GetILProcessor ();
+            var p = new VariableDefinition (compilation.GetClrType (Types.PointerType.I8Pointer));
+            var i = new VariableDefinition (compilation.sysInt32);
+            b.Variables.Add (p);
+            b.Variables.Add (i);
+
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Stloc, p));
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Stloc_1));
+            var checkDone = il.Create (OpCodes.Ldloc, p);
+            il.Append (il.Create (OpCodes.Br, checkDone));
+
+            var loop = il.Create (OpCodes.Ldloc, p);
+            il.Append (loop);
+            il.Append (il.Create (OpCodes.Ldind_U1));
+            il.Append (il.Create (OpCodes.Ldc_I4, 37));
+            var normalChar = il.Create (OpCodes.Ldloc, p);
+            il.Append (il.Create (OpCodes.Bne_Un, normalChar));
+
+            // %
+            il.Append (il.Create (OpCodes.Ldarg_2));
+            il.Append (il.Create (OpCodes.Ldloc, i));
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Add));
+            il.Append (il.Create (OpCodes.Stloc, i));
+            il.Append (il.Create (OpCodes.Ldelem_Ref));
+            il.Append (il.Create (OpCodes.Call, compilation.sysConsoleWriteObj));
+            il.Append (il.Create (OpCodes.Ldloc, p));
+            il.Append (il.Create (OpCodes.Ldc_I4_2));
+            il.Append (il.Create (OpCodes.Add));
+            il.Append (il.Create (OpCodes.Stloc, p));
+            il.Append (il.Create (OpCodes.Br, checkDone));
+
+            il.Append (normalChar);
+            il.Append (il.Create (OpCodes.Ldind_U1));
+            il.Append (il.Create (OpCodes.Call, compilation.sysConsoleWriteChar));
+            il.Append (il.Create (OpCodes.Ldloc, p));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Add));
+            il.Append (il.Create (OpCodes.Stloc, p));
+
+            il.Append (checkDone);
+            il.Append (il.Create (OpCodes.Ldind_U1));
+            il.Append (il.Create (OpCodes.Brtrue, loop));
+
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Ret));
+            b.Optimize ();
+        }
+
+        void EmitPrintf ()
+        {
+            var m = NewMethod ("@printf", Types.IntegerType.I32, ("format", Types.PointerType.I8Pointer), ("arguments", VarArgsType.VarArgs));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Conv_U));
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Call, Calls["@vfprintf"]));
+            il.Append (il.Create (OpCodes.Ret));
+            b.Optimize ();
+        }
+
+        void EmitVPrintf ()
+        {
+            var m = NewMethod ("@vprintf", Types.IntegerType.I32, ("format", Types.PointerType.I8Pointer), ("arguments", VarArgsType.VarArgs));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Conv_U));
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Call, Calls["@vfprintf"]));
+            il.Append (il.Create (OpCodes.Ret));
+            b.Optimize ();
+        }
+
+        void EmitPutchar ()
+        {
+            var m = NewMethod ("@putchar", Types.VoidType.Void, ("c", Types.IntegerType.I8));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Call, compilation.sysConsoleWriteChar));
+            il.Append (il.Create (OpCodes.Ret));
+            b.Optimize ();
+        }
+
+        void EmitPuts ()
+        {
+            var m = NewMethod ("@puts", Types.VoidType.Void, ("s", Types.PointerType.I8Pointer));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Call, compilation.sysIntPtrFromPointer));
+            il.Append (il.Create (OpCodes.Call, compilation.sysPtrToStringAuto));
+            il.Append (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
             il.Append (il.Create (OpCodes.Ret));
             b.Optimize ();
         }

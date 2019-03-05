@@ -329,5 +329,10 @@ namespace Repil
                 throw new NotSupportedException("Cannot get zero for " + type);
             }
         }
+
+        protected void EmitBox (LType type)
+        {
+            Emit (il.Create (OpCodes.Box, compilation.GetClrType (type)));
+        }
     }
 }

@@ -35,12 +35,13 @@ namespace Repil
         MethodReference sysRuntimeHelpersInitArray;
         TypeReference sysVoidPtr;
         TypeReference sysVoidPtrPtr;
-        TypeReference sysObj;
+        public TypeReference sysObj;
+        public TypeReference sysObjArray;
         TypeReference sysVal;
         TypeReference sysBoolean;
         TypeReference sysByte;
         TypeReference sysInt16;
-        TypeReference sysInt32;
+        public TypeReference sysInt32;
         public TypeReference sysUInt32;
         TypeReference sysInt64;
         public TypeReference sysIntPtr;
@@ -78,9 +79,13 @@ namespace Repil
         public MethodReference sysAllocHGlobal;
         public MethodReference sysReAllocHGlobal;
         public MethodReference sysFreeHGlobal;
+        public MethodReference sysPtrToStringAuto;
         TypeReference sysDebugger;
         public MethodReference sysDebuggerBreak;
         TypeReference sysConsole;
+        public MethodReference sysConsoleWrite;
+        public MethodReference sysConsoleWriteChar;
+        public MethodReference sysConsoleWriteObj;
         public MethodReference sysConsoleWriteLine;
 
         readonly Dictionary<(int, string), SimdVector> vectorTypes =
@@ -243,6 +248,7 @@ namespace Repil
             sysString = Import ("System.String");
             sysChar = Import ("System.Char");
             sysCharArray = sysChar.MakeArrayType ();
+            sysObjArray = sysObj.MakeArrayType ();
             sysStringToCharArray = ImportMethod (sysString, sysCharArray, "ToCharArray");
             sysRuntimeFieldHandle = Import ("System.RuntimeFieldHandle");
             sysRuntimeHelpers = Import ("System.Runtime.CompilerServices.RuntimeHelpers");
@@ -254,6 +260,9 @@ namespace Repil
             sysDebugger = Import ("System.Diagnostics.Debugger");
             sysDebuggerBreak = ImportMethod (sysDebugger, sysVoid, "Break");
             sysConsole = Import ("System.Console");
+            sysConsoleWrite = ImportMethod (sysConsole, sysVoid, "Write", sysString);
+            sysConsoleWriteChar = ImportMethod (sysConsole, sysVoid, "Write", sysChar);
+            sysConsoleWriteObj = ImportMethod (sysConsole, sysVoid, "Write", sysObj);
             sysConsoleWriteLine = ImportMethod (sysConsole, sysVoid, "WriteLine", sysString);
             sysSingleIsNaN = ImportMethod (sysSingle, sysBoolean, "IsNaN", sysSingle);
             sysDoubleIsNaN = ImportMethod (sysDouble, sysBoolean, "IsNaN", sysDouble);
@@ -277,6 +286,7 @@ namespace Repil
             sysAllocHGlobal = ImportMethod (sysMarshal, sysIntPtr, "AllocHGlobal", sysIntPtr);
             sysReAllocHGlobal = ImportMethod (sysMarshal, sysIntPtr, "ReAllocHGlobal", sysIntPtr, sysIntPtr);
             sysFreeHGlobal = ImportMethod (sysMarshal, sysVoid, "FreeHGlobal", sysIntPtr);
+            sysPtrToStringAuto = ImportMethod (sysMarshal, sysString, "PtrToStringAuto", sysIntPtr);
         }
 
         readonly SymbolTable<Mono.Cecil.Cil.Document> fileDocuments = new SymbolTable<Mono.Cecil.Cil.Document> ();
@@ -974,7 +984,7 @@ namespace Repil
                 case VoidType vdt:
                     return sysVoid;
                 case VarArgsType vat:
-                    return sysIntPtr;
+                    return sysObjArray;
                 default:
                     throw new NotSupportedException ($"{irType} ({irType?.GetType().Name}) not supported");
             }

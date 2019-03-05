@@ -1,6 +1,12 @@
 /*.nupkg
 /y.output
 
+# Devtest
+/Cli/S*.dll
+/Cli/S*.pdb
+/Cli/S*.dll.mdb
+/Cli/*.il
+
 # Autosave files
 *~
 .vs

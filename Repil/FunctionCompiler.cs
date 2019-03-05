@@ -203,6 +203,8 @@ namespace Repil
                 }
             }
 
+            var shouldTrace = false;// f.Symbol != Symbol.Intern ("@ftrace");
+
             //
             // Create target instructions for each block
             //
@@ -214,9 +216,11 @@ namespace Repil
                 //
                 // Block Trace
                 //
-                il.Append (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
-                i = il.Create (OpCodes.Call, compilation.sysConsoleWriteLine);
-                il.Append (i);
+                if (shouldTrace) {
+                    il.Append (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
+                    i = il.Create (OpCodes.Call, compilation.sysConsoleWriteLine);
+                    il.Append (i);
+                }
 
                 //
                 // Block Debugger Break
@@ -1481,11 +1485,34 @@ namespace Repil
                     var lva = function.IRDefinition.GetAssignment (lv);
                     ltype = lva.Instruction.ResultType (function.IRModule);
                 }
-                foreach (var a in call.Arguments) {
+                var ft = (FunctionType)((Types.PointerType)ltype).ElementType;
+                var ps = ft.ParameterTypes;
+                var nps = ps.Length;
+                var hasVarArgs = nps > 0 && (ps[nps - 1] is VarArgsType);
+                if (hasVarArgs)
+                    nps--;
+                if (call.Arguments.Length < nps) {
+                    throw new InvalidOperationException ($"Too few arguments to {function.IRDefinition.Symbol}");
+                }
+                for (var i = 0; i < nps; i++) {
+                    var a = call.Arguments[i];
                     EmitValue (a.Value, a.Type);
                 }
+                if (hasVarArgs) {
+                    var numVarArgs = call.Arguments.Length - nps;
+                    Emit (il.Create (OpCodes.Ldc_I4, numVarArgs));
+                    Emit (il.Create (OpCodes.Newarr, compilation.sysObj));
+                    for (var i = 0; i < numVarArgs; i++) {
+                        Emit (il.Create (OpCodes.Dup));
+                        var a = call.Arguments[nps + i];
+                        Emit (il.Create (OpCodes.Ldc_I4, i));
+                        EmitValue (a.Value, a.Type);
+                        EmitBox (a.Type);
+                        Emit (il.Create (OpCodes.Stelem_Any, compilation.sysObj));
+                    }
+                }
                 EmitValue (lv, ltype);
-                Emit (il.Create (OpCodes.Calli, CreateCallSite (ltype)));
+                Emit (il.Create (OpCodes.Calli, CreateCallSite (ft)));
                 return;
             }
             throw new NotSupportedException ("Cannot call " + call.Pointer);
@@ -1554,9 +1581,8 @@ namespace Repil
             return variable.Variable;
         }
 
-        CallSite CreateCallSite (LType functionPointerType)
+        CallSite CreateCallSite (FunctionType ft)
         {
-            var ft = (FunctionType)((Types.PointerType)functionPointerType).ElementType;
             var c = new CallSite (compilation.GetClrType (ft.ReturnType));
             foreach (var p in ft.ParameterTypes) {
                 var pd = new ParameterDefinition (compilation.GetClrType (p));
