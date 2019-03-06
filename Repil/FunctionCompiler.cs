@@ -226,14 +226,15 @@ namespace Repil
                         i = il.Create (OpCodes.Nop);
                         pis[pred] = i;
                         il.Append (i);
+                        var phiVs = new List<(Assignment Assignment, PhiInstruction Phi, Value Value)> ();
                         foreach (var oa in phis) {
                             var phi = (PhiInstruction)oa.Instruction;
-                            var phiV = phi.Values.First (x => ((LocalValue)x.Label).Symbol == pred).Value;
-                            var phiLocal = GetPhiLocal (oa.Result);
-                            prev = i;
-                            EmitValue (phiV, phi.Type);
-                            Emit (il.Create (OpCodes.Stloc, phiLocal));
+                            foreach (var v in phi.Values.Where (x => ((LocalValue)x.Label).Symbol == pred)) {
+                                phiVs.Add ((oa, phi, v.Value));
+                            }
                         }
+                        prev = i;
+                        EmitPhis (phiVs);
                         if (j + 1 < phipreds.Count) {
                             il.Append (il.Create (OpCodes.Br, firstI));
                         }
