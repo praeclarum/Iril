@@ -39,14 +39,6 @@ namespace Cli
             }
 
             //
-            // Early out
-            //
-            if (files.Count == 0) {
-                Console.WriteLine ("No inputs");
-                return 1;
-            }
-
-            //
             // Cleanup input
             //
             if (string.IsNullOrWhiteSpace (outName)) {
@@ -54,10 +46,29 @@ namespace Cli
             }
 
             //
+            // Compile C Files
+            //
+            var clang = new ClangTool ();
+            var cfiles = files.Where (x => clang.InputExtensions.Contains (Path.GetExtension (x)));
+            var cllfiles = clang.Run (cfiles);
+
+            var llfiles = files
+                          .Where (x => Path.GetExtension (x) == ".ll")
+                          .Concat (cllfiles)
+                          .ToList ();
+
+            //
+            // Early out
+            //
+            if (llfiles.Count == 0) {
+                Console.WriteLine ("No inputs");
+                return 1;
+            }
+
+            //
             // Parse
             //
-            Console.WriteLine ($"Parsing {files.Count} files...");
-            var llfiles = files.Where (x => Path.GetExtension (x) == ".ll");
+            Console.WriteLine ($"Parsing {llfiles.Count} files...");
             var modules = llfiles.AsParallel ().Select (x => {
                 var code = File.ReadAllText (x);
                 return Module.Parse (code, x);
