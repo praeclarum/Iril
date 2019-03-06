@@ -552,9 +552,9 @@ namespace Repil
                             throw new NotSupportedException ($"Cannot fpext {fpext.Type}");
                     }
                     break;
-                case IR.FptosiInstruction sext:
-                    EmitTypedValue (sext.Value);
-                    switch (sext.Type) {
+                case IR.FptosiInstruction fptosi:
+                    EmitTypedValue (fptosi.Value);
+                    switch (fptosi.Type) {
                         case Types.IntegerType intt:
                             switch (intt.Bits) {
                                 case 1:
@@ -573,12 +573,12 @@ namespace Repil
                             }
                             break;
                         default:
-                            throw new NotSupportedException ($"Cannot fptoui {sext.Type}");
+                            throw new NotSupportedException ($"Cannot fptoui {fptosi.Type}");
                     }
                     break;
-                case IR.FptouiInstruction sext:
-                    EmitTypedValue (sext.Value);
-                    switch (sext.Type) {
+                case IR.FptouiInstruction fptoui:
+                    EmitTypedValue (fptoui.Value);
+                    switch (fptoui.Type) {
                         case Types.IntegerType intt:
                             switch (intt.Bits) {
                                 case 1:
@@ -597,7 +597,7 @@ namespace Repil
                             }
                             break;
                         default:
-                            throw new NotSupportedException ($"Cannot fptoui {sext.Type}");
+                            throw new NotSupportedException ($"Cannot fptoui {fptoui.Type}");
                     }
                     break;
                 case IR.FsubInstruction fsub:
@@ -692,6 +692,10 @@ namespace Repil
                     switch (sext.Type) {
                         case Types.IntegerType intt:
                             EmitTypedValue (sext.Value);
+                            if (sext.Value.Type is Types.IntegerType sintt && sintt.Bits == 1) {
+                                Emit (il.Create (OpCodes.Ldc_I4_M1));
+                                Emit (il.Create (OpCodes.Mul));
+                            }
                             switch (intt.Bits) {
                                 case 1:
                                 case 8:
