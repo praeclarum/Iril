@@ -146,11 +146,15 @@ namespace Repil.IR
         public override IEnumerable<LocalSymbol> ReferencedLocals {
             get {
                 if (Pointer is GlobalValue g) {
-                    if (g.Symbol.Text == "@llvm.dbg.value") {
-                        yield break;
+                    switch (g.Symbol.Text)
+                    {
+                        case "@llvm.dbg.value":
+                            yield break;
                     }
                 }
-
+                foreach (var l in Pointer.ReferencedLocals) {
+                    yield return l;
+                }
                 foreach (var a in Arguments) {
                     foreach (var l in a.Value.ReferencedLocals) {
                         yield return l;
@@ -172,10 +176,15 @@ namespace Repil.IR
                 switch (g.Symbol.Text) {
                     case "@llvm.dbg.declare":
                     case "@llvm.dbg.value":
-                    //case "@llvm.fabs.f64":
-                    //case "@llvm.sqrt.f64":
-                    //case "@llvm.ceil.f64":
-                    //case "@llvm.pow.f64":
+                        return true;
+                    case "@llvm.fabs.f64":
+                    case "@llvm.sqrt.f64":
+                    case "@llvm.ceil.f64":
+                    case "@llvm.pow.f64":
+                        foreach (var a in Arguments) {
+                            if (!a.Value.IsIdempotent (function))
+                                return false;
+                        }
                         return true;
                 }
             }
@@ -748,19 +757,12 @@ namespace Repil.IR
         }
     }
 
-    public class TruncInstruction : Instruction
+    public class TruncInstruction : ConversionInstruction
     {
-        public readonly TypedValue Value;
-        public readonly LType Type;
-
         public TruncInstruction (TypedValue value, LType type)
+            : base (value, type)
         {
-            Value = value;
-            Type = type;
         }
-
-        public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
-        public override LType ResultType (Module module) => Type;
     }
 
     public abstract class ConversionInstruction : Instruction

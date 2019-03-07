@@ -123,31 +123,49 @@ namespace Repil
                 shouldInline[p] = true;
             }
             foreach (var b in f.Blocks) {
+                var ins = b.Assignments.Select (x => x.Instruction).Concat (new IR.Instruction[] { b.Terminator }).ToList ();
+
                 for (var i = 0; i < b.Assignments.Length; i++) {
                     var a = b.Assignments[i];
-                    var symbol = a.Result;
-                    if (symbol == LocalSymbol.None)
+                    if (!a.HasResult)
                         continue;
+                    var symbol = a.Result;
 
                     // Make sure it's used only once
                     var referencedOnce = localCounts.ContainsKey (symbol) && localCounts[symbol] == 1;
 
-                    var should = false;
-                    if (referencedOnce) {
-                        should = !phiValues.Contains(symbol) && a.Instruction.IsIdempotent (function.IRDefinition);
-                        // Make sure its use is before a state-changing instruction
-                        var j = i + 1;
-                        for (; j < b.Assignments.Length && should; j++) {
+                    var should = referencedOnce && !phiValues.Contains (symbol);
+
+                    if (should) {
+                        // Make sure it's used in this block
+                        should = false;
+                        for (var j = i + 1; j < b.Assignments.Length; j++) {
                             if (b.Assignments[j].Instruction.ReferencedLocals.Contains (symbol)) {
-                                break;
-                            }
-                            if (!b.Assignments[j].Instruction.IsIdempotent (function.IRDefinition)) {
-                                should = false;
+                                should = true;
                                 break;
                             }
                         }
-                        // Make sure it was used in this block
-                        if (should && j == b.Assignments.Length && !b.Terminator.ReferencedLocals.Contains (symbol)) {
+                        should = should || (b.Terminator.ReferencedLocals.Contains (symbol));
+
+                        // Decide based on what the instruction does
+                        if (a.Instruction.IsIdempotent (function.IRDefinition)) {
+                            // OK
+                        }
+                        else if (a.Instruction is IR.LoadInstruction) {
+                            // Make sure it's used is before a state-changing instruction
+                            for (var j = i + 1; should && j < ins.Count; j++) {
+                                if (ins[j].ReferencedLocals.FirstOrDefault () == symbol) {
+                                    //Console.WriteLine ($"Inline {b.Assignments[i]} in {ins[j]}");
+                                    should = true;
+                                    break;
+                                }
+                                if (!ins[j].IsIdempotent (function.IRDefinition)) {
+                                    should = false;
+                                    break;
+                                }
+                            }
+                        }
+                        else {
                             should = false;
                         }
                     }
