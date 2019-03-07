@@ -3,6 +3,7 @@ using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Repil.Types;
 using CecilInstruction = Mono.Cecil.Cil.Instruction;
+using System.Linq;
 
 namespace Repil
 {
@@ -217,8 +218,11 @@ namespace Repil
 
         protected void EmitGetElementPointer(IR.TypedValue pointer, IR.TypedValue[] indices)
         {
-            var t = pointer.Type;
             EmitTypedValue (pointer);
+            if (TryEmitConstantGetElementPointer (pointer, indices)) {
+                return;
+            }
+            var t = pointer.Type;
             var n = indices.Length;
             for (var i = 0; i < n; i++)
             {
@@ -276,14 +280,62 @@ namespace Repil
                 }
                 else
                 {
-
-                    if (i + 1 < n)
-                    {
+                    if (i + 1 < n) {
                         throw new InvalidOperationException("Cannot get pointer to " + t);
                     }
-
                 }
             }
+        }
+
+        bool TryEmitConstantGetElementPointer (IR.TypedValue pointer, IR.TypedValue[] indices)
+        {
+            var t = pointer.Type;
+            var n = indices.Length;
+            long offset = 0L;
+            for (var i = 0; i < n; i++) {
+                var index = indices[i];
+                if (t is Types.PointerType pt) {
+                    t = pt.ElementType;
+                    if (index.Value is IR.Constant c && c.Int32Value == 0) {
+                        // Do nothing
+                    }
+                    else if (index.Value is IR.Constant ic) {
+                        var esize = t.GetByteSize (module);
+                        offset += esize * ic.Int32Value;
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else if (t is Types.ArrayType artt) {
+                    var esize = artt.ElementType.GetByteSize (module);
+                    if (index.Value is IR.Constant ic) {
+                        offset += esize * ic.Int32Value;
+                    }
+                    else {
+                        return false;
+                    }
+                    t = artt.ElementType;
+                }
+                else {
+                    return false;
+                }
+            }
+            if (offset > 0) {
+                //Console.WriteLine ("EMIT " + offset);
+                if (offset < int.MaxValue) {
+                    EmitValue (new IR.IntegerConstant (offset), Types.IntegerType.I32);
+                }
+                else {
+                    EmitValue (new IR.IntegerConstant (offset), Types.IntegerType.I64);
+                }
+                Emit (il.Create (OpCodes.Conv_U));
+                Emit (il.Create (OpCodes.Add));
+            }
+            else {
+                //Console.WriteLine ("SKIP ZERO");
+            }
+            return true;
         }
 
         protected void EmitZeroValue(LType type)
