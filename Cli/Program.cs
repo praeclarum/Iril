@@ -15,6 +15,7 @@ namespace Cli
             //
             var files = new List<string> ();
             var outName = "";
+            var showHelp = false;
 
             //
             // Parse command line
@@ -28,6 +29,10 @@ namespace Cli
                         }
                         i += 2;
                     }
+                    if (a == "-h" || a == "--help") {
+                        showHelp = true;
+                        i++;
+                    }
                     else {
                         i++;
                     }
@@ -38,10 +43,22 @@ namespace Cli
                 }
             }
 
+            if (showHelp) {
+                Console.WriteLine ($"OVERVIEW: Frank's C to .NET compiler");
+                Console.WriteLine ();
+                Console.WriteLine ($"USAGE: iril [options] <inputs>");
+                Console.WriteLine ();
+                Console.WriteLine ($"INPUTS: .c and .ll files");
+                Console.WriteLine ();
+                Console.WriteLine ($"OPTIONS:");
+                Console.WriteLine ($"  -o <asm file>      Path to the assembly .dll to output");
+                return 0;
+            }
+
             //
             // Cleanup input
             //
-            if (string.IsNullOrWhiteSpace (outName)) {
+            if (string.IsNullOrWhiteSpace (outName) && files.Count > 0) {
                 outName = Path.ChangeExtension (Path.GetFileName (files[0]), ".dll");
             }
 
@@ -61,14 +78,14 @@ namespace Cli
             // Early out
             //
             if (llfiles.Count == 0) {
-                Console.WriteLine ("No inputs");
+                Error ("No inputs");
                 return 1;
             }
 
             //
             // Parse
             //
-            Console.WriteLine ($"Parsing {llfiles.Count} files...");
+            Info ($"Parsing {llfiles.Count} files...");
             var modules = llfiles.AsParallel ().Select (x => {
                 var code = File.ReadAllText (x);
                 return Module.Parse (code, x);
@@ -77,15 +94,33 @@ namespace Cli
             //
             // Compile
             //
-            Console.WriteLine ("Compiling...");
+            Info ("Compiling...");
             var comp = new Compilation (modules, outName);
 
             //
             // Output
             //
-            Console.WriteLine ($"Writing {outName}...");
+            Info ($"Writing {outName}...");
             comp.WriteAssembly (outName);
             return 0;
+        }
+
+        public static void Info (string message)
+        {
+            Console.Write ("iril: ");
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write ("info: ");
+            Console.ResetColor ();
+            Console.WriteLine (message);
+        }
+
+        public static void Error (string message)
+        {
+            Console.Write ("iril: ");
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.Write ("error: ");
+            Console.ResetColor ();
+            Console.WriteLine (message);
         }
     }
 }
