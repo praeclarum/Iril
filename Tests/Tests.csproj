@@ -34,6 +34,6 @@
     <EmbeddedResource Include="Inputs\ddaskr.zip" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Repil\Repil.csproj" />
+    <ProjectReference Include="..\Iril\Iril.csproj" />
   </ItemGroup>
 </Project>

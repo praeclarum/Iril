@@ -1,7 +1,7 @@
 ﻿using System;
-using Repil.Types;
+using Iril.Types;
 
-namespace Repil.IR
+namespace Iril.IR
 {
     public class GlobalVariable
     {

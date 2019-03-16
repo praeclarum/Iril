@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Numerics;
-namespace Repil.Types
+namespace Iril.Types
 {
     public class VectorType : AggregateType
     {

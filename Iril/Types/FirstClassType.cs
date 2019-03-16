@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Repil.Types
+namespace Iril.Types
 {
     public abstract class FirstClassType : LType
     {

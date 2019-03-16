@@ -1,11 +1,11 @@
 ﻿using System;
 using Mono.Cecil;
 using System.Collections.Generic;
-using Repil.Types;
+using Iril.Types;
 using Mono.Cecil.Cil;
 using Mono.Cecil.Rocks;
 
-namespace Repil
+namespace Iril
 {
     class Syscalls
     {

@@ -3,9 +3,9 @@ using System;
 using System.Numerics;
 using System.Globalization;
 
-namespace Repil.IR
+namespace Iril.IR
 {
-    public class Lexer : Repil.IR.yyParser.yyInput
+    public class Lexer : Iril.IR.yyParser.yyInput
     {
         readonly string code;
         int p;

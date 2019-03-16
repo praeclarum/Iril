@@ -1,6 +1,6 @@
 ﻿using System.Linq;
 using NUnit.Framework;
-using Repil;
+using Iril;
 using System.IO;
 using System.Reflection;
 using System.Diagnostics;
@@ -20,7 +20,7 @@ namespace Tests
             var asmFileName = "Ddaskr.dll";
             var irmods =
                 GetZippedCode ("ddaskr.zip")
-                .Select (x => Repil.Module.Parse (x.Code, x.Name));
+                .Select (x => Iril.Module.Parse (x.Code, x.Name));
             var compilation = new Compilation (
                 irmods,
                 assemblyName: asmFileName);
@@ -82,7 +82,7 @@ namespace Tests
                 "SuiteSparse.klu_tsolve.ll",
                 "SuiteSparse.SuiteSparse_config.ll",
                 }
-                .Select (x => Repil.Module.Parse (GetCode (x)));
+                .Select (x => Iril.Module.Parse (GetCode (x)));
             var compilation = new Compilation (
                 irmods,
                 assemblyName: asmFileName);
@@ -206,7 +206,7 @@ namespace Tests
             var asmFileName = "SQLite.dll";
             var irmods =
                 GetZippedCode ("sqlite3.ll.zip")
-                .Select (x => Repil.Module.Parse (x.Code, x.Name));
+                .Select (x => Iril.Module.Parse (x.Code, x.Name));
             var compilation = new Compilation (
                 irmods,
                 assemblyName: asmFileName);

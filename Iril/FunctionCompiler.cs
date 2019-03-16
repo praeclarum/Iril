@@ -4,18 +4,18 @@ using System.Linq;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Mono.Cecil.Rocks;
-using Repil.Types;
+using Iril.Types;
 using CecilInstruction = Mono.Cecil.Cil.Instruction;
 using System.Runtime.InteropServices;
-using Repil.IR;
+using Iril.IR;
 using System.Numerics;
 
-namespace Repil
+namespace Iril
 {
     public class DefinedFunction
     {
         public Symbol Symbol;
-        public Repil.Module IRModule;
+        public Iril.Module IRModule;
         public IR.FunctionDeclaration IRDeclaration;
         public IR.FunctionDefinition IRDefinition;
         public MethodDefinition ILDefinition;

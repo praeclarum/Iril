@@ -1,11 +1,11 @@
 ﻿using System;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
-using Repil.Types;
+using Iril.Types;
 using CecilInstruction = Mono.Cecil.Cil.Instruction;
 using System.Linq;
 
-namespace Repil
+namespace Iril
 {
     abstract class Emitter
     {

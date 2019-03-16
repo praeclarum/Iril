@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Mono.Cecil;
-using Repil.Types;
+using Iril.Types;
 using Mono.Cecil.Rocks;
 using Mono.Cecil.Cil;
 using System.Text;
 using Mono.Cecil.Mdb;
 using System.Security.Cryptography;
 
-namespace Repil
+namespace Iril
 {
     public class Compilation
     {

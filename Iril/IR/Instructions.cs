@@ -1,9 +1,9 @@
 ﻿using System;
-using Repil.Types;
+using Iril.Types;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Repil.IR
+namespace Iril.IR
 {
     public abstract class Instruction
     {

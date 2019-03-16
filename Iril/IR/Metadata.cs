@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Repil.IR
+namespace Iril.IR
 {
     public class Metadata
     {

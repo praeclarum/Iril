@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 
-using Repil.IR;
-using Repil.Types;
+using Iril.IR;
+using Iril.Types;
 
-namespace Repil
+namespace Iril
 {
     /// <summary>
     /// https://llvm.org/docs/LangRef.html
@@ -73,7 +73,7 @@ namespace Repil
     }
 }
 
-namespace Repil.IR
+namespace Iril.IR
 {
     public partial class Parser
     {

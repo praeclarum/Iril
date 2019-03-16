@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Repil.Types;
+using Iril.Types;
 
-namespace Repil.IR
+namespace Iril.IR
 {
     public abstract class Value
     {

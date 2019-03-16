@@ -1,7 +1,7 @@
 ﻿using NUnit.Framework;
 using System.IO;
 
-using Repil;
+using Iril;
 
 namespace Tests
 {

@@ -1,4 +1,4 @@
-﻿namespace Repil.IR
+﻿namespace Iril.IR
 {
     public class AttributeGroup
     {

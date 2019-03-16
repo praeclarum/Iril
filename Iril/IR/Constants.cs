@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Numerics;
 using System.Collections.Generic;
-using Repil.Types;
+using Iril.Types;
 using System.Linq;
 using System.Globalization;
 
-namespace Repil.IR
+namespace Iril.IR
 {
     public abstract class Constant : Value
     {

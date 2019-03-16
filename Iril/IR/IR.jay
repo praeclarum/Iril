@@ -6,11 +6,11 @@ using System.Numerics;
 using System.Text;
 using System.Linq;
 
-using Repil.Types;
+using Iril.Types;
 
 #pragma warning disable 219,414
 
-namespace Repil.IR
+namespace Iril.IR
 {
 	public partial class Parser
 	{

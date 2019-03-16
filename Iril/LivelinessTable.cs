@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-using Repil.IR;
+using Iril.IR;
 
-namespace Repil
+namespace Iril
 {
     class LivelinessTable
     {

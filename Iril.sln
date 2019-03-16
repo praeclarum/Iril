@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26124.0
 MinimumVisualStudioVersion = 15.0.26124.0
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repil", "Repil\Repil.csproj", "{E49CB7F6-5F5B-4CD7-B4C3-00A61F1A7942}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Iril", "Iril\Iril.csproj", "{E49CB7F6-5F5B-4CD7-B4C3-00A61F1A7942}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cli", "Cli\Cli.csproj", "{2BA8C6AF-9684-405F-B557-F3408D8D2FF3}"
 EndProject

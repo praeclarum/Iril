@@ -1,9 +1,9 @@
 ﻿using System;
-using Repil.Types;
+using Iril.Types;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Repil.IR
+namespace Iril.IR
 {
     public class FunctionDefinition
     {
@@ -26,7 +26,7 @@ namespace Repil.IR
             var ps = new List<Parameter> ();
             foreach (var p in parameters) {
                 if (p.Symbol == LocalSymbol.None) {
-                    var s = (LocalSymbol)Repil.Symbol.Intern ('%', implicitLocalCounter);
+                    var s = (LocalSymbol)Iril.Symbol.Intern ('%', implicitLocalCounter);
                     ps.Add (p.WithSymbol (s));
                     implicitLocalCounter++;
                 }
@@ -35,7 +35,7 @@ namespace Repil.IR
             var bs = new List<Block> ();
             foreach (var b in blocks) {
                 if (b.Symbol == LocalSymbol.None) {
-                    var s = (LocalSymbol)Repil.Symbol.Intern ('%', implicitLocalCounter);
+                    var s = (LocalSymbol)Iril.Symbol.Intern ('%', implicitLocalCounter);
                     bs.Add (b.WithSymbol (s));
                     implicitLocalCounter++;
                 }
