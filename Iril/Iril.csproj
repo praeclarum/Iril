@@ -4,6 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <PreBuildEvent>cd /Users/fak/Dropbox/Projects/Iril &amp;&amp; make Iril/IR/Parser.cs</PreBuildEvent>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
   </PropertyGroup>
   
   <ItemGroup>
@@ -13,8 +14,9 @@
   <ItemGroup>
     <PackageReference Include="Mono.Cecil" Version="0.10.0" />
   </ItemGroup>
+  
   <ItemGroup>
-    <Compile Remove="Class1.cs" />
-    <Compile Remove="IR\SourceFileName.cs" />
+    <None Include="..\LICENSE.txt" Pack="true" PackagePath="" />
   </ItemGroup>
+
 </Project>

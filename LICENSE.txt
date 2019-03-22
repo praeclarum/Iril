@@ -1,0 +1,214 @@
+Iril is Copyright 2019 Krueger Systems, Inc.
+
+KRUEGER SYSTEMS SOFTWARE LICENSE TERMS
+IRIL
+
+These license terms are an agreement between you and Krueger Systems, Inc. (or based on where you live, 
+one of its affiliates). They apply to the software named above. They also apply to any Krueger Systems services or 
+updates for the software, except to the extent those have different terms.
+
+BY USING THE SOFTWARE, YOU ACCEPT THESE TERMS. IF YOU DO NOT ACCEPT THEM, DO 
+NOT USE THE SOFTWARE. INSTEAD, RETURN IT TO THE RETAILER FOR A REFUND OR 
+CREDIT.
+
+If you cannot obtain a refund there, contact Krueger Systems
+for information about Krueger Systems's refund policies. See kruegersystems.com/returns.
+
+*	Section I describes your use rights for the free version of Iril.
+*	Section II describes enhanced use rights, warranty, and support benefits if you acquire a subscription for Iril Professional edition of the software.
+*	Section III contains general terms applying to all editions of the software.
+
+SECTION I: IRIL FREE.
+
+This Section describes your rights to the Free edition of the software.
+
+1.	USE RIGHTS FOR IRIL FREE. 
+	a.	Individual License. If you are an individual working on your own applications to sell or for any 
+	other purpose, you may use the software to develop and test those applications.
+	b.	Organization Licenses. If you are an organization, your users may use the software as follows:
+		*	Any number of your users may use the software to develop and test your applications 
+		released under Open Source Initiative (OSI) approved open source software licenses.
+		*	Any number of your users may use the software to develop and test your applications as 
+		part of online or in person classroom training and education, or for performing academic 
+		research.
+		*	If you are an enterprise, your employees and contractors may not use the software to 
+		develop or test your applications, except for open source, and 
+		education purposes as permitted above. An "enterprise" is any organization and its 
+		affiliates who collectively have more than (i) 250 PCs or users or (ii) one million dollars (or 
+		the equivalent in other currencies) in annual revenues, and "affiliates" means those entities 
+		that control (via majority ownership), are controlled by, or are under common control with 
+		an organization.
+2.	SUPPORT SERVICES. Because Iril is licensed "as-is," we may not provide support services for it.
+3.	DISCLAIMER OF WARRANTY. IRIL IS LICENSED 
+"AS-IS."  YOU BEAR THE RISK OF USING IT. KRUEGER SYSTEMS GIVES NO EXPRESS 
+WARRANTIES, GUARANTEES OR CONDITIONS. TO THE EXTENT PERMITTED UNDER 
+YOUR LOCAL LAWS, KRUEGER SYSTEMS EXCLUDES THE IMPLIED WARRANTIES OF 
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
+
+SECTION II: IRIL PROFESSIONAL.
+
+This Section describes your use rights, warranty, and support benefits if 
+you acquire a subscription for the Professional edition of the software ("Iril 
+Subscription"). You may not share your Iril Subscription coupon code or access credentials. 
+
+1.	USE RIGHTS FOR IRIL PROFESSIONAL.
+	a.	General. The software is licensed on a per user basis. One user may use copies of the software on 
+	your devices to develop and test applications. This includes using copies of the software on your 
+	own internal servers that remain fully dedicated to your own use. You may not, however, separate 
+	the components of the software and run those in a production environment, or on third party 
+	devices (except as otherwise stated in this agreement), or for any purpose other than developing 
+	and testing your applications. 
+	b.	Demo Use. The uses permitted above includes use of the software in demonstrating your 
+	applications.
+2.	DOCUMENTATION. Any person that has valid access to your computer or internal network may copy 
+and use the documentation for your internal, reference purposes.
+3.	NOT FOR RESALE SOFTWARE. You may not sell software marked as "NFR" or "Not for Resale."
+4.	PROOF OF LICENSE. Your proof of license is the Krueger Systems coupon code you received through your 
+Iril Subscription and your receipt and/or being able to access the software service through 
+your Krueger Systems account. 
+5.	TRANSFER TO A THIRD PARTY.  If you have a Iril Subscription, you may transfer this 
+software and the applicable license agreements directly to another party. Before the transfer, that party 
+must agree that this agreement applies to the transfer and use of the software. The transfer must 
+include the software and coupon code. You must uninstall all copies of the software after transferring it 
+from your device(s). You may not retain any copies of the coupon code to be transferred, and may only 
+retain copies of the software if otherwise licensed to do so. If you have acquired a non-perpetual 
+license to use the software or if the software is marked Not for Resale you may not 
+transfer the software or this agreement to another party.
+6.	SUPPORT SERVICES. Krueger Systems provides support for the software as described at https://kruegersystems.com/support. 
+7.	LIMITED WARRANTY. If you follow the instructions, the software will perform substantially as 
+described in the Krueger Systems materials that you receive in or with the software.
+References to "limited warranty" are references to the express warranty provided by Krueger Systems. This 
+warranty is given in addition to other rights and remedies you may have under law, including your 
+rights and remedies in accordance with the statutory guarantees under local Consumer Law.
+8.	TERM OF WARRANTY; WARRANTY RECIPIENT; LENGTH OF ANY IMPLIED WARRANTIES. 
+THE LIMITED WARRANTY COVERS THE SOFTWARE FOR ONE YEAR AFTER ACQUIRED BY 
+THE FIRST USER. IF YOU RECEIVE SUPPLEMENTS, UPDATES, OR REPLACEMENT 
+SOFTWARE DURING THAT YEAR, THEY WILL BE COVERED FOR THE REMAINDER OF THE 
+WARRANTY OR 30 DAYS, WHICHEVER IS LONGER. If the first user transfers the software, the 
+remainder of the warranty will apply to the recipient.
+TO THE EXTENT PERMITTED BY LAW, ANY IMPLIED WARRANTIES, GUARANTEES, OR 
+CONDITIONS LAST ONLY DURING THE TERM OF THE LIMITED WARRANTY. Some states do 
+not allow limitations on how long an implied warranty lasts, so these limitations may not apply to you. 
+They also might not apply to you because some countries may not allow limitations on how long an 
+implied warranty, guarantee or condition lasts.
+9.	EXCLUSIONS FROM WARRANTY. This warranty does not cover problems caused by your acts (or 
+failures to act), the acts of others, or events beyond Krueger Systems's reasonable control.
+10.	REMEDY FOR BREACH OF WARRANTY. KRUEGER SYSTEMS WILL REPAIR OR REPLACE THE 
+SOFTWARE AT NO CHARGE. IF KRUEGER SYSTEMS CANNOT REPAIR OR REPLACE IT, 
+KRUEGER SYSTEMS WILL REFUND THE AMOUNT SHOWN ON YOUR RECEIPT FOR THE 
+SOFTWARE. IT WILL ALSO REPAIR OR REPLACE SUPPLEMENTS, UPDATES, AND 
+REPLACEMENT SOFTWARE AT NO CHARGE. IF KRUEGER SYSTEMS CANNOT REPAIR OR REPLACE 
+THEM, IT WILL REFUND THE AMOUNT YOU PAID FOR THEM, IF ANY. YOU MUST 
+UNINSTALL THE SOFTWARE AND RETURN ANY MEDIA AND OTHER ASSOCIATED 
+MATERIALS TO KRUEGER SYSTEMS WITH PROOF OF PURCHASE TO OBTAIN A REFUND. THESE 
+ARE YOUR ONLY REMEDIES FOR BREACH OF THE LIMITED WARRANTY.
+11.	CONSUMER RIGHTS NOT AFFECTED. YOU MAY HAVE ADDITIONAL CONSUMER RIGHTS 
+UNDER YOUR LOCAL LAWS, WHICH THIS AGREEMENT CANNOT CHANGE.
+12.	WARRANTY PROCEDURES. You need proof of purchase for warranty service.
+	a.	United States and Canada. For warranty service or information about how to obtain a refund for 
+	software acquired in the United States and Canada, contact Krueger Systems at: 
+		*	Krueger Systems Customer Service and Support, 700 NW 42nd St #221, Seattle WA 98107
+13.	NO OTHER WARRANTIES. THE LIMITED WARRANTY IS THE ONLY DIRECT WARRANTY 
+FROM KRUEGER SYSTEMS. KRUEGER SYSTEMS GIVES NO OTHER EXPRESS WARRANTIES, 
+GUARANTEES, OR CONDITIONS. WHERE ALLOWED BY YOUR LOCAL LAWS, KRUEGER SYSTEMS 
+EXCLUDES IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+PURPOSE, AND NON-INFRINGEMENT. If your local laws give you any implied warranties, 
+guarantees or conditions, despite this exclusion, your remedies are described in the Remedy for Breach 
+of Warranty clause above, to the extent permitted by your local laws.
+FOR AUSTRALIA ONLY. References to "Limited Warranty" are references to the warranty provided 
+by Krueger Systems. This warranty is given in addition to other rights and remedies you may have under law, 
+including your rights and remedies in accordance with the statutory guarantees under the Australian 
+Consumer Law. Our goods come with guarantees that cannot be excluded under the Australian 
+Consumer Law. You are entitled to a replacement or refund for a major failure and compensation for 
+any other reasonably foreseeable loss or damage. You are also entitled to have the goods repaired or 
+replaced if the goods fail to be of acceptable quality and the failure does not amount to a major failure. 
+Goods presented for repair may be replaced by refurbished goods of the same type rather than being 
+replaced. Refurbished parts may be used to repair the goods.
+14.	LIMITATION ON AND EXCLUSION OF DAMAGES FOR BREACH OF WARRANTY. THE 
+LIMITATION ON AND EXCLUSION OF DAMAGES CLAUSE IN SECTION III BELOW APPLIES 
+TO BREACHES OF THIS LIMITED WARRANTY.
+THIS WARRANTY GIVES YOU SPECIFIC LEGAL RIGHTS, AND YOU MAY ALSO HAVE 
+OTHER RIGHTS THAT VARY FROM STATE TO STATE. YOU MAY ALSO HAVE OTHER RIGHTS 
+THAT VARY FROM COUNTRY TO COUNTRY.
+
+SECTION III. GENERAL TERMS.
+
+The terms in this Section apply to all editions of the software listed above.
+
+1.	THIRD PARTY COMPONENTS. The software may include third party components with separate 
+legal notices or governed by other agreements, as may be described in the ThirdPartyNotices file(s) 
+accompanying the software. 
+2.	PACKAGE MANAGERS. The software may include package managers, like NuGet, that give you the 
+option to download other Krueger Systems and third party software packages to use with your application. 
+Those packages are under their own licenses, and not this agreement. Krueger Systems does not distribute, 
+license or provide any warranties for any of the third party packages.
+3.	SCOPE OF LICENSE. The software is licensed, not sold. This agreement only gives you some rights to 
+use the software. Krueger Systems reserves all other rights. Unless applicable law gives you more rights 
+despite this limitation, you may use the software only as expressly permitted in this agreement. In 
+doing so, you must comply with any technical limitations in the software that only allow you to use it in 
+certain ways. You may not:
+	*	work around any technical limitations in the software;
+	*	reverse engineer, decompile or disassemble the software, or otherwise attempt to derive the 
+	source code for the software, except and to the extent required by third party licensing terms 
+	governing use of certain open source components that may be included in the software;
+	*	remove, minimize, block or modify any notices of Krueger Systems or its suppliers in the software;
+	*	use the software in any way that is against the law; or
+	*	share, publish, rent or lease the software, or provide the software as a stand-alone offering for 
+	others to use.
+4.	EXPORT RESTRICTIONS. You must comply with all domestic and international export laws and 
+regulations that apply to the software, which include restrictions on destinations, end users, and end 
+use. For further information on export restrictions, visit kruegersystems.com/exporting.
+5.	ENTIRE AGREEMENT. This agreement (including the warranty above), and the terms for 
+supplements, updates, Internet-based services and support services, are the entire agreement for the 
+software and support services.
+6.	APPLICABLE LAW. If you acquired the software in the United States, Washington law applies to 
+interpretation of and claims for breach of this agreement, and the laws of the state where you live apply 
+to all other claims. If you acquired the software in any other country, its laws apply.
+7.	CONSUMER RIGHTS; REGIONAL VARIATIONS. This agreement describes certain legal rights. 
+You may have other rights, including consumer rights, under the laws of your state or country. 
+Separate and apart from your relationship with Krueger Systems, you may also have rights with respect to the 
+party from which you acquired the software. This agreement does not change those other rights if the 
+laws of your state or country do not permit it to do so. For example, if you acquired the software in one 
+of the below regions, or mandatory country law applies, then the following provisions apply to you:
+	a.	Australia. References to "Limited Warranty" are references to the express warranty provided by 
+	Krueger Systems or the manufacturer or installer. This warranty is in addition to other rights and remedies 
+	you may have under law, including your rights and remedies in accordance with the statutory 
+	guarantees under the Australian Consumer Law.
+	In this Section, "goods" refers to the software for which Krueger Systems or the manufacturer or installer 
+	provides the express warranty. Our goods come with guarantees that cannot be excluded under 
+	the Australian Consumer Law. You are entitled to a replacement or refund for a major failure and 
+	compensation for any other reasonably foreseeable loss or damage. You are also entitled to have 
+	the goods repaired or replaced if the goods fail to be of acceptable quality and the failure does not 
+	amount to a major failure
+	b.	Canada. If you acquired this software in Canada, you may stop receiving updates by turning off 
+	the automatic update feature, disconnecting your device from the Internet (if and when you 
+	re-connect to the Internet, however, the software will resume checking for and installing updates), 
+	or uninstalling the software. The product documentation, if any, may also specify how to turn off 
+	updates for your specific device or software.
+	c.	Germany and Austria.
+	i.	Warranty. The properly licensed software will perform substantially as described in any 
+	Krueger Systems materials that accompany the software. However, Krueger Systems gives no contractual 
+	guarantee in relation to the licensed software.
+	ii.	Limitation of Liability. In case of intentional conduct, gross negligence, claims based on the 
+	Product Liability Act, as well as, in case of death or personal or physical injury, Krueger Systems is 
+	liable according to the statutory law.
+	Subject to the foregoing clause (ii), Krueger Systems will only be liable for slight negligence if Krueger Systems is in 
+	breach of such material contractual obligations, the fulfillment of which facilitate the due 
+	performance of this agreement, the breach of which would endanger the purpose of this 
+	agreement and the compliance with which a party may constantly trust in (so-called "cardinal 
+	obligations"). In other cases of slight negligence, Krueger Systems will not be liable for slight negligence.
+8.	LIMITATION ON AND EXCLUSION OF DAMAGES. YOU CAN RECOVER FROM KRUEGER SYSTEMS 
+AND ITS SUPPLIERS ONLY DIRECT DAMAGES UP TO THE GREATER OF THE AMOUNT YOU 
+PAID FOR THE SOFTWARE OR $5.00. YOU CANNOT RECOVER ANY OTHER DAMAGES, 
+INCLUDING CONSEQUENTIAL, LOST PROFITS, SPECIAL, INDIRECT OR INCIDENTAL 
+DAMAGES.
+
+This limitation applies to (a) anything related to the software, services, content (including code) on 
+third party Internet sites, or third party applications; and (b) claims for breach of contract, breach of 
+warranty, guarantee or condition, strict liability, negligence, or other tort to the extent permitted by 
+applicable law.
+
+It also applies even if Krueger Systems knew or should have known about the possibility of the damages. The 
+above limitation or exclusion may not apply to you because your state or country may not allow the 
+exclusion or limitation of incidental, consequential or other damages.
+

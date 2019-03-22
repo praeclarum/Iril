@@ -8,14 +8,19 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.1</TargetFramework>
     
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <Authors>praeclarum</Authors>
     <Description>Converts C code to .NET assemblies.</Description>
     <PackageTags>C;Compiler;Native;PInvoke</PackageTags>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     
     <PackageId>iril-cli</PackageId>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>iril</ToolCommandName>
   </PropertyGroup>
+  
+  <ItemGroup>
+    <None Include="..\LICENSE.txt" Pack="true" PackagePath="" />
+  </ItemGroup>
 
 </Project>
