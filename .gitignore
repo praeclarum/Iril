@@ -1,5 +1,7 @@
 /*.nupkg
 /y.output
+/*.c
+/*.ll
 
 # Devtest
 /Cli/S*.dll

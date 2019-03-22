@@ -35,11 +35,11 @@ namespace Cli
                 return proc.ExitCode;
             }
             catch (Win32Exception wex) when (wex.ErrorCode == unchecked ((int)0x80004005u)) {
-                Console.WriteLine ($"Could not find the tool `{fileName}`");
+                Program.Error ($"Could not find the tool `{fileName}`");
                 var installInstructions = Environment.OSVersion.Platform == PlatformID.Win32NT ?
                     GetWindowsInstructions () : GetMacInstructions ();
                 if (!string.IsNullOrEmpty (installInstructions)) {
-                    Console.WriteLine (installInstructions);
+                    Program.Error (installInstructions);
                 }
                 return 126;
             }

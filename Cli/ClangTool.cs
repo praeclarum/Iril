@@ -31,7 +31,7 @@ namespace Cli
             args.AddRange (files);
 
             var outFiles = new List<string> ();
-            if (Run (buildDir, "clango", args.ToArray ()) == 0) {
+            if (Run (buildDir, "clang", args.ToArray ()) == 0) {
                 foreach (var f in files) {
                     var outName = Path.ChangeExtension (Path.GetFileName (f), ".ll");
                     var outPath = Path.Combine (buildDir, outName);
@@ -44,14 +44,12 @@ namespace Cli
 
         protected override string GetWindowsInstructions () =>
             @"To install clang, follow these steps:
-
     1. Install Chocolately from https://chocolatey.org/install
     2. Install LLVM by typing `choco install llvm`
     3. Test that clang is installed by typing `clang -v`";
 
         protected override string GetMacInstructions () =>
             @"To install clang, follow these steps:
-
     1. Install Xcode from the App Store
     2. Install LLVM by typing `xcode-select --install`
     3. Test that clang is installed by typing `clang -v`";
