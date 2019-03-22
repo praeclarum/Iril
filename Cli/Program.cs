@@ -16,6 +16,7 @@ namespace Cli
             var files = new List<string> ();
             var outName = "";
             var showHelp = false;
+            var showVersion = false;
 
             //
             // Parse command line
@@ -29,8 +30,12 @@ namespace Cli
                         }
                         i += 2;
                     }
-                    if (a == "-h" || a == "--help") {
+                    if (a == "-h" || a == "--help" || a == "-?") {
                         showHelp = true;
+                        i++;
+                    }
+                    else if (a == "-v" || a == "--version") {
+                        showVersion = true;
                         i++;
                     }
                     else {
@@ -43,8 +48,15 @@ namespace Cli
                 }
             }
 
+            if (showVersion) {
+                var version = typeof (Iril.Module).Assembly.GetName ().Version;
+                Console.WriteLine ($"Krueger Systems IRIL {version}");
+                if (!showHelp)
+                    return 0;
+            }
+
             if (showHelp) {
-                Console.WriteLine ($"OVERVIEW: Frank's C to .NET compiler");
+                Console.WriteLine ($"OVERVIEW: C to .NET assembly compiler by Frank A. Krueger");
                 Console.WriteLine ();
                 Console.WriteLine ($"USAGE: iril [options] <inputs>");
                 Console.WriteLine ();
@@ -52,6 +64,8 @@ namespace Cli
                 Console.WriteLine ();
                 Console.WriteLine ($"OPTIONS:");
                 Console.WriteLine ($"  -o <asm file>      Path to the assembly .dll to output");
+                Console.WriteLine ($"  -h, -?, --help     Display this help");
+                Console.WriteLine ($"  -v, --version      Display the version");
                 return 0;
             }
 
