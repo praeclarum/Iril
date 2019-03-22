@@ -24,7 +24,7 @@ namespace Iril.IR
 %token CONSTANT PRIVATE INTERNAL EXTERNAL FASTCC SIGNEXT ZEROEXT VOLATILE RETURNED
 %token NONNULL NOCAPTURE WRITEONLY READONLY READNONE
 %token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND SPECULATABLE SSP UWTABLE ARGMEMONLY
-%token SEQ_CST
+%token SEQ_CST DSO_LOCAL DSO_PREEMPTABLE
 %token RET BR SWITCH INDIRECTBR INVOKE RESUME CATCHSWITCH CATCHRET CLEANUPRET UNREACHABLE
 %token FNEG
 %token ADD NUW NSW FADD SUB FSUB MUL FMUL UDIV SDIV FDIV UREM SREM FREM
@@ -342,54 +342,64 @@ function_type_arg
     ;
     
 function_definition
-    : DEFINE return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs '{' blocks '}'
+    : define_header GLOBAL_SYMBOL parameters attribute_group_refs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (IEnumerable<Parameter>)$4, (List<Block>)$8, isExternal: true);
+        var h = (Tuple<object, object>)$1;
+        $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$6, isExternal: (bool)h.Item1);
     }
-    | DEFINE return_type GLOBAL_SYMBOL parameters attribute_group_refs metadata_kvs '{' blocks '}'
+    | define_header GLOBAL_SYMBOL parameters attribute_group_refs metadata_kvs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (IEnumerable<Parameter>)$4, (List<Block>)$8, isExternal: true, (SymbolTable<MetaSymbol>)$6);
+        var h = (Tuple<object, object>)$1;
+        $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$7, isExternal: (bool)h.Item1, (SymbolTable<MetaSymbol>)$5);
     }
-    | DEFINE return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
+    | define_header GLOBAL_SYMBOL parameters function_addr attribute_group_refs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$2, (GlobalSymbol)$3, (IEnumerable<Parameter>)$4, (List<Block>)$9, isExternal: true, (SymbolTable<MetaSymbol>)$7);
+        var h = (Tuple<object, object>)$1;
+        $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$7, isExternal: (bool)h.Item1);
     }
-    | DEFINE NOALIAS return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs '{' blocks '}'
+    | define_header GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
     {
-        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$9, isExternal: true);
+        var h = (Tuple<object, object>)$1;
+        $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$8, isExternal: (bool)h.Item1, (SymbolTable<MetaSymbol>)$6);
     }
-    | DEFINE NOALIAS return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
+    ;
+    
+define_header
+    : DEFINE return_type
     {
-        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$10, isExternal: true, (SymbolTable<MetaSymbol>)$8);
+        $$ = Tuple.Create ((object)true, $2);
     }
-    | DEFINE linkage return_type GLOBAL_SYMBOL parameters attribute_group_refs '{' blocks '}'
+    | DEFINE parameter_attribute return_type
     {
-        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$8, isExternal: (bool)$2);
+        $$ = Tuple.Create ((object)true, $3);
     }
-    | DEFINE linkage return_type GLOBAL_SYMBOL parameters attribute_group_refs metadata_kvs '{' blocks '}'
+    | DEFINE define_header_attributes return_type
     {
-        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$9, isExternal: (bool)$2, (SymbolTable<MetaSymbol>)$7);
+        $$ = Tuple.Create ($2, $3);
     }
-    | DEFINE linkage parameter_attribute return_type GLOBAL_SYMBOL parameters attribute_group_refs metadata_kvs '{' blocks '}'
+    | DEFINE define_header_attributes parameter_attribute return_type
     {
-        $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6, (List<Block>)$10, isExternal: (bool)$2, (SymbolTable<MetaSymbol>)$8);
+        $$ = Tuple.Create ($2, $4);
     }
-    | DEFINE linkage return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
+    ;
+    
+define_header_attributes
+    : NOALIAS
     {
-        $$ = new FunctionDefinition ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5, (List<Block>)$10, isExternal: (bool)$2, (SymbolTable<MetaSymbol>)$8);
+        $$ = true;
     }
-    | DEFINE linkage calling_convention return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs '{' blocks '}'
+    | runtime_preemption_specifier
     {
-        $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6, (List<Block>)$10, isExternal: (bool)$2);
+        $$ = true;
     }
-    | DEFINE linkage calling_convention parameter_attribute return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
+    | calling_convention
     {
-        $$ = new FunctionDefinition ((LType)$5, (GlobalSymbol)$6, (IEnumerable<Parameter>)$7, (List<Block>)$12, isExternal: (bool)$2, (SymbolTable<MetaSymbol>)$10);
+        $$ = true;
     }
-    | DEFINE linkage calling_convention return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
-    {
-        $$ = new FunctionDefinition ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6, (List<Block>)$11, isExternal: (bool)$2, (SymbolTable<MetaSymbol>)$9);
-    }
+    | linkage
+    | linkage runtime_preemption_specifier
+    | linkage runtime_preemption_specifier calling_convention
+    | linkage calling_convention
     ;
     
 function_declaration
@@ -464,6 +474,11 @@ parameter_attribute
 function_addr
     : UNNAMED_ADDR
     | LOCAL_UNNAMED_ADDR
+    ;
+    
+runtime_preemption_specifier
+    : DSO_LOCAL
+    | DSO_PREEMPTABLE
     ;
     
 attribute_group_refs

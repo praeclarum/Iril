@@ -144,6 +144,8 @@ namespace Iril.IR
             { Symbol.Intern ("fence"), Token.FENCE },
             { Symbol.Intern ("seq_cst"), Token.SEQ_CST },
             { Symbol.Intern ("unreachable"), Token.UNREACHABLE },
+            { Symbol.Intern ("dso_local"), Token.DSO_LOCAL },
+            { Symbol.Intern ("dso_preemptable"), Token.DSO_PREEMPTABLE },
         };
 
         public Lexer (string llvm)
