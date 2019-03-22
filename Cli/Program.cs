@@ -96,27 +96,34 @@ namespace Cli
                 return 1;
             }
 
-            //
-            // Parse
-            //
-            Info ($"Parsing {llfiles.Count} files...");
-            var modules = llfiles.AsParallel ().Select (x => {
-                var code = File.ReadAllText (x);
-                return Module.Parse (code, x);
-            });
+            try {
 
-            //
-            // Compile
-            //
-            Info ("Compiling...");
-            var comp = new Compilation (modules, outName);
+                //
+                // Parse
+                //
+                Info ($"Parsing {llfiles.Count} files...");
+                var modules = llfiles.AsParallel ().Select (x => {
+                    var code = File.ReadAllText (x);
+                    return Module.Parse (code, x);
+                });
 
-            //
-            // Output
-            //
-            Info ($"Writing {outName}...");
-            comp.WriteAssembly (outName);
-            return 0;
+                //
+                // Compile
+                //
+                Info ("Compiling...");
+                var comp = new Compilation (modules, outName);
+
+                //
+                // Output
+                //
+                Info ($"Writing {outName}...");
+                comp.WriteAssembly (outName);
+                return 0;
+            }
+            catch (Exception ex) {
+                Error (ex.ToString ());
+                return 1;
+            }
         }
 
         public static void Info (string message)
