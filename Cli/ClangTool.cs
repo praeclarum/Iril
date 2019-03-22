@@ -41,5 +41,19 @@ namespace Cli
             }
             return outFiles;
         }
+
+        protected override string GetWindowsInstructions () =>
+            @"To install clang, follow these steps:
+
+    1. Install Chocolately from https://chocolatey.org/install
+    2. Install LLVM by typing `choco install llvm`
+    3. Test that clang is installed by typing `clang -v`";
+
+        protected override string GetMacInstructions () =>
+            @"To install clang, follow these steps:
+
+    1. Install Xcode from the App Store
+    2. Install LLVM by typing `xcode-select --install`
+    3. Test that clang is installed by typing `clang -v`";
     }
 }
