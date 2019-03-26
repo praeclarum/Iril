@@ -98,9 +98,20 @@ namespace Iril
         readonly SymbolTable<SymbolTable<DefinedFunction>> moduleMethodDefs =
             new SymbolTable<SymbolTable<DefinedFunction>> ();
 
-        public bool TryGetFunction (Module module, Symbol symbol, out DefinedFunction function) =>
-            (moduleMethodDefs.TryGetValue (module.Symbol, out var mdefs) && mdefs.TryGetValue (symbol, out function))
-            || externalMethodDefs.TryGetValue(symbol, out function);
+        public bool TryGetFunction (Module module, Symbol symbol, out DefinedFunction function)
+        {
+            var r = (moduleMethodDefs.TryGetValue (module.Symbol, out var mdefs) && mdefs.TryGetValue (symbol, out function))
+                    || externalMethodDefs.TryGetValue (symbol, out function);
+            if (r) {
+                function.ReferenceCount++;
+
+                // Syscall dependencies
+                if (symbol.Text == "@printf" || symbol.Text == "@vprintf") {
+                    externalMethodDefs["@vfprintf"].ReferenceCount++;
+                }
+            }
+            return r;
+        }
 
         readonly SymbolTable<SymbolTable<(IR.GlobalVariable Global, FieldDefinition Field)>> globals =
             new SymbolTable<SymbolTable<(IR.GlobalVariable, FieldDefinition)>> ();
@@ -153,6 +164,7 @@ namespace Iril
             FindFunctions ();
             EmitGlobalInitializers ();
             CompileFunctions ();
+            RemoveUnusedFunctions ();
         }
 
         class Resolver : IAssemblyResolver
@@ -314,13 +326,11 @@ namespace Iril
                         doc = new Mono.Cecil.Cil.Document (url);
                         if (File.Exists (fullPath)) {
                             doc.HashAlgorithm = DocumentHashAlgorithm.MD5;
-                            doc.Hash = CalculateChecksum (fullPath);
+                            doc.Hash = CalculateMD5 (fullPath);
                         }
-
                         doc.Language = DocumentLanguage.C;
 
                         fileDocuments[fileRef] = doc;
-
                         return doc;
                     }
                 }
@@ -328,7 +338,7 @@ namespace Iril
             return null;
         }
 
-        static byte[] CalculateChecksum (string fileName)
+        static byte[] CalculateMD5 (string fileName)
         {
             byte[] checksum;
             try {
@@ -820,7 +830,7 @@ namespace Iril
                 if (m.ILDefinition.HasBody && m.ILDefinition.Body.Instructions.Count > 0)
                     continue;
 
-                Console.WriteLine ($"{compiledFunctionCount} /// {MaxFunctions}");
+                //Console.WriteLine ($"{compiledFunctionCount} /// {MaxFunctions}");
                 if (compiledFunctionCount >= MaxFunctions) {
                     CompileTrialFunction (m);
                 }
@@ -837,6 +847,17 @@ namespace Iril
                 }
                 else {
                     CompileMissingFunction (m);
+                }
+            }
+        }
+
+        void RemoveUnusedFunctions ()
+        {
+            foreach (var s in syscalls.Calls) {
+                if (externalMethodDefs.TryGetValue (s.Key, out var f)) {
+                    if (f.ReferenceCount == 0) {
+                        s.Value.DeclaringType.Methods.Remove (s.Value);
+                    }
                 }
             }
         }
@@ -1182,7 +1203,7 @@ namespace Iril
         {
             var ps = new WriterParameters {
                 WriteSymbols = true,
-                SymbolWriterProvider = new MdbWriterProvider (),
+                SymbolWriterProvider = new PortablePdbWriterProvider (),
             };
             asm.Write (path, ps);
         }
