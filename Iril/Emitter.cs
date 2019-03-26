@@ -340,17 +340,14 @@ namespace Iril
 
         protected void EmitZeroValue(LType type)
         {
-            if (type is VectorType vt)
-            {
-                var v = compilation.GetVectorType(vt);
-                for (var i = 0; i < vt.Length; i++)
-                {
-                    EmitZeroValue(vt.ElementType);
+            if (type is VectorType vt) {
+                var v = compilation.GetVectorType (vt);
+                for (var i = 0; i < vt.Length; i++) {
+                    EmitZeroValue (vt.ElementType);
                 }
-                Emit(il.Create(OpCodes.Newobj, v.Ctor));
+                Emit (il.Create (OpCodes.Newobj, v.Ctor));
             }
-            else if (type is Types.IntegerType intt)
-            {
+            else if (type is Types.IntegerType intt) {
                 switch (intt.Bits) {
                     default:
                         Emit (il.Create (OpCodes.Ldc_I4_0));
@@ -360,25 +357,26 @@ namespace Iril
                         break;
                 }
             }
-            else if (type is Types.PointerType ptr)
-            {
-                Emit(il.Create(OpCodes.Ldc_I4_0));
-                Emit(il.Create(OpCodes.Conv_U));
+            else if (type is Types.PointerType ptr) {
+                Emit (il.Create (OpCodes.Ldc_I4_0));
+                Emit (il.Create (OpCodes.Conv_U));
             }
-            else if (type is Types.FloatType floatt)
-            {
-                if (floatt.Bits == 32)
-                {
-                    Emit(il.Create(OpCodes.Ldc_R4, 0.0f));
+            else if (type is Types.FloatType floatt) {
+                if (floatt.Bits == 32) {
+                    Emit (il.Create (OpCodes.Ldc_R4, 0.0f));
                 }
-                else
-                {
-                    Emit(il.Create(OpCodes.Ldc_R8, 0.0));
+                else {
+                    Emit (il.Create (OpCodes.Ldc_R8, 0.0));
                 }
             }
-            else
-            {
-                throw new NotSupportedException("Cannot get zero for " + type);
+            else if (type is NamedType
+                     && type.Resolve (module) is Types.LiteralStructureType st) {
+                var td = compilation.GetClrType (type).Resolve ();
+                var ctor = td.Methods.First (m => m.Name == ".ctor" && m.Parameters.Count == 0);
+                throw new NotSupportedException ("Cannot get zero for struct " + ctor);
+            }
+            else {
+                throw new NotSupportedException ("Cannot get zero for " + type);
             }
         }
 
