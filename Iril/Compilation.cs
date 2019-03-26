@@ -124,6 +124,8 @@ namespace Iril
         readonly Lazy<TypeDefinition> dataType;
         readonly Dictionary<int, TypeDefinition> dataFieldTypes = new Dictionary<int, TypeDefinition> ();
 
+        public int MaxFunctions { get; set; } = int.MaxValue;
+
         public Compilation (IEnumerable<Module> documents, string assemblyName)
         {
             Modules = documents.ToArray ();
@@ -140,10 +142,9 @@ namespace Iril
             asm = AssemblyDefinition.CreateAssembly (asmName, modName, mps);
             mod = asm.MainModule;
             dataType = new Lazy<TypeDefinition> (CreateDataType);
-            Compile ();
         }
 
-        void Compile ()
+        public void Compile ()
         {
             FindSystemTypes ();
             CompileStructures ();
@@ -819,7 +820,11 @@ namespace Iril
                 if (m.ILDefinition.HasBody && m.ILDefinition.Body.Instructions.Count > 0)
                     continue;
 
-                if (m.IRDefinition != null) {
+                Console.WriteLine ($"{compiledFunctionCount} /// {MaxFunctions}");
+                if (compiledFunctionCount >= MaxFunctions) {
+                    CompileTrialFunction (m);
+                }
+                else if (m.IRDefinition != null) {
                     try {
                         compiledFunctionCount++;
                         var fc = new FunctionCompiler (this, m);
@@ -872,6 +877,22 @@ namespace Iril
             var il = body.GetILProcessor ();
 
             il.Append (il.Create (OpCodes.Newobj, sysNotImplCtor));
+            il.Append (il.Create (OpCodes.Throw));
+
+            body.Optimize ();
+            md.Body = body;
+        }
+
+        void CompileTrialFunction (DefinedFunction function)
+        {
+            var f = function.IRDefinition;
+
+            var md = function.ILDefinition;
+            var body = new MethodBody (md);
+            var il = body.GetILProcessor ();
+
+            il.Append (il.Create (OpCodes.Ldstr, "Trial version of Iril"));
+            il.Append (il.Create (OpCodes.Newobj, sysNotSuppCtor));
             il.Append (il.Create (OpCodes.Throw));
 
             body.Optimize ();

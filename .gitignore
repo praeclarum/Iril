@@ -2,6 +2,9 @@
 /y.output
 /*.c
 /*.ll
+/*.dll
+/*.pdb
+/*.dll.mdb
 
 # Devtest
 /Cli/S*.dll

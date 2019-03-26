@@ -132,6 +132,8 @@ namespace Cli
                 //
                 Info ("Compiling...");
                 var comp = new Compilation (modules, outName);
+                comp.MaxFunctions = maxFuncs;
+                comp.Compile ();
 
                 //
                 // Output
@@ -176,7 +178,7 @@ namespace Cli
                 var r = lines[0].Trim().Split (new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
                 if (r.Length < 3)
                     return null;
-                var k = "thanks!" + lines[0].Trim();
+                var k = "Thanks for buying Iril! " + lines[0].Trim();
                 var n = r[0];
                 for (var i = 0; i < n.Length; i += 2) {
                     k += n[i];
