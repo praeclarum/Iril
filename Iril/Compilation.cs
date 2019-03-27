@@ -63,6 +63,8 @@ namespace Iril
         MethodReference sysNotSuppCtor;
         TypeReference sysMath;
         TypeReference sysException;
+        TypeReference sysParamsAttr;
+        public MethodReference sysParamsAttrCtor;
         public MethodReference sysExceptionCtor;
         public MethodReference sysMathAbsD;
         public MethodReference sysMathCeilD;
@@ -304,6 +306,8 @@ namespace Iril
             sysReAllocHGlobal = ImportMethod (sysMarshal, sysIntPtr, "ReAllocHGlobal", sysIntPtr, sysIntPtr);
             sysFreeHGlobal = ImportMethod (sysMarshal, sysVoid, "FreeHGlobal", sysIntPtr);
             sysPtrToStringAuto = ImportMethod (sysMarshal, sysString, "PtrToStringAuto", sysIntPtr);
+            sysParamsAttr = Import (typeof(ParamArrayAttribute).FullName);
+            sysParamsAttrCtor = ImportMethod (sysParamsAttr, sysVoid, ".ctor");
         }
 
         readonly SymbolTable<Mono.Cecil.Cil.Document> fileDocuments = new SymbolTable<Mono.Cecil.Cil.Document> ();

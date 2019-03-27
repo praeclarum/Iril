@@ -47,6 +47,9 @@ namespace Iril
                 compilation.GetClrType (returnType));
             foreach (var p in parameters) {
                 var pd = new ParameterDefinition (p.Item1, ParameterAttributes.None, compilation.GetClrType (p.Item2));
+                if (p.Item2 is VarArgsType) {
+                    pd.CustomAttributes.Add (new CustomAttribute (compilation.sysParamsAttrCtor));
+                }
                 md.Parameters.Add (pd);
             }
             var body = new MethodBody (md);
