@@ -19,12 +19,22 @@ namespace Iril
             public HashSet<LocalSymbol> PhiDefinitions;
             public HashSet<LocalSymbol> Nexts;
 
+            public HashSet<LocalSymbol> LiveIn;
+            public HashSet<LocalSymbol> LiveOut;
+            public HashSet<LocalSymbol> RemainingNexts;
+
             public LocalSymbol Symbol => Block.Symbol;
 
             public readonly SymbolTable<bool> AliveCache =
                 new SymbolTable<bool> ();
+
+            public bool IsAlive (LocalSymbol symbol)
+            {
+                return LiveIn.Contains (symbol) || LiveOut.Contains (symbol);
+            }
         }
 
+        readonly List<BlockInfo> infoList = new List<BlockInfo> ();
         readonly SymbolTable<BlockInfo> infos = new SymbolTable<BlockInfo> ();
 
         public LivelinessTable(DefinedFunction function)
@@ -53,7 +63,11 @@ namespace Iril
                         b.Assignments.Where (x => x.Instruction is PhiInstruction && x.HasResult)
                         .Select (x => x.Result)),
                     Nexts = new HashSet<LocalSymbol> (b.Terminator.NextLabelSymbols),
+                    LiveIn = new HashSet<LocalSymbol> (),
+                    LiveOut = new HashSet<LocalSymbol> (),
+                    RemainingNexts = new HashSet<LocalSymbol> (b.Terminator.NextLabelSymbols),
                 };
+                infoList.Add (i);
                 infos[b.Symbol] = i;
 
                 //
@@ -81,12 +95,66 @@ namespace Iril
 
                                     i.References.Add (a.Result);
                                     i.References.Add (val.Symbol);
+                                    i.LiveOut.Add (val.Symbol);
                                 }
                             }
                         }
                     }
                 }
             }
+
+            BuildLivenessBitvector ();
+        }
+
+        void BuildLivenessBitvector ()
+        {
+            //Console.WriteLine (function.Symbol);
+            var rem = new List<BlockInfo> (infoList);
+            rem.Reverse ();
+
+            while (rem.Count > 0) {
+
+                var torem = rem.FirstOrDefault (x => x.RemainingNexts.Count == 0);
+                if (torem == null) {
+                    //Console.WriteLine ("UH OH RECURSIION");
+                    torem = rem.OrderBy (x => x.RemainingNexts.Count).First ();
+                }
+                //Console.WriteLine ($"torem {torem.Symbol}");
+                rem.Remove (torem);
+
+                var instructions = torem.Block.Assignments.Concat (new[] { new Assignment (torem.Block.Terminator) }).Reverse ();
+                var liveIn = new HashSet<LocalSymbol> (torem.LiveOut);
+                foreach (var a in instructions) {
+                    if (a.Instruction is PhiInstruction phi) {
+                        if (a.HasResult) {
+                            liveIn.Add (a.Result);
+                        }
+                    }
+                    else {
+                        foreach (var r in a.Instruction.ReferencedLocals) {
+                            liveIn.Add (r);
+                        }
+                        if (a.HasResult) {
+                            liveIn.Add (a.Result);
+                        }
+                    }
+                }
+                torem.LiveIn = liveIn;
+
+                foreach (var b in rem) {
+                    if (b.RemainingNexts.Contains (torem.Symbol)) {
+                        foreach (var v in liveIn) {
+                            b.LiveOut.Add (v);
+                        }
+                        b.RemainingNexts.Remove (torem.Symbol);
+                    }
+                }
+            }
+
+            //foreach (var i in infos) {
+            //    Console.WriteLine ($"{i.Key}: in: [{string.Join (",", i.Value.LiveIn)}], out: [{string.Join (",", i.Value.LiveOut)}]");
+            //}
+            //Console.WriteLine ();
         }
 
         bool IsAliveInBlock (LocalSymbol variable, BlockInfo bi)
@@ -164,7 +232,7 @@ namespace Iril
             return false;
         }
 
-        public bool VariablesInterfere (LocalSymbol symbol, IEnumerable<LocalSymbol> otherSymbols)
+        public bool VariablesInterfere2 (LocalSymbol symbol, IEnumerable<LocalSymbol> otherSymbols)
         {
             var interfere = false;
             Parallel.ForEach (infos, ikv => {
@@ -183,6 +251,19 @@ namespace Iril
                 }
             });
             return interfere;
+        }
+
+        public bool VariablesInterfere (LocalSymbol symbol, IEnumerable<LocalSymbol> otherSymbols)
+        {
+            foreach (var b in infoList) {
+                if (!b.IsAlive (symbol))
+                    continue;
+                foreach (var o in otherSymbols) {
+                    if (b.IsAlive (o))
+                        return true;
+                }
+            }
+            return false;
         }
     }
 }

@@ -21,6 +21,7 @@ namespace Iril
         public MethodDefinition ILDefinition;
         public SymbolTable<ParameterDefinition> ParamSyms;
         public int ReferenceCount;
+        public override string ToString () => Symbol.ToString ();
     }
 
     public class SimdVector
