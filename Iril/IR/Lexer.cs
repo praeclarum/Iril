@@ -146,6 +146,9 @@ namespace Iril.IR
             { Symbol.Intern ("unreachable"), Token.UNREACHABLE },
             { Symbol.Intern ("dso_local"), Token.DSO_LOCAL },
             { Symbol.Intern ("dso_preemptable"), Token.DSO_PREEMPTABLE },
+            { Symbol.Intern ("linkonce"), Token.LINKONCE },
+            { Symbol.Intern ("linkonce_odr"), Token.LINKONCE_ODR },
+            { Symbol.Intern ("weak"), Token.WEAK },
         };
 
         public Lexer (string llvm)
@@ -365,6 +368,7 @@ namespace Iril.IR
                 case ']':
                 case '!':
                 case ':':
+                case '|':
                     tok = s[p];
                     val = singleCharToken;
                     p++;

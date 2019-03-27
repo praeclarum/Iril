@@ -21,7 +21,7 @@ namespace Iril.IR
 %token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL META_SYMBOL_DEF SYMBOL DISTINCT METADATA CONSTANT_BYTES
 %token TYPE HALF FLOAT DOUBLE X86_FP80 INTEGER_TYPE ZEROINITIALIZER OPAQUE
 %token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR NOALIAS ELLIPSIS GLOBAL
-%token CONSTANT PRIVATE INTERNAL EXTERNAL FASTCC SIGNEXT ZEROEXT VOLATILE RETURNED
+%token CONSTANT PRIVATE INTERNAL EXTERNAL LINKONCE LINKONCE_ODR WEAK FASTCC SIGNEXT ZEROEXT VOLATILE RETURNED
 %token NONNULL NOCAPTURE WRITEONLY READONLY READNONE
 %token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND SPECULATABLE SSP UWTABLE ARGMEMONLY
 %token SEQ_CST DSO_LOCAL DSO_PREEMPTABLE
@@ -159,8 +159,11 @@ global_kind
     ;
     
 linkage
-    : EXTERNAL { $$ = true; }
-    | INTERNAL { $$ = false; }
+    : EXTERNAL     { $$ = true; }
+    | INTERNAL     { $$ = false; }
+    | LINKONCE     { $$ = true; }
+    | LINKONCE_ODR { $$ = true; }
+    | WEAK         { $$ = true; }
     ;
     
 visibility
@@ -181,13 +184,9 @@ metadata_args
     ;
     
 metadata_arg
-    : SYMBOL ':' SYMBOL         { $$ = Tuple.Create ($1, $3); }
-    | SYMBOL ':' META_SYMBOL    { $$ = Tuple.Create ($1, $3); }
-    | SYMBOL ':' STRING         { $$ = Tuple.Create ($1, $3); }
-    | SYMBOL ':' constant       { $$ = Tuple.Create ($1, $3); }
-    | SYMBOL ':' typed_constant { $$ = Tuple.Create ($1, $3); }
-    | TYPE ':' META_SYMBOL      { $$ = Tuple.Create ($1, $3); }
-    | ALIGN ':' constant        { $$ = Tuple.Create ($1, $3); }
+    : SYMBOL ':' metadata_arg_expr { $$ = Tuple.Create ($1, $3); }
+    | TYPE ':' META_SYMBOL         { $$ = Tuple.Create ($1, $3); }
+    | ALIGN ':' constant           { $$ = Tuple.Create ($1, $3); }
     | SYMBOL ':' META_SYMBOL '(' metadata_value_args ')'
     {
         $$ = Tuple.Create ($1, $3);
@@ -196,6 +195,27 @@ metadata_arg
     {
         $$ = Tuple.Create ($1, $3);
     }
+    ;
+   
+metadata_arg_expr
+    : metadata_arg_or_expr
+    ;
+    
+metadata_arg_or_expr
+    : metadata_arg_and_expr
+    | metadata_arg_or_expr '|' metadata_arg_and_expr
+    ;
+    
+metadata_arg_and_expr
+    : metadata_arg_primary
+    ;
+
+metadata_arg_primary
+    : SYMBOL
+    | META_SYMBOL
+    | STRING
+    | constant
+    | typed_constant
     ;
     
 metadata_kvs
@@ -347,6 +367,11 @@ function_definition
         var h = (Tuple<object, object>)$1;
         $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$6, isExternal: (bool)h.Item1);
     }
+    | define_header GLOBAL_SYMBOL parameters attribute_group_refs ALIGN INTEGER metadata_kvs '{' blocks '}'
+    {
+        var h = (Tuple<object, object>)$1;
+        $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$9, isExternal: (bool)h.Item1, (SymbolTable<MetaSymbol>)$7);
+    }
     | define_header GLOBAL_SYMBOL parameters attribute_group_refs metadata_kvs '{' blocks '}'
     {
         var h = (Tuple<object, object>)$1;
@@ -356,6 +381,11 @@ function_definition
     {
         var h = (Tuple<object, object>)$1;
         $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$7, isExternal: (bool)h.Item1);
+    }
+    | define_header GLOBAL_SYMBOL parameters function_addr attribute_group_refs ALIGN INTEGER metadata_kvs '{' blocks '}'
+    {
+        var h = (Tuple<object, object>)$1;
+        $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$10, isExternal: (bool)h.Item1, (SymbolTable<MetaSymbol>)$8);
     }
     | define_header GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
     {

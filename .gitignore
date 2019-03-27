@@ -1,6 +1,7 @@
 /*.nupkg
 /y.output
 /*.c
+/*.cpp
 /*.ll
 /*.dll
 /*.pdb
