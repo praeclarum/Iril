@@ -30,7 +30,7 @@ namespace Iril
 
             public bool IsAlive (LocalSymbol symbol)
             {
-                return LiveIn.Contains (symbol) || LiveOut.Contains (symbol);
+                return Definitions.Contains (symbol) || LiveIn.Contains (symbol) || LiveOut.Contains (symbol);
             }
         }
 
@@ -57,7 +57,7 @@ namespace Iril
                         .SelectMany (x => x.ReferencedLocals.Distinct ())
                         .Distinct ()),
                     Definitions = new HashSet<LocalSymbol> (
-                        b.Assignments.Where (x => !(x.Instruction is PhiInstruction) && x.HasResult)
+                        b.Assignments.Where (x => x.HasResult)
                         .Select (x => x.Result)),
                     PhiDefinitions = new HashSet<LocalSymbol> (
                         b.Assignments.Where (x => x.Instruction is PhiInstruction && x.HasResult)
@@ -95,6 +95,7 @@ namespace Iril
 
                                     i.References.Add (a.Result);
                                     i.References.Add (val.Symbol);
+                                    i.LiveOut.Add (a.Result);
                                     i.LiveOut.Add (val.Symbol);
                                 }
                             }
@@ -135,7 +136,7 @@ namespace Iril
                             liveIn.Add (r);
                         }
                         if (a.HasResult) {
-                            liveIn.Add (a.Result);
+                            liveIn.Remove (a.Result);
                         }
                     }
                 }
