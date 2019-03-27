@@ -21,6 +21,8 @@ namespace Iril
         // Working Variables
         protected CecilInstruction prev;
 
+        readonly SymbolTable<VariableDefinition> structTempLocals = new SymbolTable<VariableDefinition> ();
+
         protected Emitter(Compilation compilation, Module module, MethodDefinition methodDefinition)
         {
             this.compilation = compilation;
@@ -369,15 +371,28 @@ namespace Iril
                     Emit (il.Create (OpCodes.Ldc_R8, 0.0));
                 }
             }
-            else if (type is NamedType
+            else if (type is NamedType namedType
                      && type.Resolve (module) is Types.LiteralStructureType st) {
                 var td = compilation.GetClrType (type).Resolve ();
-                var ctor = td.Methods.First (m => m.Name == ".ctor" && m.Parameters.Count == 0);
-                throw new NotSupportedException ("Cannot get zero for struct " + ctor);
+                var v = GetStructTempLocal (namedType);
+                Emit (il.Create (OpCodes.Ldloca, v));
+                Emit (il.Create (OpCodes.Initobj, td));
+                Emit (il.Create (OpCodes.Ldloc, v));
             }
             else {
                 throw new NotSupportedException ("Cannot get zero for " + type);
             }
+        }
+
+        protected VariableDefinition GetStructTempLocal (NamedType type)
+        {
+            if (structTempLocals.TryGetValue (type.Symbol, out var v))
+                return v;
+            var t = compilation.GetClrType (type);
+            v = new VariableDefinition (t);
+            body.Variables.Add (v);
+            structTempLocals[type.Symbol] = v;
+            return v;
         }
 
         protected void EmitBox (LType type)

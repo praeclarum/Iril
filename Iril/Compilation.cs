@@ -9,6 +9,7 @@ using Mono.Cecil.Cil;
 using System.Text;
 using Mono.Cecil.Mdb;
 using System.Security.Cryptography;
+using System.Diagnostics;
 
 namespace Iril
 {
@@ -564,106 +565,145 @@ namespace Iril
                 });
 
                 foreach (var (g, f) in needsInit) {
-                    switch (g.Initializer) {
-                        case IR.ArrayConstant c: {
-                                var size = c.Elements.Length;
-                                var et = c.Elements[0].Type;
-                                var cet = compilation.GetClrType (et);
-                                Emit (il.Create (OpCodes.Ldc_I4, size));
-                                Emit (il.Create (OpCodes.Newarr, cet));
-                                Emit (il.Create (OpCodes.Dup));
-                                for (int i = 0; i < c.Elements.Length; i++) {
-                                    var e = c.Elements[i];
-                                    Emit (il.Create (OpCodes.Ldc_I4, i));
-                                    EmitTypedValue (e);
-                                    Emit (il.Create (OpCodes.Stelem_Any, cet));
-                                    Emit (il.Create (OpCodes.Dup));
-                                }
-                                Emit (il.Create (OpCodes.Pop));
-                                Emit (OpCodes.Ldc_I4_3);
-                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
-                                Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
-                                Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
-                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
-                                Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
-                                Emit (il.Create (OpCodes.Stsfld, f));
-                            }
-                            break;
-                        case IR.ZeroConstant c when g.Type is Types.ArrayType art: {
-                                var size = (int)art.Length;
-                                var et = art.ElementType;
-                                var cet = compilation.GetClrType (et);
-                                Emit (il.Create (OpCodes.Ldc_I4, size));
-                                Emit (il.Create (OpCodes.Newarr, cet));
-                                Emit (OpCodes.Ldc_I4_3);
-                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
-                                Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
-                                Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
-                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
-                                Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
-                                Emit (il.Create (OpCodes.Stsfld, f));
-                            }
-                            break;
-                        case IR.BytesConstant c: {
-                                var chars = new List<byte> ();
-                                var s = c.Bytes.Text;
-                                var i = 2;
-                                var n = s.Length - 1;
-                                while (i < n) {
-                                    if (s[i] == '\\' && i + 1 < n && s[i + 1] == '\\') {
-                                        chars.Add ((byte)'\\');
-                                        i += 2;
-                                    }
-                                    else if (s[i] == '\\' && i + 2 < n) {
-                                        var hex = s.Substring (i + 1, 2);
-                                        var v = int.Parse (hex, System.Globalization.NumberStyles.HexNumber);
-                                        var sv = Math.Min (255, Math.Max (0, v));
-                                        chars.Add ((byte)sv);
-                                        i += 3;
-                                    }
-                                    else {
-                                        chars.Add ((byte)s[i]);
-                                        i++;
-                                    }
-                                }
-                                var bytes = chars.ToArray ();
-                                var size = bytes.Length;
-                                var dataField = compilation.AddDataField (bytes);
-                                Emit (il.Create (OpCodes.Ldc_I4, size));
-                                Emit (il.Create (OpCodes.Newarr, compilation.sysByte));
-                                Emit (il.Create (OpCodes.Dup));
-                                Emit (il.Create (OpCodes.Ldtoken, dataField));
-                                Emit (il.Create (OpCodes.Call, compilation.sysRuntimeHelpersInitArray));
-                                Emit (OpCodes.Ldc_I4_3);
-                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
-                                Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
-                                Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
-                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
-                                Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
-                                Emit (il.Create (OpCodes.Stsfld, f));
-                            }
-                            break;
-                        case IR.StructureConstant c: {
-                                var td = f.FieldType.Resolve ();
-                                for (int i = 0; i < c.Elements.Length; i++) {
-                                    var e = c.Elements[i];
-                                    Emit (il.Create (OpCodes.Ldsflda, f));
-                                    EmitTypedValue (e);
-                                    Emit (il.Create (OpCodes.Stfld, td.Fields[i]));
-                                }
-                            }
-                            break;
-                        default:
-                            EmitValue (g.Initializer, g.Type);
-                            Emit (il.Create (OpCodes.Stsfld, f));
-                            break;
-                    }
+                    var store = il.Create (OpCodes.Stsfld, f);
+                    EmitInitializer (g.Initializer, g.Type, gcHandleV, store);
                 }
 
                 Emit (OpCodes.Ret);
 
                 body.Optimize ();
                 method.Body = body;
+            }
+
+            void EmitInitializer (IR.Value initializer, LType type, Lazy<VariableDefinition> gcHandleV, Instruction store)
+            {
+                switch (initializer) {
+                    case IR.ArrayConstant c: {
+                            var size = c.Elements.Length;
+                            var et = c.Elements[0].Type;
+                            var cet = compilation.GetClrType (et);
+                            Emit (il.Create (OpCodes.Ldc_I4, size));
+                            Emit (il.Create (OpCodes.Newarr, cet));
+                            Emit (il.Create (OpCodes.Dup));
+                            for (int i = 0; i < c.Elements.Length; i++) {
+                                var e = c.Elements[i];
+                                Emit (il.Create (OpCodes.Ldc_I4, i));
+                                var storee = il.Create (OpCodes.Stelem_Any, cet);
+                                EmitInitializer (e.Value, e.Type, gcHandleV, storee);
+                                Emit (il.Create (OpCodes.Dup));
+                            }
+                            Emit (il.Create (OpCodes.Pop));
+                            Emit (OpCodes.Ldc_I4_3);
+                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
+                            Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
+                            Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
+                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
+                            Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
+                            Emit (store);
+                        }
+                        break;
+                    case IR.ZeroConstant c when type is Types.ArrayType art: {
+                            var size = (int)art.Length;
+                            var et = art.ElementType;
+                            var cet = compilation.GetClrType (et);
+                            Emit (il.Create (OpCodes.Ldc_I4, size));
+                            Emit (il.Create (OpCodes.Newarr, cet));
+                            Emit (OpCodes.Ldc_I4_3);
+                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
+                            Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
+                            Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
+                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
+                            Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
+                            Emit (store);
+                        }
+                        break;
+                    case IR.BytesConstant c: {
+                            var chars = new List<byte> ();
+                            var s = c.Bytes.Text;
+                            var i = 2;
+                            var n = s.Length - 1;
+                            while (i < n) {
+                                if (s[i] == '\\' && i + 1 < n && s[i + 1] == '\\') {
+                                    chars.Add ((byte)'\\');
+                                    i += 2;
+                                }
+                                else if (s[i] == '\\' && i + 2 < n) {
+                                    var hex = s.Substring (i + 1, 2);
+                                    var v = int.Parse (hex, System.Globalization.NumberStyles.HexNumber);
+                                    var sv = Math.Min (255, Math.Max (0, v));
+                                    chars.Add ((byte)sv);
+                                    i += 3;
+                                }
+                                else {
+                                    chars.Add ((byte)s[i]);
+                                    i++;
+                                }
+                            }
+                            var bytes = chars.ToArray ();
+                            var size = bytes.Length;
+                            var dataField = compilation.AddDataField (bytes);
+                            Emit (il.Create (OpCodes.Ldc_I4, size));
+                            Emit (il.Create (OpCodes.Newarr, compilation.sysByte));
+                            Emit (il.Create (OpCodes.Dup));
+                            Emit (il.Create (OpCodes.Ldtoken, dataField));
+                            Emit (il.Create (OpCodes.Call, compilation.sysRuntimeHelpersInitArray));
+                            Emit (OpCodes.Ldc_I4_3);
+                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
+                            Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
+                            Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
+                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
+                            Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
+                            Emit (store);
+                        }
+                        break;
+                    case IR.StructureConstant c:
+                        if (store.OpCode.Code == Code.Stsfld) {
+                            var f = (FieldReference)store.Operand;
+                            var td = f.FieldType.Resolve ();
+                            Debug.Assert (td.Fields.Count == c.Elements.Length);
+                            for (int i = 0; i < c.Elements.Length; i++) {
+                                var e = c.Elements[i];
+                                Emit (il.Create (OpCodes.Ldsflda, f));
+                                var storee = il.Create (OpCodes.Stfld, td.Fields[i]);
+                                EmitInitializer (e.Value, e.Type, gcHandleV, storee);
+                            }
+                        }
+                        else if (store.OpCode.Code == Code.Stelem_Any && type is NamedType namedType) {
+                            var td = ((TypeReference)store.Operand).Resolve ();
+                            var v = GetStructTempLocal (namedType);
+                            Debug.Assert (td.Fields.Count == c.Elements.Length);
+                            for (int i = 0; i < c.Elements.Length; i++) {
+                                var e = c.Elements[i];
+                                Emit (il.Create (OpCodes.Ldloca, v));
+                                var storee = il.Create (OpCodes.Stfld, td.Fields[i]);
+                                EmitInitializer (e.Value, e.Type, gcHandleV, storee);
+                            }
+                            Emit (il.Create (OpCodes.Ldloc, v));
+                            Emit (store);
+                        }
+                        else if (store.OpCode.Code == Code.Stfld && type is NamedType namedFieldType) {
+                            var f = (FieldReference)store.Operand;
+                            var td = f.FieldType.Resolve ();
+                            var v = GetStructTempLocal (namedFieldType);
+                            Debug.Assert (td.Fields.Count == c.Elements.Length);
+                            for (int i = 0; i < c.Elements.Length; i++) {
+                                var e = c.Elements[i];
+                                Emit (il.Create (OpCodes.Ldloca, v));
+                                var storee = il.Create (OpCodes.Stfld, td.Fields[i]);
+                                EmitInitializer (e.Value, e.Type, gcHandleV, storee);
+                            }
+                            Emit (il.Create (OpCodes.Ldloc, v));
+                            Emit (store);
+                        }
+                        else {
+                            throw new NotSupportedException ($"Cannot emit initializer for struct at lvalue {store}");
+                        }
+                        break;
+                    default:
+                        EmitValue (initializer, type);
+                        Emit (store);
+                        break;
+                }
             }
         }
 
