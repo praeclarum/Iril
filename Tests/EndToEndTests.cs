@@ -24,6 +24,7 @@ namespace Tests
             var compilation = new Compilation (
                 irmods,
                 assemblyName: asmFileName);
+            compilation.Compile ();
 
             var asmPath = Path.Combine (Path.GetTempPath (), asmFileName);
             try { File.Delete (asmPath); }
@@ -86,6 +87,7 @@ namespace Tests
             var compilation = new Compilation (
                 irmods,
                 assemblyName: asmFileName);
+            compilation.Compile ();
 
             var asmPath = Path.Combine (Path.GetTempPath (), asmFileName);
             var pdbPath = Path.ChangeExtension (asmPath, ".pdb");
@@ -210,6 +212,7 @@ namespace Tests
             var compilation = new Compilation (
                 irmods,
                 assemblyName: asmFileName);
+            compilation.Compile ();
 
             var asmPath = Path.Combine (Path.GetTempPath (), asmFileName);
             try { File.Delete (asmPath); }
