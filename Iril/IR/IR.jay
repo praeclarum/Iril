@@ -916,6 +916,10 @@ terminator_instruction
     {
         $$ = new InvokeInstruction ((LType)$2, (Value)$3, (IEnumerable<Argument>)$4, (LabelValue)$6, (LabelValue)$8);
     }
+    | INVOKE calling_convention return_type function_pointer function_args TO label_value UNWIND label_value
+    {
+        $$ = new InvokeInstruction ((LType)$3, (Value)$4, (IEnumerable<Argument>)$5, (LabelValue)$7, (LabelValue)$9);
+    }
     | RESUME typed_value
     {
         $$ = new ResumeInstruction ((TypedValue)$2);
@@ -1008,6 +1012,10 @@ instruction
         $$ = new CallInstruction ((LType)$3, (Value)$4, (IEnumerable<Argument>)$5, true);
     }
     | TAIL CALL calling_convention return_type function_pointer function_args
+    {
+        $$ = new CallInstruction ((LType)$4, (Value)$5, (IEnumerable<Argument>)$6, true);
+    }
+    | TAIL CALL calling_convention return_type function_pointer function_args attribute_group_refs
     {
         $$ = new CallInstruction ((LType)$4, (Value)$5, (IEnumerable<Argument>)$6, true);
     }

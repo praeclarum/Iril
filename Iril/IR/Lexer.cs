@@ -158,6 +158,7 @@ namespace Iril.IR
             { Symbol.Intern ("landingpad"), Token.LANDINGPAD },
             { Symbol.Intern ("cleanup"), Token.CLEANUP },
             { Symbol.Intern ("resume"), Token.RESUME },
+            { Symbol.Intern ("extractvalue"), Token.EXTRACTVALUE },
         };
 
         public Lexer (string llvm)
