@@ -150,6 +150,9 @@ namespace Iril.IR
             { Symbol.Intern ("linkonce_odr"), Token.LINKONCE_ODR },
             { Symbol.Intern ("weak"), Token.WEAK },
             { Symbol.Intern ("dereferenceable"), Token.DEREFERENCEABLE },
+            { Symbol.Intern ("available_externally"), Token.AVAILABLE_EXTERNALLY },
+            { Symbol.Intern ("personality"), Token.PERSONALITY },
+            { Symbol.Intern ("sret"), Token.SRET },
         };
 
         public Lexer (string llvm)
@@ -162,7 +165,7 @@ namespace Iril.IR
                 var s = code;
                 var n = s.Length;
                 var min = lastP;
-                while (min >= 0 && s[min] != '\n' && (lastP - min) < 122)
+                while (min >= 0 && s[min] != '\n' && (lastP - min) < 116)
                     min--;
                 var max = lastP + 1;
                 while (max < n && s[max] != '\n' && (max - min) < 132)

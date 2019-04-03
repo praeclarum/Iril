@@ -118,6 +118,7 @@ namespace Iril.IR
         ZeroExtend      = 1 << 6,
         Returned        = 1 << 7,
         Dereferenceable = 1 << 8,
+        StructureReturn = 1 << 9,
     }
 
     public class Block

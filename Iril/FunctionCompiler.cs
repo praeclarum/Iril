@@ -542,6 +542,10 @@ namespace Iril
                     break;
                 case IR.AllocaInstruction alloca:
                     Emit(il.Create(OpCodes.Ldc_I4, (int)alloca.Type.GetByteSize(function.IRModule)));
+                    if (alloca.NumElements != null) {
+                        EmitTypedValue (alloca.NumElements);
+                        Emit (il.Create (OpCodes.Mul));
+                    }
                     Emit(il.Create(OpCodes.Conv_U));
                     Emit(il.Create(OpCodes.Localloc));
                     break;

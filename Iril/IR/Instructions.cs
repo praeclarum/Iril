@@ -57,11 +57,13 @@ namespace Iril.IR
     {
         public readonly LType Type;
         public readonly int Align;
+        public readonly TypedValue NumElements;
 
-        public AllocaInstruction (LType type, int align)
+        public AllocaInstruction (LType type, int align, TypedValue numElements)
         {
             Type = type;
             Align = align;
+            NumElements = numElements;
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();

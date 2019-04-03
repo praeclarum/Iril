@@ -22,6 +22,7 @@ namespace Iril.IR
 %token TYPE HALF FLOAT DOUBLE X86_FP80 INTEGER_TYPE ZEROINITIALIZER OPAQUE
 %token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR NOALIAS ELLIPSIS GLOBAL
 %token CONSTANT PRIVATE INTERNAL EXTERNAL LINKONCE LINKONCE_ODR WEAK FASTCC SIGNEXT ZEROEXT VOLATILE RETURNED
+%token DEREFERENCEABLE AVAILABLE_EXTERNALLY PERSONALITY SRET
 %token NONNULL NOCAPTURE WRITEONLY READONLY READNONE
 %token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND SPECULATABLE SSP UWTABLE ARGMEMONLY
 %token SEQ_CST DSO_LOCAL DSO_PREEMPTABLE
@@ -115,23 +116,23 @@ module_part
     ;
     
 global_variable
-    : GLOBAL_SYMBOL '=' global_kind type value ',' ALIGN INTEGER metadata_kvs
+    : GLOBAL_SYMBOL '=' global_kind type nonglobal_value ',' ALIGN INTEGER metadata_kvs
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$4, (Value)$5, isPrivate: false, isExternal: false, isConstant: (bool)$3);
     }
-    | GLOBAL_SYMBOL '=' function_addr global_kind type value ',' ALIGN INTEGER metadata_kvs
+    | GLOBAL_SYMBOL '=' function_addr global_kind type nonglobal_value ',' ALIGN INTEGER metadata_kvs
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, (Value)$6, isPrivate: false, isExternal: false, isConstant: (bool)$4);
     }
-    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type value ',' ALIGN INTEGER
+    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type nonglobal_value ',' ALIGN INTEGER
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: (bool)$3, isExternal: false, isConstant: (bool)$5);
     }
-    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type value
+    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type nonglobal_value
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: (bool)$3, isExternal: false, isConstant: (bool)$5);
     }
-    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type value ',' ALIGN INTEGER metadata_kvs
+    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type nonglobal_value ',' ALIGN INTEGER metadata_kvs
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: (bool)$3, isExternal: false, isConstant: (bool)$5);
     }
@@ -139,15 +140,27 @@ global_variable
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, null, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$5);
     }
-    | GLOBAL_SYMBOL '=' linkage function_addr global_kind type value ',' ALIGN INTEGER metadata_kvs
+    | GLOBAL_SYMBOL '=' linkage function_addr global_kind type nonglobal_value ',' ALIGN INTEGER
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$5);
     }
-    | GLOBAL_SYMBOL '=' linkage global_kind type value ',' ALIGN INTEGER metadata_kvs
+    | GLOBAL_SYMBOL '=' linkage function_addr global_kind type nonglobal_value ',' ALIGN INTEGER metadata_kvs
+    {
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$5);
+    }
+    | GLOBAL_SYMBOL '=' linkage global_kind type nonglobal_value ',' ALIGN INTEGER
+    {
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, (Value)$6, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$4);
+    }
+    | GLOBAL_SYMBOL '=' linkage global_kind type nonglobal_value ',' ALIGN INTEGER metadata_kvs
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, (Value)$6, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$4);
     }
     | GLOBAL_SYMBOL '=' linkage global_kind type ',' ALIGN INTEGER
+    {
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, null, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$4);
+    }
+    | GLOBAL_SYMBOL '=' linkage global_kind type
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, null, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$4);
     }
@@ -159,11 +172,12 @@ global_kind
     ;
     
 linkage
-    : EXTERNAL     { $$ = true; }
-    | INTERNAL     { $$ = false; }
-    | LINKONCE     { $$ = true; }
-    | LINKONCE_ODR { $$ = true; }
-    | WEAK         { $$ = true; }
+    : EXTERNAL             { $$ = true; }
+    | AVAILABLE_EXTERNALLY { $$ = true; }
+    | INTERNAL             { $$ = false; }
+    | LINKONCE             { $$ = true; }
+    | LINKONCE_ODR         { $$ = true; }
+    | WEAK                 { $$ = true; }
     ;
     
 visibility
@@ -387,6 +401,11 @@ function_definition
         var h = (Tuple<object, object>)$1;
         $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$10, isExternal: (bool)h.Item1, (SymbolTable<MetaSymbol>)$8);
     }
+    | define_header GLOBAL_SYMBOL parameters function_addr attribute_group_refs ALIGN INTEGER personality_function metadata_kvs '{' blocks '}'
+    {
+        var h = (Tuple<object, object>)$1;
+        $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$10, isExternal: (bool)h.Item1, (SymbolTable<MetaSymbol>)$8);
+    }
     | define_header GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
     {
         var h = (Tuple<object, object>)$1;
@@ -430,6 +449,13 @@ define_header_attributes
     | linkage runtime_preemption_specifier
     | linkage runtime_preemption_specifier calling_convention
     | linkage calling_convention
+    ;
+    
+personality_function
+    : PERSONALITY typed_value
+    {
+        $$ = $2;
+    }
     ;
     
 function_declaration
@@ -507,6 +533,7 @@ parameter_attribute
     | SIGNEXT   { $$ = ParameterAttributes.SignExtend; }
     | ZEROEXT   { $$ = ParameterAttributes.ZeroExtend; }
     | RETURNED  { $$ = ParameterAttributes.Returned; }
+    | SRET      { $$ = ParameterAttributes.StructureReturn; }
     | DEREFERENCEABLE '(' INTEGER ')'
     {
         $$ = ParameterAttributes.Dereferenceable;
@@ -564,10 +591,18 @@ fcmp_condition
     | ULE    { $$ = FcmpCondition.UnorderedLessThanOrEqual; }
     ;
     
+global_value
+    : GLOBAL_SYMBOL { $$ = new GlobalValue ((GlobalSymbol)$1); }
+    ;
+    
 value
+    : global_value
+    | nonglobal_value
+    ;
+    
+nonglobal_value
     : constant 
     | LOCAL_SYMBOL  { $$ = new LocalValue ((LocalSymbol)$1); }
-    | GLOBAL_SYMBOL { $$ = new GlobalValue ((GlobalSymbol)$1); }
     | INTTOPTR '(' typed_value TO type ')'
     {
         $$ = new IntToPointerValue ((TypedValue)$3, (LType)$5);
@@ -901,7 +936,11 @@ instruction
     }
     | ALLOCA type ',' ALIGN INTEGER
     {
-        $$ = new AllocaInstruction ((LType)$2, (int)(BigInteger)$5);
+        $$ = new AllocaInstruction ((LType)$2, (int)(BigInteger)$5, numElements: (TypedValue)null);
+    }
+    | ALLOCA type ',' typed_value ',' ALIGN INTEGER
+    {
+        $$ = new AllocaInstruction ((LType)$2, (int)(BigInteger)$7, numElements: (TypedValue)$4);
     }
     | AND type value ',' value
     {
@@ -924,6 +963,10 @@ instruction
         $$ = new CallInstruction ((LType)$2, (Value)$3, (IEnumerable<Argument>)$4, false);
     }
     | CALL calling_convention return_type function_pointer function_args
+    {
+        $$ = new CallInstruction ((LType)$3, (Value)$4, (IEnumerable<Argument>)$5, false);
+    }
+    | CALL calling_convention return_type function_pointer function_args attribute_group_refs
     {
         $$ = new CallInstruction ((LType)$3, (Value)$4, (IEnumerable<Argument>)$5, false);
     }
