@@ -47,7 +47,7 @@ namespace Iril
 
         public SymbolTable<object> Metadata = new SymbolTable<object> ();
 
-        public List<ErrorMessage> Errors = new List<ErrorMessage> ();
+        public List<Message> Errors = new List<Message> ();
 
         public bool HasErrors => Errors.Count > 0;
 
@@ -64,10 +64,9 @@ namespace Iril
                     module.Symbol = GetIdentifier (module.SourceFilename);
             }
             catch (Exception ex) {
-                module.Errors.Add (new ErrorMessage {
+                module.Errors.Add (new Message (ex.Message, ex) {
                     FilePath = module.FilePath,
-                    Message = ex.Message,
-                    SurroundingFileContents = lex.Surrounding
+                    Surrounding = lex.Surrounding
                 });
             }
             return module;
@@ -95,9 +94,8 @@ namespace Iril.IR
 
         void SyntaxError (string got, string expected)
         {
-            module.Errors.Add (new ErrorMessage {
+            module.Errors.Add (new Message ($"Recognized {got}, but expected {expected}") {
                 FilePath = module.FilePath,
-                Message = $"Recognized {got}, but expected {expected}",
             });
         }
 

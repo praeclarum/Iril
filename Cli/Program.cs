@@ -149,7 +149,12 @@ namespace Cli
                 //
                 foreach (var m in modules) {
                     foreach (var e in m.Errors) {
-                        Error (e.ToString ());
+                        if (!string.IsNullOrEmpty (e.Surrounding)) {
+                            Error ($"{e.FilePath}: {e.Text}\n{e.Surrounding}");
+                        }
+                        else {
+                            Error ($"{e.FilePath}: {e.Text}");
+                        }
                     }
                 }
 

@@ -149,6 +149,7 @@ namespace Iril.IR
             { Symbol.Intern ("linkonce"), Token.LINKONCE },
             { Symbol.Intern ("linkonce_odr"), Token.LINKONCE_ODR },
             { Symbol.Intern ("weak"), Token.WEAK },
+            { Symbol.Intern ("dereferenceable"), Token.DEREFERENCEABLE },
         };
 
         public Lexer (string llvm)
