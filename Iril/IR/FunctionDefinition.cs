@@ -119,6 +119,7 @@ namespace Iril.IR
         Returned        = 1 << 7,
         Dereferenceable = 1 << 8,
         StructureReturn = 1 << 9,
+        NoAlias         = 1 << 10,
     }
 
     public class Block

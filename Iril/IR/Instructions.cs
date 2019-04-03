@@ -66,7 +66,8 @@ namespace Iril.IR
             NumElements = numElements;
         }
 
-        public override IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
+        public override IEnumerable<LocalSymbol> ReferencedLocals =>
+            NumElements != null ? NumElements.ReferencedLocals : Enumerable.Empty<LocalSymbol> ();
         public override LType ResultType (Module module) => new PointerType (Type, 0);
     }
 
@@ -487,6 +488,64 @@ namespace Iril.IR
         }
     }
 
+    public class InvokeInstruction : TerminatorInstruction
+    {
+        public readonly LType ReturnType;
+        public readonly Value Pointer;
+        public readonly Argument[] Arguments;
+        public readonly LabelValue NormalLabel;
+        public readonly LabelValue ExceptionLabel;
+
+        public InvokeInstruction (LType returnType, Value pointer, IEnumerable<Argument> arguments, LabelValue normalLabel, LabelValue exceptionLabel)
+        {
+            ReturnType = returnType;
+            Pointer = pointer;
+            Arguments = arguments.ToArray ();
+            NormalLabel = normalLabel;
+            ExceptionLabel = exceptionLabel;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals {
+            get {
+                foreach (var l in Pointer.ReferencedLocals) {
+                    yield return l;
+                }
+                foreach (var a in Arguments) {
+                    foreach (var l in a.Value.ReferencedLocals) {
+                        yield return l;
+                    }
+                }
+            }
+        }
+
+        public override IEnumerable<LocalSymbol> NextLabelSymbols => throw new NotImplementedException ();
+
+        public override LType ResultType (Module module) => ReturnType;
+
+        public override string ToString ()
+        {
+            return $"{ReturnType} {Pointer}({String.Join (", ", (object[])Arguments)})";
+        }
+
+        public override bool IsIdempotent (FunctionDefinition function)
+        {
+            return false;
+        }
+    }
+
+    public class LandingPadInstruction : Instruction
+    {
+        public readonly LType Type;
+
+        public LandingPadInstruction (LType type)
+        {
+            Type = type;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
+        public override LType ResultType (Module module) => Type;
+    }
+
     public class LoadInstruction : Instruction
     {
         public readonly LType Type;
@@ -597,6 +656,20 @@ namespace Iril.IR
             : base (type, op1, op2)
         {
         }
+    }
+
+    public class ResumeInstruction : TerminatorInstruction
+    {
+        public readonly TypedValue Value;
+
+        public ResumeInstruction (TypedValue value)
+        {
+            Value = value;
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
+
+        public override IEnumerable<LocalSymbol> NextLabelSymbols => Enumerable.Empty<LocalSymbol> ();
     }
 
     public class RetInstruction : TerminatorInstruction

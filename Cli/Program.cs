@@ -155,6 +155,11 @@ namespace Cli
                         else {
                             Error ($"{e.FilePath}: {e.Text}");
                         }
+#if DEBUG
+                        if (e.Exception != null) {
+                            Error (e.Exception.ToString ());
+                        }
+#endif
                     }
                 }
 

@@ -153,6 +153,11 @@ namespace Iril.IR
             { Symbol.Intern ("available_externally"), Token.AVAILABLE_EXTERNALLY },
             { Symbol.Intern ("personality"), Token.PERSONALITY },
             { Symbol.Intern ("sret"), Token.SRET },
+            { Symbol.Intern ("invoke"), Token.INVOKE },
+            { Symbol.Intern ("unwind"), Token.UNWIND },
+            { Symbol.Intern ("landingpad"), Token.LANDINGPAD },
+            { Symbol.Intern ("cleanup"), Token.CLEANUP },
+            { Symbol.Intern ("resume"), Token.RESUME },
         };
 
         public Lexer (string llvm)
