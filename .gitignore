@@ -6,6 +6,7 @@
 /*.dll
 /*.pdb
 /*.dll.mdb
+/*.h
 
 # Devtest
 /Cli/S*.dll

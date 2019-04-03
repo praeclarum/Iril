@@ -445,6 +445,14 @@ function_declaration
     {
         $$ = new FunctionDeclaration ((LType)$2, (GlobalSymbol)$3, (IEnumerable<Parameter>)$4);
     }
+    | DECLARE parameter_attributes return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs
+    {
+        $$ = new FunctionDeclaration ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5);
+    }
+    | DECLARE NOALIAS parameter_attributes return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs
+    {
+        $$ = new FunctionDeclaration ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6);
+    }
     ;
     
 parameters
@@ -499,6 +507,10 @@ parameter_attribute
     | SIGNEXT   { $$ = ParameterAttributes.SignExtend; }
     | ZEROEXT   { $$ = ParameterAttributes.ZeroExtend; }
     | RETURNED  { $$ = ParameterAttributes.Returned; }
+    | DEREFERENCEABLE '(' INTEGER ')'
+    {
+        $$ = ParameterAttributes.Dereferenceable;
+    }
     ;
     
 function_addr

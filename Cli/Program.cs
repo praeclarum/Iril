@@ -29,10 +29,13 @@ namespace Cli
                     if (a == "-o") {
                         if (i + 1 < args.Length) {
                             outName = args[i + 1];
+                            i += 2;
                         }
-                        i += 2;
+                        else {
+                            i++;
+                        }
                     }
-                    if (a == "-h" || a == "--help" || a == "-?") {
+                    else if (a == "-h" || a == "--help" || a == "-?") {
                         showHelp = true;
                         i++;
                     }
@@ -65,7 +68,7 @@ namespace Cli
             }
 
             if (showVersion) {
-                var version = typeof (Iril.Module).Assembly.GetName ().Version;
+                var version = typeof (Program).Assembly.GetName ().Version;
                 Console.WriteLine ($"Krueger Systems IRIL {version}");
                 if (!showHelp)
                     return 0;
@@ -140,11 +143,21 @@ namespace Cli
                 //
                 Info ($"Writing {outName}...");
                 comp.WriteAssembly (outName);
-                return 0;
+
+                //
+                // Show errors
+                //
+                foreach (var m in modules) {
+                    foreach (var e in m.Errors) {
+                        Error (e.ToString ());
+                    }
+                }
+
+                return modules.Any (m => m.HasErrors) ? 3 : 0;
             }
             catch (Exception ex) {
                 Error (ex.ToString ());
-                return 1;
+                return 2;
             }
         }
 

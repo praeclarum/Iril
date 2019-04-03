@@ -161,10 +161,10 @@ namespace Iril.IR
                 var s = code;
                 var n = s.Length;
                 var min = lastP;
-                while (min >= 0 && s[min] != '\n')
+                while (min >= 0 && s[min] != '\n' && (lastP - min) < 122)
                     min--;
                 var max = lastP + 1;
-                while (max < n && s[max] != '\n')
+                while (max < n && s[max] != '\n' && (max - min) < 132)
                     max++;
                 var line = s.Substring (min + 1, max - min - 1);
                 var arrow = new String ('~', lastP - min - 1) + "^";

@@ -109,14 +109,15 @@ namespace Iril.IR
     [Flags]
     public enum ParameterAttributes
     {
-        NonNull    = 1 << 0,
-        NoCapture  = 1 << 1,
-        WriteOnly  = 1 << 2,
-        ReadOnly   = 1 << 3,
-        ReadNone   = 1 << 4,
-        SignExtend = 1 << 5,
-        ZeroExtend = 1 << 6,
-        Returned   = 1 << 7,
+        NonNull         = 1 << 0,
+        NoCapture       = 1 << 1,
+        WriteOnly       = 1 << 2,
+        ReadOnly        = 1 << 3,
+        ReadNone        = 1 << 4,
+        SignExtend      = 1 << 5,
+        ZeroExtend      = 1 << 6,
+        Returned        = 1 << 7,
+        Dereferenceable = 1 << 8,
     }
 
     public class Block

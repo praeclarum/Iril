@@ -13,6 +13,7 @@ namespace Iril
     /// </summary>
     public class Module
     {
+        public string FilePath { get; private set; }
         public Symbol Symbol { get; private set; }
 
         /// <summary>
@@ -46,9 +47,14 @@ namespace Iril
 
         public SymbolTable<object> Metadata = new SymbolTable<object> ();
 
+        public List<ErrorMessage> Errors = new List<ErrorMessage> ();
+
+        public bool HasErrors => Errors.Count > 0;
+
         public static Module Parse (string llvm, string filename = "")
         {
             var module = new Module ();
+            module.FilePath = !string.IsNullOrEmpty (filename) ? System.IO.Path.GetFullPath (filename) : "";
             module.Symbol = GetIdentifier (filename);
             var parser = new Parser (module);
             var lex = new Lexer (llvm);
@@ -58,8 +64,11 @@ namespace Iril
                     module.Symbol = GetIdentifier (module.SourceFilename);
             }
             catch (Exception ex) {
-                var m = $"{filename}: {ex.Message}\n{lex.Surrounding}";
-                throw new Exception (m, ex);
+                module.Errors.Add (new ErrorMessage {
+                    FilePath = module.FilePath,
+                    Message = ex.Message,
+                    SurroundingFileContents = lex.Surrounding
+                });
             }
             return module;
         }
@@ -82,6 +91,14 @@ namespace Iril.IR
         public Parser (Module module)
         {
             this.module = module;
+        }
+
+        void SyntaxError (string got, string expected)
+        {
+            module.Errors.Add (new ErrorMessage {
+                FilePath = module.FilePath,
+                Message = $"Recognized {got}, but expected {expected}",
+            });
         }
 
         static List<T> NewList<T>(T firstItem)

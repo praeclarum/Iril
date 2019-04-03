@@ -197,9 +197,7 @@ t              debug.shift(yyState, yyTable[yyN], yyErrorFlag-1);
 .  
 .            case 0:
 .              //yyExpectingState = yyState;
-.              Console.WriteLine(String.Format ("syntax error, got token `{0}' expecting: {1}",
-.                                yyname (yyToken),
-.                                String.Join(", ", yyExpecting(yyState))));
+.              SyntaxError(yyname (yyToken), String.Join(", ", yyExpecting(yyState)));
 t              if (debug != null) debug.error("syntax error");
 .              if (yyToken == 0 /*eof*/ || yyToken == eof_token) throw new yyParser.yyUnexpectedEof ();
 .              goto case 1;
@@ -218,12 +216,12 @@ t                    debug.shift(yyStates[yyTop], yyTable[yyN], 3);
 t                if (debug != null) debug.pop(yyStates[yyTop]);
 .              } while (-- yyTop >= 0);
 t              if (debug != null) debug.reject();
-.              throw new yyParser.yyException("irrecoverable syntax error");
+.              throw new yyParser.yyException("Irrecoverable syntax error");
 .  
 .            case 3:
 .              if (yyToken == 0) {
 t                if (debug != null) debug.reject();
-.                throw new yyParser.yyException("irrecoverable syntax error at end-of-file");
+.                throw new yyParser.yyException("Irrecoverable syntax error at end-of-file");
 .              }
 t              if (debug != null)
 t                debug.discard(yyState, yyToken, yyname(yyToken),
