@@ -159,6 +159,8 @@ namespace Iril.IR
             { Symbol.Intern ("cleanup"), Token.CLEANUP },
             { Symbol.Intern ("resume"), Token.RESUME },
             { Symbol.Intern ("extractvalue"), Token.EXTRACTVALUE },
+            { Symbol.Intern ("insertvalue"), Token.INSERTVALUE },
+            { Symbol.Intern ("inrange"), Token.INRANGE },
         };
 
         public Lexer (string llvm)

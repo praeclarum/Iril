@@ -238,7 +238,50 @@ namespace Iril.IR
 
         public override LType ResultType (Module module) => ((VectorType)Value.Type).ElementType;
 
-        public override bool IsIdempotent (FunctionDefinition function) => Value.Value.IsIdempotent (function) && Index.Value.IsIdempotent (function);
+        public override bool IsIdempotent (FunctionDefinition function) =>
+            Value.Value.IsIdempotent (function) && Index.Value.IsIdempotent (function);
+    }
+
+    public class ExtractValueInstruction : Instruction
+    {
+        public readonly TypedValue Value;
+        public readonly List<Value> Indices;
+
+        public ExtractValueInstruction (TypedValue value, List<Value> indices)
+        {
+            Value = value ?? throw new ArgumentNullException (nameof (value));
+            Indices = indices ?? throw new ArgumentNullException (nameof (indices));
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals =>
+            Value.ReferencedLocals.Concat (Indices.SelectMany (x => x.ReferencedLocals));
+
+        public override LType ResultType (Module module)
+        {
+            var t = Value.Type;
+            foreach (var i in Indices) {
+                var rt = t.Resolve (module);
+                if (rt is ArrayType art) {
+                    t = art.ElementType;
+                }
+                else if (rt is LiteralStructureType s) {
+                    if (i is Constant c) {
+                        var e = s.Elements[c.Int32Value];
+                        t = e;
+                    }
+                    else {
+                        throw new Exception ($"Cannot get element {i} at compile time");
+                    }
+                }
+                else {
+                    throw new Exception ($"Cannot get element type of {t} for extractvalue");
+                }
+            }
+            return new PointerType (t, 0);
+        }
+
+        public override bool IsIdempotent (FunctionDefinition function) =>
+            Value.Value.IsIdempotent (function) && Indices.All (x => x.IsIdempotent (function));
     }
 
     public class FaddInstruction : BinaryInstruction
@@ -476,6 +519,25 @@ namespace Iril.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals =>
             Value.ReferencedLocals.Concat (Element.ReferencedLocals).Concat (Index.ReferencedLocals);
+
+        public override LType ResultType (Module module) => Value.Type;
+    }
+
+    public class InsertValueInstruction : Instruction
+    {
+        public readonly TypedValue Value;
+        public readonly TypedValue Element;
+        public readonly List<Value> Index;
+
+        public InsertValueInstruction (TypedValue value, TypedValue element, List<Value> index)
+        {
+            Value = value ?? throw new ArgumentNullException (nameof (value));
+            Element = element ?? throw new ArgumentNullException (nameof (element));
+            Index = index ?? throw new ArgumentNullException (nameof (index));
+        }
+
+        public override IEnumerable<LocalSymbol> ReferencedLocals =>
+            Value.ReferencedLocals.Concat (Element.ReferencedLocals).Concat (Index.SelectMany (x => x.ReferencedLocals));
 
         public override LType ResultType (Module module) => Value.Type;
     }

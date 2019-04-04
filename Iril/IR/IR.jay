@@ -199,7 +199,7 @@ metadata_args
     
 metadata_arg
     : SYMBOL ':' metadata_arg_expr { $$ = Tuple.Create ($1, $3); }
-    | TYPE ':' META_SYMBOL         { $$ = Tuple.Create ($1, $3); }
+    | TYPE ':' metadata_arg_expr   { $$ = Tuple.Create ($1, $3); }
     | ALIGN ':' constant           { $$ = Tuple.Create ($1, $3); }
     | SYMBOL ':' META_SYMBOL '(' metadata_value_args ')'
     {
@@ -230,6 +230,7 @@ metadata_arg_primary
     | STRING
     | constant
     | typed_constant
+    | NULL
     ;
     
 metadata_kvs
@@ -342,6 +343,10 @@ type
     {
         $$ = new PointerType ((LType)$1, 0);
     }
+    | type '*' ALIGN INTEGER
+    {
+        $$ = new PointerType ((LType)$1, 0);
+    }
     | LOCAL_SYMBOL
     {
         $$ = new NamedType ((Symbol)$1);
@@ -376,41 +381,28 @@ function_type_arg
     ;
     
 function_definition
-    : define_header GLOBAL_SYMBOL parameters attribute_group_refs '{' blocks '}'
+    : define_header GLOBAL_SYMBOL parameters define_tail '{' blocks '}'
     {
         var h = (Tuple<object, object>)$1;
         $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$6, isExternal: (bool)h.Item1);
     }
-    | define_header GLOBAL_SYMBOL parameters attribute_group_refs ALIGN INTEGER metadata_kvs '{' blocks '}'
-    {
-        var h = (Tuple<object, object>)$1;
-        $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$9, isExternal: (bool)h.Item1, (SymbolTable<MetaSymbol>)$7);
-    }
-    | define_header GLOBAL_SYMBOL parameters attribute_group_refs metadata_kvs '{' blocks '}'
+    | define_header GLOBAL_SYMBOL parameters define_tail metadata_kvs '{' blocks '}'
     {
         var h = (Tuple<object, object>)$1;
         $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$7, isExternal: (bool)h.Item1, (SymbolTable<MetaSymbol>)$5);
     }
-    | define_header GLOBAL_SYMBOL parameters function_addr attribute_group_refs '{' blocks '}'
-    {
-        var h = (Tuple<object, object>)$1;
-        $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$7, isExternal: (bool)h.Item1);
-    }
-    | define_header GLOBAL_SYMBOL parameters function_addr attribute_group_refs ALIGN INTEGER metadata_kvs '{' blocks '}'
-    {
-        var h = (Tuple<object, object>)$1;
-        $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$10, isExternal: (bool)h.Item1, (SymbolTable<MetaSymbol>)$8);
-    }
-    | define_header GLOBAL_SYMBOL parameters function_addr attribute_group_refs ALIGN INTEGER personality_function metadata_kvs '{' blocks '}'
-    {
-        var h = (Tuple<object, object>)$1;
-        $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$11, isExternal: (bool)h.Item1, (SymbolTable<MetaSymbol>)$9);
-    }
-    | define_header GLOBAL_SYMBOL parameters function_addr attribute_group_refs metadata_kvs '{' blocks '}'
-    {
-        var h = (Tuple<object, object>)$1;
-        $$ = new FunctionDefinition ((LType)h.Item2, (GlobalSymbol)$2, (IEnumerable<Parameter>)$3, (List<Block>)$8, isExternal: (bool)h.Item1, (SymbolTable<MetaSymbol>)$6);
-    }
+    ;
+    
+define_tail
+    : function_addr
+    | function_addr attribute_group_refs
+    | function_addr attribute_group_refs ALIGN INTEGER
+    | function_addr attribute_group_refs personality_function
+    | function_addr attribute_group_refs ALIGN INTEGER personality_function
+    | attribute_group_refs
+    | attribute_group_refs ALIGN INTEGER
+    | attribute_group_refs personality_function
+    | attribute_group_refs ALIGN INTEGER personality_function
     ;
     
 define_header
@@ -426,7 +418,7 @@ define_header
     {
         $$ = Tuple.Create ($2, $3);
     }
-    | DEFINE define_header_attributes parameter_attribute return_type
+    | DEFINE define_header_attributes parameter_attributes return_type
     {
         $$ = Tuple.Create ($2, $4);
     }
@@ -459,26 +451,32 @@ personality_function
     ;
     
 function_declaration
-    : DECLARE return_type GLOBAL_SYMBOL parameters attribute_group_refs
+    : DECLARE return_type GLOBAL_SYMBOL parameters
     {
         $$ = new FunctionDeclaration ((LType)$2, (GlobalSymbol)$3, (IEnumerable<Parameter>)$4);
     }
-    | DECLARE NOALIAS return_type GLOBAL_SYMBOL parameters attribute_group_refs
-    {
-        $$ = new FunctionDeclaration ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5);
-    }
-    | DECLARE return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs
+    | DECLARE return_type GLOBAL_SYMBOL parameters declare_tail
     {
         $$ = new FunctionDeclaration ((LType)$2, (GlobalSymbol)$3, (IEnumerable<Parameter>)$4);
     }
-    | DECLARE parameter_attributes return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs
+    | DECLARE NOALIAS return_type GLOBAL_SYMBOL parameters declare_tail
     {
         $$ = new FunctionDeclaration ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5);
     }
-    | DECLARE NOALIAS parameter_attributes return_type GLOBAL_SYMBOL parameters function_addr attribute_group_refs
+    | DECLARE parameter_attributes return_type GLOBAL_SYMBOL parameters declare_tail
+    {
+        $$ = new FunctionDeclaration ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5);
+    }
+    | DECLARE NOALIAS parameter_attributes return_type GLOBAL_SYMBOL parameters declare_tail
     {
         $$ = new FunctionDeclaration ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6);
     }
+    ;
+    
+declare_tail
+    : function_addr
+    | function_addr attribute_group_refs
+    | attribute_group_refs
     ;
     
 parameters
@@ -695,6 +693,10 @@ typed_constant
 
 element_index
     : typed_value
+    | INRANGE typed_value
+    {
+        $$ = $2;
+    }
     ;
     
 element_indices
@@ -705,6 +707,21 @@ element_indices
     | element_indices ',' element_index
     {
         $$ = ListAdd ($1, (TypedValue)$3);
+    }
+    ;
+    
+index
+    : constant
+    ;
+    
+indices
+    : index
+    {
+        $$ = NewList ((Value)$1);
+    }
+    | indices ',' index
+    {
+        $$ = ListAdd ($1, (Value)$3);
     }
     ;
     
@@ -987,6 +1004,10 @@ instruction
     {
         $$ = new CallInstruction ((LType)$4, (Value)$5, (IEnumerable<Argument>)$6, false);
     }
+    | CALL calling_convention parameter_attribute return_type function_pointer function_args attribute_group_refs
+    {
+        $$ = new CallInstruction ((LType)$4, (Value)$5, (IEnumerable<Argument>)$6, false);
+    }
     | CALL return_type function_pointer function_args attribute_group_refs
     {
         $$ = new CallInstruction ((LType)$2, (Value)$3, (IEnumerable<Argument>)$4, false);
@@ -1019,13 +1040,21 @@ instruction
     {
         $$ = new CallInstruction ((LType)$4, (Value)$5, (IEnumerable<Argument>)$6, true);
     }
-    | TAIL CALL calling_convention parameter_attribute return_type function_pointer function_args
+    | TAIL CALL calling_convention parameter_attributes return_type function_pointer function_args
+    {
+        $$ = new CallInstruction ((LType)$5, (Value)$6, (IEnumerable<Argument>)$7, true);
+    }
+    | TAIL CALL calling_convention parameter_attributes return_type function_pointer function_args attribute_group_refs
     {
         $$ = new CallInstruction ((LType)$5, (Value)$6, (IEnumerable<Argument>)$7, true);
     }
     | EXTRACTELEMENT typed_value ',' typed_value
     {
         $$ = new ExtractElementInstruction ((TypedValue)$2, (TypedValue)$4);
+    }
+    | EXTRACTVALUE typed_value ',' indices
+    {
+        $$ = new ExtractValueInstruction ((TypedValue)$2, (List<Value>)$4);
     }
     | FADD type value ',' value
     {
@@ -1082,6 +1111,10 @@ instruction
     | INSERTELEMENT typed_value ',' typed_value ',' typed_value
     {
         $$ = new InsertElementInstruction ((TypedValue)$2, (TypedValue)$4, (TypedValue)$6);
+    }
+    | INSERTVALUE typed_value ',' typed_value ',' indices
+    {
+        $$ = new InsertValueInstruction ((TypedValue)$2, (TypedValue)$4, (List<Value>)$6);
     }
     | INTTOPTR typed_value TO type
     {
