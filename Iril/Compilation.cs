@@ -155,15 +155,21 @@ namespace Iril
             asm = AssemblyDefinition.CreateAssembly (asmName, modName, mps);
             mod = asm.MainModule;
             dataType = new Lazy<TypeDefinition> (CreateDataType);
+
+            rootName = new NameNode {
+                Name = namespac
+            };
         }
 
         public void Compile ()
         {
             FindSystemTypes ();
+            FindStructures ();
             CompileStructures ();
+            FindFunctions ();
             EmitSyscalls ();
             EmitGlobalVariables ();
-            FindFunctions ();
+            CreateFunctionDefinitions ();
             EmitGlobalInitializers ();
             CompileFunctions ();
             RemoveUnusedFunctions ();
@@ -359,6 +365,125 @@ namespace Iril
                 checksum = null;
             }
             return checksum;
+        }
+
+        class NameNode
+        {
+            public NameNode Parent;
+            public string Name;
+
+            public IR.FunctionDefinition Function;
+            public IR.FunctionDeclaration FunctionDecl;
+            public Types.StructureType Structure;
+
+            public List<NameNode> Children = new List<NameNode> ();
+            public override string ToString () => Name;
+        }
+
+        SymbolTable<SymbolTable<object>> functionDebugs = new SymbolTable<SymbolTable<object>> ();
+        SymbolTable<NameNode> functionNodes = new SymbolTable<NameNode> ();
+        readonly NameNode rootName;
+
+        void AddNameNode (NameNode nn, string[] ancestry)
+        {
+            var r = rootName;
+            foreach (var a in ancestry) {
+                var c = r.Children.FirstOrDefault (x => x.Name == a);
+                if (c == null) {
+                    c = new NameNode {
+                        Parent = r,
+                        Name = a,
+                    };
+                    r.Children.Add (c);
+                }
+                r = c;
+            }
+            r.Children.Add (nn);
+        }
+
+        void FindFunctions ()
+        {
+            //
+            // Generate function name nodes
+            //
+            foreach (var m in Modules) {
+                foreach (var iskv in m.FunctionDefinitions) {
+                    var sym = iskv.Key;
+                    var f = iskv.Value;
+
+                    //
+                    // Load debug info
+                    //
+                    var dbgMeth = new SymbolTable<object> ();
+                    if (f.MetaRefs.TryGetValue (MetaSymbol.Dbg, out var dbgSym)) {
+                        if (m.Metadata.TryGetValue (dbgSym, out var d) && d is SymbolTable<object> s) {
+                            dbgMeth = s;
+                        }
+                    }
+                    functionDebugs[sym] = dbgMeth;
+
+                    //
+                    // Create the method node
+                    //
+                    var mname = new IR.MangledName (sym);
+                    var nn = new NameNode {
+                        Name = mname.Identifier,
+                        Function = f,
+                    };
+                    functionNodes[sym] = nn;
+
+                    AddNameNode (nn, mname.Ancestry);
+                }
+            }
+
+            //
+            // Generate method definitions for declations
+            //
+            foreach (var m in Modules) {
+                foreach (var iskv in m.FunctionDeclarations) {
+                    if (iskv.Key.Text.StartsWith ("@llvm.", StringComparison.Ordinal))
+                        continue;
+                    if (functionNodes.ContainsKey (iskv.Key))
+                        continue;
+
+                    var sym = iskv.Key;
+                    var f = iskv.Value;
+                    var mname = new IR.MangledName (sym);
+                    var nn = new NameNode {
+                        Name = mname.Identifier,
+                        FunctionDecl = f,
+                    };
+                    functionNodes[sym] = nn;
+
+                    AddNameNode (nn, mname.Ancestry);
+                }
+            }
+
+            Console.WriteLine (rootName);
+        }
+
+        SymbolTable<NameNode> structureNodes = new SymbolTable<NameNode> ();
+
+        void FindStructures ()
+        {
+            var done = new HashSet<Symbol> ();
+
+            foreach (var m in Modules) {
+                foreach (var iskv in m.IdentifiedStructures) {
+                    var sym = iskv.Key;
+                    if (done.Contains (sym))
+                        continue;
+                    done.Add (sym);
+
+                    var tname = new IR.MangledName (sym);
+                    var nn = new NameNode {
+                        Name = tname.Identifier,
+                        Structure = iskv.Value
+                    };
+                    structureNodes[sym] = nn;
+                    AddNameNode (nn, tname.Ancestry);
+                }
+            }
         }
 
         void CompileStructures ()
@@ -725,7 +850,7 @@ namespace Iril
             }
         }
 
-        void FindFunctions ()
+        void CreateFunctionDefinitions ()
         {
             var funcstd = new TypeDefinition (namespac, "Functions", TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, sysObj);
             mod.Types.Add (funcstd);

@@ -19,14 +19,26 @@ namespace Iril.IR
         public MangledName (Symbol symbol)
         {
             Symbol = symbol;
-            var t = Symbol.Text;
+            var text = Symbol.Text;
 
-            if (symbol.Text.StartsWith ("@_Z", StringComparison.Ordinal)) {
+            if (text.StartsWith ("@_Z", StringComparison.Ordinal)) {
                 var encoding = ParseEncoding (3);
                 Identifier = SanitizeIdentifier (encoding.Identifier);
                 Ancestry = encoding.Ancestry.Select (SanitizeIdentifier).ToArray ();
-                Console.WriteLine (symbol.Text);
+                Console.WriteLine (text);
                 Console.WriteLine ($"  DE: {encoding}");
+                Console.WriteLine ($"  AN: {string.Join (" >> ", Ancestry)}");
+                Console.WriteLine ($"  ID: {Identifier}");
+            }
+            else if (text.StartsWith ("%\"struct.", StringComparison.Ordinal) ||
+                     text.StartsWith ("%\"class.", StringComparison.Ordinal)) {
+                var d = text.IndexOf ('.');
+                var itext = text.Substring (d + 1, text.Length - d - 2);
+                var cparts = itext.Split (new[] { ':' }, StringSplitOptions.RemoveEmptyEntries).Select(SanitizeIdentifier).ToArray ();
+
+                Identifier = cparts[cparts.Length-1];
+                Ancestry = cparts.Take(cparts.Length - 1).ToArray ();
+                Console.WriteLine (text);
                 Console.WriteLine ($"  AN: {string.Join (" >> ", Ancestry)}");
                 Console.WriteLine ($"  ID: {Identifier}");
             }
