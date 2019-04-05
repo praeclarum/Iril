@@ -11,8 +11,8 @@ namespace Iril.IR
     public class MangledName
     {
         public readonly Symbol Symbol;
-
-        readonly Encoding encoding;
+        public readonly string[] Ancestry;
+        public readonly string Identifier;
 
         readonly List<object> subs = new List<object> ();
 
@@ -20,16 +20,39 @@ namespace Iril.IR
         {
             Symbol = symbol;
             var t = Symbol.Text;
-            if (IsMangled (symbol)) {
-                encoding = ParseEncoding (3);
-                Console.WriteLine ($"DE: {encoding}");
+
+            if (symbol.Text.StartsWith ("@_Z", StringComparison.Ordinal)) {
+                var encoding = ParseEncoding (3);
+                Identifier = SanitizeIdentifier (encoding.Identifier);
+                Ancestry = encoding.Ancestry.Select (SanitizeIdentifier).ToArray ();
+                Console.WriteLine (symbol.Text);
+                Console.WriteLine ($"  DE: {encoding}");
+                Console.WriteLine ($"  AN: {string.Join (" >> ", Ancestry)}");
+                Console.WriteLine ($"  ID: {Identifier}");
+            }
+            else {
+                Identifier = SanitizeIdentifier (symbol.Text.Substring (1));
+                Ancestry = Array.Empty<string> ();
             }
         }
 
-        static bool IsMangled (Symbol symbol)
+        public static string SanitizeIdentifier (string text)
         {
-            Console.WriteLine (symbol.Text);
-            return symbol.Text.StartsWith ("@_Z", StringComparison.Ordinal);
+            var b = new System.Text.StringBuilder ();
+            foreach (var c in text) {
+                if (char.IsDigit (c)) {
+                    if (b.Length == 0)
+                        b.Append ('_');
+                    b.Append (c);
+                }
+                else if (char.IsLetter (c)) {
+                    b.Append (c);
+                }
+                else {
+                    b.Append ('_');
+                }
+            }
+            return b.ToString ();
         }
 
         void SyntaxError (string message, int p)
@@ -316,77 +339,85 @@ namespace Iril.IR
         abstract class Name
         {
             public static readonly Name Std = new UnqualifiedName { Text = "std" };
+            public abstract string Identifier { get; }
+            public abstract string[] Ancestry { get; }
         }
 
         class CtorName : Name
         {
             public string Kind;
             public override string ToString () => Kind;
+            public override string Identifier => Kind;
+            public override string[] Ancestry => Array.Empty<string> ();
         }
 
         class OperatorName : Name
         {
-            public string Text;
+            public readonly string Name;
+            public readonly string Text;
             public override string ToString () => "operator " + Text;
+            public override string Identifier => Name;
+            public override string[] Ancestry => Array.Empty<string> ();
             public OperatorName ()
             {
             }
-            public OperatorName (string text)
+            public OperatorName (string name, string text)
             {
+                Name = name;
                 Text = text;
             }
 
             static readonly Dictionary<string, OperatorName> ops = new Dictionary<string, OperatorName> ();
             static OperatorName ()
             {
-                ops["nw"] = new OperatorName ("new");
-                ops["na"] = new OperatorName ("new[]");
-                ops["dl"] = new OperatorName ("delete");
-                ops["da"] = new OperatorName ("delete[]");
-                ops["ps"] = new OperatorName ("+");
-                ops["ng"] = new OperatorName ("-");
-                ops["ad"] = new OperatorName ("&");
-                ops["de"] = new OperatorName ("*");
-                ops["co"] = new OperatorName ("~");
-                ops["pl"] = new OperatorName ("+");
-                ops["mi"] = new OperatorName ("-");
-                ops["ml"] = new OperatorName ("*");
-                ops["dv"] = new OperatorName ("/");
-                ops["rm"] = new OperatorName ("%");
-                ops["an"] = new OperatorName ("&");
-                ops["or"] = new OperatorName ("|");
-                ops["eo"] = new OperatorName ("^");
-                ops["aS"] = new OperatorName ("=");
-                ops["pL"] = new OperatorName ("+=");
-                ops["mI"] = new OperatorName ("-=");
-                ops["mL"] = new OperatorName ("*=");
-                ops["dV"] = new OperatorName ("/=");
-                ops["rM"] = new OperatorName ("%=");
-                ops["aN"] = new OperatorName ("&=");
-                ops["oR"] = new OperatorName ("|=");
-                ops["eO"] = new OperatorName ("^=");
-                ops["ls"] = new OperatorName ("<<");
-                ops["rs"] = new OperatorName (">>");
-                ops["lS"] = new OperatorName ("<<=");
-                ops["rS"] = new OperatorName (">>=");
-                ops["eq"] = new OperatorName ("==");
-                ops["ne"] = new OperatorName ("!=");
-                ops["lt"] = new OperatorName ("<");
-                ops["gt"] = new OperatorName (">");
-                ops["le"] = new OperatorName ("<=");
-                ops["ge"] = new OperatorName (">=");
-                ops["ss"] = new OperatorName ("<=>");
-                ops["nt"] = new OperatorName ("!");
-                ops["aa"] = new OperatorName ("&&");
-                ops["oo"] = new OperatorName ("||");
-                ops["pp"] = new OperatorName ("++");
-                ops["mm"] = new OperatorName ("--");
-                ops["cm"] = new OperatorName (",");
-                ops["pm"] = new OperatorName ("->*");
-                ops["pt"] = new OperatorName ("->");
-                ops["cl"] = new OperatorName ("()");
-                ops["ix"] = new OperatorName ("[]");
-                ops["qu"] = new OperatorName ("?");
+                ops["nw"] = new OperatorName ("nw", "new");
+                ops["na"] = new OperatorName ("na", "new[]");
+                ops["dl"] = new OperatorName ("dl", "delete");
+                ops["da"] = new OperatorName ("da", "delete[]");
+                ops["ps"] = new OperatorName ("ps", "+");
+                ops["ng"] = new OperatorName ("ng", "-");
+                ops["ad"] = new OperatorName ("ad", "&");
+                ops["de"] = new OperatorName ("de", "*");
+                ops["co"] = new OperatorName ("co", "~");
+                ops["pl"] = new OperatorName ("pl", "+");
+                ops["mi"] = new OperatorName ("mi", "-");
+                ops["ml"] = new OperatorName ("ml", "*");
+                ops["dv"] = new OperatorName ("dv", "/");
+                ops["rm"] = new OperatorName ("rm", "%");
+                ops["an"] = new OperatorName ("an", "&");
+                ops["or"] = new OperatorName ("or", "|");
+                ops["eo"] = new OperatorName ("eo", "^");
+                ops["aS"] = new OperatorName ("aS", "=");
+                ops["pL"] = new OperatorName ("pL", "+=");
+                ops["mI"] = new OperatorName ("mI", "-=");
+                ops["mL"] = new OperatorName ("mL", "*=");
+                ops["dV"] = new OperatorName ("dV", "/=");
+                ops["rM"] = new OperatorName ("rM", "%=");
+                ops["aN"] = new OperatorName ("aN", "&=");
+                ops["oR"] = new OperatorName ("oR", "|=");
+                ops["eO"] = new OperatorName ("eO", "^=");
+                ops["ls"] = new OperatorName ("ls", "<<");
+                ops["rs"] = new OperatorName ("rs", ">>");
+                ops["lS"] = new OperatorName ("lS", "<<=");
+                ops["rS"] = new OperatorName ("rS", ">>=");
+                ops["eq"] = new OperatorName ("eq", "==");
+                ops["ne"] = new OperatorName ("ne", "!=");
+                ops["lt"] = new OperatorName ("lt", "<");
+                ops["gt"] = new OperatorName ("gt", ">");
+                ops["le"] = new OperatorName ("le", "<=");
+                ops["ge"] = new OperatorName ("ge", ">=");
+                ops["ss"] = new OperatorName ("ss", "<=>");
+                ops["nt"] = new OperatorName ("nt", "!");
+                ops["aa"] = new OperatorName ("aa", "&&");
+                ops["oo"] = new OperatorName ("oo", "||");
+                ops["pp"] = new OperatorName ("pp", "++");
+                ops["mm"] = new OperatorName ("mm", "--");
+                ops["cm"] = new OperatorName ("cm", ",");
+                ops["pm"] = new OperatorName ("pm", "->*");
+                ops["pt"] = new OperatorName ("pt", "->");
+                ops["cl"] = new OperatorName ("cl", "()");
+                ops["ix"] = new OperatorName ("ix", "[]");
+                ops["qu"] = new OperatorName ("qu", "?");
             }
             public static OperatorName TryGet (string text, ref int index)
             {
@@ -408,6 +439,8 @@ namespace Iril.IR
         {
             public string Text;
             public override string ToString () => Text;
+            public override string Identifier => Text;
+            public override string[] Ancestry => Array.Empty<string> ();
         }
 
         class NestedName : Name
@@ -430,16 +463,72 @@ namespace Iril.IR
                 }
                 return s.ToString ();
             }
+            List<(Name Name, Name TArgs)> GetParts()
+            {
+                var flat = new List<Name> ();
+                var r = new List<(Name Name, Name TArgs)> ();
+                foreach (var n in Names)
+                    Flatten (n);
+                for (var i = 0; i < flat.Count; i++) {
+                    var n = flat[i];
+                    Name targs = null;
+                    if (i + 1 < flat.Count && flat[i+1] is TemplateArgsName) {
+                        targs = flat[i + 1];
+                        i++;
+                    }
+                    r.Add ((n, targs));
+                }
+                return r;
+
+                void Flatten (Name n)
+                {
+                    if (n is NestedName nn) {
+                        foreach (var cn in nn.Names)
+                            Flatten (cn);
+                    }
+                    else {
+                        flat.Add (n);
+                    }
+                }
+                return r;
+            }
+            public override string Identifier {
+                get {
+                    var parts = GetParts ();
+                    var x = parts.Last ();
+                    var n = x.Name.Identifier;
+                    if (x.TArgs != null)
+                        n += "_" + x.TArgs.Identifier;
+                    return n;
+                }
+            }
+            public override string[] Ancestry {
+                get {
+                    var parts = GetParts ();
+                    var r = parts.Take (parts.Count - 1).Select (x => {
+                        var n = x.Name.Identifier;
+                        if (x.TArgs != null)
+                            n += "_" + x.TArgs.Identifier;
+                        return n;
+                    }).ToArray ();
+                    return r;
+                }
+            }
         }
 
         class TemplateArgsName : Name
         {
             public List<TypeName> Args = new List<TypeName> ();
             public override string ToString () => "<" + string.Join (", ", Args) + ">";
+            public override string Identifier => string.Join ("_", Args.Select (x => x.Identifier));
+            public override string[] Ancestry => Array.Empty<string> ();
         }
 
         abstract class TypeName
         {
+            public abstract string Identifier { get; }
+            public abstract string[] Ancestry { get; }
+
             public static readonly TypeName Void = new BuiltinType { Name = "void" };
             public static readonly TypeName Wchar = new BuiltinType { Name = "wchar_t" };
             public static readonly TypeName Bool = new BuiltinType { Name = "bool" };
@@ -459,55 +548,73 @@ namespace Iril.IR
             public TypeName Type;
             public int Value;
             public override string ToString () => Value.ToString ();
+            public override string Identifier => Value.ToString ();
+            public override string[] Ancestry => Array.Empty<string> ();
         }
 
         class BuiltinType : TypeName
         {
             public string Name;
             public override string ToString () => Name;
+            public override string Identifier => Name;
+            public override string[] Ancestry => Array.Empty<string> ();
         }
 
         class NamedType : TypeName
         {
             public Name Name;
             public override string ToString () => Name.ToString ();
+            public override string Identifier => Name.Identifier;
+            public override string[] Ancestry => Name.Ancestry;
         }
 
         class PointerType : TypeName
         {
             public TypeName ElementType;
             public override string ToString () => $"{ElementType}*";
+            public override string Identifier => $"{ElementType.Identifier}ptr";
+            public override string[] Ancestry => Array.Empty<string> ();
         }
 
         class LValueRefType : TypeName
         {
             public TypeName ElementType;
             public override string ToString () => $"{ElementType}&";
+            public override string Identifier => $"{ElementType.Identifier}ref";
+            public override string[] Ancestry => Array.Empty<string> ();
         }
 
         class RValueRefType : TypeName
         {
             public TypeName ElementType;
             public override string ToString () => $"{ElementType}&&";
+            public override string Identifier => $"{ElementType.Identifier}rref";
+            public override string[] Ancestry => Array.Empty<string> ();
         }
 
         class TemplateArgsType : TypeName
         {
             public List<TypeName> Args = new List<TypeName> ();
-            public override string ToString () => "!<" + string.Join (", ", Args) + ">!";
+            public override string ToString () => string.Join (", ", Args);
+            public override string Identifier => string.Join ("_", Args.Select (x => x.Identifier));
+            public override string[] Ancestry => Array.Empty<string> ();
         }
 
         abstract class Encoding
         {
+            public abstract string Identifier { get; }
+            public abstract string[] Ancestry { get; }
         }
 
         class NamedEncoding : Encoding
         {
             public Name Name;
             public override string ToString () => Name.ToString ();
+            public override string Identifier => Name.Identifier;
+            public override string[] Ancestry => Name.Ancestry;
         }
 
-        class SpecialName : Encoding
+        abstract class SpecialName : Encoding
         {
             public readonly TypeName Type;
 
@@ -515,6 +622,7 @@ namespace Iril.IR
             {
                 Type = type ?? throw new ArgumentNullException (nameof (type));
             }
+            public override string[] Ancestry => Type.Ancestry;
         }
         class VirtualTable : SpecialName
         {
@@ -522,12 +630,15 @@ namespace Iril.IR
             {
             }
             public override string ToString () => $"@vtable for {Type}";
+            public override string Identifier => $"{Type.Identifier}_vtable";
+            
         }
         class VttStructure : SpecialName
         {
             public VttStructure (TypeName type) : base (type)
             {
             }
+            public override string Identifier => $"{Type.Identifier}_vtt";
         }
         class TypeInfoStructure : SpecialName
         {
@@ -535,13 +646,14 @@ namespace Iril.IR
             {
             }
             public override string ToString () => $"@typeinfo for {Type}";
-
+            public override string Identifier => $"{Type.Identifier}_typeinfo";
         }
         class TypeInfoName : SpecialName
         {
             public TypeInfoName (TypeName type) : base (type)
             {
             }
+            public override string Identifier => $"{Type.Identifier}_typeinfoname";
         }
     }
 }

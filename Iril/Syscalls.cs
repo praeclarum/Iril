@@ -42,7 +42,7 @@ namespace Iril
         {
             var mattrs = MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.Static;
             var md = new MethodDefinition (
-                compilation.GetIdentifier (symbol),
+                IR.MangledName.SanitizeIdentifier (symbol.Text.Substring (1)),
                 mattrs,
                 compilation.GetClrType (returnType));
             foreach (var p in parameters) {

@@ -24,7 +24,6 @@ namespace Iril
         readonly string namespac;
         readonly Resolver resolver = new Resolver ();
 
-        readonly HashSet<string> structNames = new HashSet<string> ();
         readonly SymbolTable<(LiteralStructureType, TypeDefinition)> structs =
             new SymbolTable<(LiteralStructureType, TypeDefinition)> ();
 
@@ -372,16 +371,15 @@ namespace Iril
                 foreach (var iskv in m.IdentifiedStructures) {
                     if (structs.ContainsKey (iskv.Key))
                         continue;
-                    var tname = GetIdentifier (iskv.Key);
-                    structNames.Add (tname);
+                    var tname = new IR.MangledName (iskv.Key);
                     if (iskv.Value is LiteralStructureType l) {
-                        var td = new TypeDefinition (namespac, tname, tattrs, sysVal);
+                        var td = new TypeDefinition (namespac, tname.Identifier, tattrs, sysVal);
                         mod.Types.Add (td);
                         structs[iskv.Key] = (l, td);
                         todo.Add ((m, l, td));
                     }
                     else if (iskv.Value is OpaqueStructureType) {
-                        var td = new TypeDefinition (namespac, tname, tattrs, sysVal);
+                        var td = new TypeDefinition (namespac, tname.Identifier, tattrs, sysVal);
                         mod.Types.Add (td);
                         structs[iskv.Key] = (null, td);
                     }
@@ -446,11 +444,11 @@ namespace Iril
                     if (globals.ContainsKey (symbol))
                         continue;
 
-                    var gname = GetIdentifier (symbol);
+                    var gname = new IR.MangledName (symbol);
 
                     var gtype = GetClrType (g.Type);
                     var field = new FieldDefinition (
-                        gname,
+                        gname.Identifier,
                         FieldAttributes.Static | (FieldAttributes.Public), gtype);
 
                     moduleType.Fields.Add (field);
@@ -482,7 +480,7 @@ namespace Iril
                 foreach (var kv in m.GlobalVariables) {
 
                     var symbol = kv.Key;
-                    var ident = GetIdentifier (symbol);
+                    var ident = new IR.MangledName (symbol).Identifier;
                     var g = kv.Value;
 
                     if (!g.IsExternal)
@@ -752,13 +750,14 @@ namespace Iril
                     //
                     // Create the method
                     //
-                    var tname = GetIdentifier (iskv.Key);
+                    var mname = new IR.MangledName (iskv.Key);
+                    var mident = mname.Identifier;
                     if (dbgMeth.TryGetValue (Symbol.Name, out var o)) {
-                        tname = o.ToString ();
+                        mident = IR.MangledName.SanitizeIdentifier (o.ToString ());
                     }
                     var declaringType = f.IsExternal ? funcstd : moduleTypes[m.Symbol];
                     var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Static;
-                    var md = new MethodDefinition (tname, mattrs, GetClrType (f.ReturnType));
+                    var md = new MethodDefinition (mident, mattrs, GetClrType (f.ReturnType));
 
                     //
                     // Create parameters
@@ -830,10 +829,11 @@ namespace Iril
                         continue;
 
                     var f = iskv.Value;
-                    var tname = GetIdentifier (iskv.Key);
+                    var mname = new IR.MangledName (iskv.Key);
+                    var mident = mname.Identifier;
 
                     var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Static;
-                    var md = new MethodDefinition (tname, mattrs, GetClrType (f.ReturnType));
+                    var md = new MethodDefinition (mident, mattrs, GetClrType (f.ReturnType));
 
                     //
                     // Create parameters
@@ -1012,26 +1012,7 @@ namespace Iril
             return GetClrType (irType, unsigned: unsigned);
         }
 
-        public string GetIdentifier (Symbol symbol)
-        {
-            var name = new IR.MangledName (symbol);
-
-            var b = new System.Text.StringBuilder ();
-            foreach (var c in symbol.Text.Skip (1)) {
-                if (char.IsDigit (c)) {
-                    if (b.Length == 0)
-                        b.Append ('_');
-                    b.Append (c);
-                }
-                else if (char.IsLetter (c)) {
-                    b.Append (c);
-                }
-                else {
-                    b.Append ('_');
-                }
-            }
-            return b.ToString ();
-        }
+        
 
         public TypeReference GetClrType (LType irType, bool? unsigned = false)
         {
