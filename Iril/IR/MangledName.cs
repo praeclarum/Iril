@@ -63,9 +63,10 @@ namespace Iril.IR
         TypeName ParseType (ref int p)
         {
             var t = Symbol.Text;
-            var ch = t[p];
 
-            switch (ch) {
+            ParseCVQualifiers (ref p);
+
+            switch (t[p]) {
                 case 'v':
                     p++;
                     return TypeName.Void;
@@ -87,13 +88,35 @@ namespace Iril.IR
                 case 's':
                     p++;
                     return TypeName.Short;
+                case 't':
+                    p++;
+                    return TypeName.UShort;
                 case 'i':
                     p++;
                     return TypeName.Int;
+                case 'j':
+                    p++;
+                    return TypeName.UInt;
+                case 'l':
+                    p++;
+                    return TypeName.Long;
+                case 'm':
+                    p++;
+                    return TypeName.ULong;
                 case 'P': {
                         p++;
                         var et = ParseType (ref p);
                         return new PointerType { ElementType = et };
+                    }
+                case 'R': {
+                        p++;
+                        var et = ParseType (ref p);
+                        return new LValueRefType { ElementType = et };
+                    }
+                case 'O': {
+                        p++;
+                        var et = ParseType (ref p);
+                        return new RValueRefType { ElementType = et };
                     }
                 case 'S' when p + 1 < t.Length && t[p + 1] != 't': {
                         p++;
@@ -165,6 +188,11 @@ namespace Iril.IR
         {
             var t = Symbol.Text;
             var ch = t[p];
+
+            var op = OperatorName.TryGet (t, ref p);
+            if (op != null) {
+                return op;
+            }
 
             if (ch == 'C' || ch == 'D') {
                 var n = new CtorName { Kind = t.Substring (p, 2) };
@@ -296,6 +324,86 @@ namespace Iril.IR
             public override string ToString () => Kind;
         }
 
+        class OperatorName : Name
+        {
+            public string Text;
+            public override string ToString () => "operator " + Text;
+            public OperatorName ()
+            {
+            }
+            public OperatorName (string text)
+            {
+                Text = text;
+            }
+
+            static readonly Dictionary<string, OperatorName> ops = new Dictionary<string, OperatorName> ();
+            static OperatorName ()
+            {
+                ops["nw"] = new OperatorName ("new");
+                ops["na"] = new OperatorName ("new[]");
+                ops["dl"] = new OperatorName ("delete");
+                ops["da"] = new OperatorName ("delete[]");
+                ops["ps"] = new OperatorName ("+");
+                ops["ng"] = new OperatorName ("-");
+                ops["ad"] = new OperatorName ("&");
+                ops["de"] = new OperatorName ("*");
+                ops["co"] = new OperatorName ("~");
+                ops["pl"] = new OperatorName ("+");
+                ops["mi"] = new OperatorName ("-");
+                ops["ml"] = new OperatorName ("*");
+                ops["dv"] = new OperatorName ("/");
+                ops["rm"] = new OperatorName ("%");
+                ops["an"] = new OperatorName ("&");
+                ops["or"] = new OperatorName ("|");
+                ops["eo"] = new OperatorName ("^");
+                ops["aS"] = new OperatorName ("=");
+                ops["pL"] = new OperatorName ("+=");
+                ops["mI"] = new OperatorName ("-=");
+                ops["mL"] = new OperatorName ("*=");
+                ops["dV"] = new OperatorName ("/=");
+                ops["rM"] = new OperatorName ("%=");
+                ops["aN"] = new OperatorName ("&=");
+                ops["oR"] = new OperatorName ("|=");
+                ops["eO"] = new OperatorName ("^=");
+                ops["ls"] = new OperatorName ("<<");
+                ops["rs"] = new OperatorName (">>");
+                ops["lS"] = new OperatorName ("<<=");
+                ops["rS"] = new OperatorName (">>=");
+                ops["eq"] = new OperatorName ("==");
+                ops["ne"] = new OperatorName ("!=");
+                ops["lt"] = new OperatorName ("<");
+                ops["gt"] = new OperatorName (">");
+                ops["le"] = new OperatorName ("<=");
+                ops["ge"] = new OperatorName (">=");
+                ops["ss"] = new OperatorName ("<=>");
+                ops["nt"] = new OperatorName ("!");
+                ops["aa"] = new OperatorName ("&&");
+                ops["oo"] = new OperatorName ("||");
+                ops["pp"] = new OperatorName ("++");
+                ops["mm"] = new OperatorName ("--");
+                ops["cm"] = new OperatorName (",");
+                ops["pm"] = new OperatorName ("->*");
+                ops["pt"] = new OperatorName ("->");
+                ops["cl"] = new OperatorName ("()");
+                ops["ix"] = new OperatorName ("[]");
+                ops["qu"] = new OperatorName ("?");
+            }
+            public static OperatorName TryGet (string text, ref int index)
+            {
+                if (text.Length - index < 2)
+                    return null;
+
+                if ('a' <= text[index] && text[index] <= 'z') {
+                    var t = text.Substring (index, 2);
+                    if (ops.TryGetValue (t, out var n)) {
+                        index += t.Length;
+                        return n;
+                    }
+                }
+                return null;
+            }
+        }
+
         class UnqualifiedName : Name
         {
             public string Text;
@@ -339,7 +447,11 @@ namespace Iril.IR
             public static readonly TypeName SChar = new BuiltinType { Name = "signed char" };
             public static readonly TypeName UChar = new BuiltinType { Name = "unsigned char" };
             public static readonly TypeName Short = new BuiltinType { Name = "short" };
+            public static readonly TypeName UShort = new BuiltinType { Name = "unsigned short" };
             public static readonly TypeName Int = new BuiltinType { Name = "int" };
+            public static readonly TypeName UInt = new BuiltinType { Name = "unsigned int" };
+            public static readonly TypeName Long = new BuiltinType { Name = "long" };
+            public static readonly TypeName ULong = new BuiltinType { Name = "unsigned long" };
         }
 
         class ValueExprType : TypeName
@@ -365,6 +477,18 @@ namespace Iril.IR
         {
             public TypeName ElementType;
             public override string ToString () => $"{ElementType}*";
+        }
+
+        class LValueRefType : TypeName
+        {
+            public TypeName ElementType;
+            public override string ToString () => $"{ElementType}&";
+        }
+
+        class RValueRefType : TypeName
+        {
+            public TypeName ElementType;
+            public override string ToString () => $"{ElementType}&&";
         }
 
         class TemplateArgsType : TypeName
