@@ -156,8 +156,8 @@ namespace Iril
             mod = asm.MainModule;
             dataType = new Lazy<TypeDefinition> (CreateDataType);
 
-            rootName = new NameNode {
-                Name = namespac
+            globalName = new NameNode {
+                Name = "global"
             };
         }
 
@@ -169,6 +169,7 @@ namespace Iril
             FindFunctions ();
             EmitSyscalls ();
             EmitGlobalVariables ();
+            PrintNameTree ();
             CreateFunctionDefinitions ();
             EmitGlobalInitializers ();
             CompileFunctions ();
@@ -372,33 +373,51 @@ namespace Iril
             public NameNode Parent;
             public string Name;
 
+            public Module Module;
             public IR.FunctionDefinition Function;
             public IR.FunctionDeclaration FunctionDecl;
             public Types.StructureType Structure;
 
             public List<NameNode> Children = new List<NameNode> ();
+
+            public bool IsFunction => Function != null || FunctionDecl != null;
             public override string ToString () => Name;
         }
 
         SymbolTable<SymbolTable<object>> functionDebugs = new SymbolTable<SymbolTable<object>> ();
         SymbolTable<NameNode> functionNodes = new SymbolTable<NameNode> ();
-        readonly NameNode rootName;
+        readonly NameNode globalName;
 
         void AddNameNode (NameNode nn, string[] ancestry)
         {
-            var r = rootName;
+            var parent = globalName;
             foreach (var a in ancestry) {
-                var c = r.Children.FirstOrDefault (x => x.Name == a);
-                if (c == null) {
-                    c = new NameNode {
-                        Parent = r,
+                var newParent = parent.Children.FirstOrDefault (x => x.Name == a);
+                if (newParent == null) {
+                    newParent = new NameNode {
+                        Parent = parent,
                         Name = a,
                     };
-                    r.Children.Add (c);
+                    parent.Children.Add (newParent);
                 }
-                r = c;
+                parent = newParent;
             }
-            r.Children.Add (nn);
+            parent.Children.Add (nn);
+        }
+
+        void PrintNameTree ()
+        {
+            Print ("", globalName);
+
+            void Print(string indent, NameNode node)
+            {
+                var k = (node.Structure != null ? "C" : (node.IsFunction ? "M" : "?"));
+                Console.WriteLine ($"{indent}{k}: {node.Name}");
+                var nindent = "    " + indent;
+                foreach (var c in node.Children.OrderBy (x => x.Name)) {
+                    Print (nindent, c);
+                }
+            }
         }
 
         void FindFunctions ()
@@ -428,11 +447,12 @@ namespace Iril
                     var mname = new IR.MangledName (sym);
                     var nn = new NameNode {
                         Name = mname.Identifier,
+                        Module = m,
                         Function = f,
                     };
                     functionNodes[sym] = nn;
 
-                    AddNameNode (nn, mname.Ancestry);
+                    AddFunctionNode (nn, f.IsExternal, mname.Ancestry);
                 }
             }
 
@@ -451,37 +471,67 @@ namespace Iril
                     var mname = new IR.MangledName (sym);
                     var nn = new NameNode {
                         Name = mname.Identifier,
+                        Module = m,
                         FunctionDecl = f,
                     };
                     functionNodes[sym] = nn;
 
-                    AddNameNode (nn, mname.Ancestry);
+                    AddFunctionNode (nn, true, mname.Ancestry);
                 }
             }
 
-            Console.WriteLine (rootName);
+            void AddFunctionNode (NameNode nn, bool isExternal, string[] ancestry)
+            {
+                var a = ancestry;
+                if (a.Length == 0) {
+                    if (isExternal) {
+                        a = new[] { namespac, "Functions" };
+                    }
+                    else {
+                        a = new[] { namespac, IR.MangledName.SanitizeIdentifier (nn.Module.Symbol.Text) };
+                    }
+                }
+                AddNameNode (nn, a);
+            }
         }
 
         SymbolTable<NameNode> structureNodes = new SymbolTable<NameNode> ();
 
         void FindStructures ()
         {
-            var done = new HashSet<Symbol> ();
+            var externals = new HashSet<Symbol> ();
 
             foreach (var m in Modules) {
                 foreach (var iskv in m.IdentifiedStructures) {
                     var sym = iskv.Key;
-                    if (done.Contains (sym))
-                        continue;
-                    done.Add (sym);
+                    var isExternal = sym.Text.IndexOf(".anon", StringComparison.Ordinal) < 0;
+
+                    if (isExternal) {
+                        if (externals.Contains (sym))
+                            continue;
+                        externals.Add (sym);
+                    }
 
                     var tname = new IR.MangledName (sym);
+                    var s = iskv.Value;
                     var nn = new NameNode {
                         Name = tname.Identifier,
-                        Structure = iskv.Value
+                        Module = m,
+                        Structure = s
                     };
+
                     structureNodes[sym] = nn;
-                    AddNameNode (nn, tname.Ancestry);
+
+                    var a = tname.Ancestry;
+                    if (a.Length == 0) {
+                        if (isExternal) {
+                            a = new[] { namespac };
+                        }
+                        else {
+                            a = new[] { namespac, new IR.MangledName(m.Symbol).Identifier };
+                        }
+                    }
+                    AddNameNode (nn, a);
                 }
             }
         }
@@ -852,43 +902,38 @@ namespace Iril
 
         void CreateFunctionDefinitions ()
         {
-            var funcstd = new TypeDefinition (namespac, "Functions", TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, sysObj);
-            mod.Types.Add (funcstd);
+            foreach (var c in globalName.Children) {
+                CreateFunctionDefinitions ("", null, c);
+            }
+        }
 
-            //
-            // Generate method definitions
-            //
-            foreach (var m in Modules) {
-                foreach (var iskv in m.FunctionDefinitions) {
-                    var f = iskv.Value;
+        void CreateFunctionDefinitions (string namesp, TypeDefinition parentType, NameNode node)
+        {            
+            if (node.IsFunction) {
+                var declaringType = parentType;
+                if (declaringType == null) {
+                    throw new InvalidOperationException ($"No parent type for {node.Name}");
+                }
 
-                    //
-                    // Load debug info
-                    //
-                    var dbgMeth = new SymbolTable<object> ();
-                    if (f.MetaRefs.TryGetValue (MetaSymbol.Dbg, out var dbgSym)) {
-                        if (m.Metadata.TryGetValue (dbgSym, out var d) && d is SymbolTable<object> s) {
-                            dbgMeth = s;
-                        }
-                    }
+                if (node.Function != null) {
+
+                    var f = node.Function;
+                    var m = node.Module;
+                    var sym = f.Symbol;
 
                     //
                     // Create the method
                     //
-                    var mname = new IR.MangledName (iskv.Key);
-                    var mident = mname.Identifier;
-                    if (dbgMeth.TryGetValue (Symbol.Name, out var o)) {
-                        mident = IR.MangledName.SanitizeIdentifier (o.ToString ());
-                    }
-                    var declaringType = f.IsExternal ? funcstd : moduleTypes[m.Symbol];
+                    var mident = node.Name;
+                    var dbgMeth = functionDebugs[sym];
                     var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Static;
                     var md = new MethodDefinition (mident, mattrs, GetClrType (f.ReturnType));
 
                     //
                     // Create parameters
                     //
-                    var dbgVars = Array.Empty<object> ();
-                    if (dbgMeth.TryGetValue (Symbol.Variables, out o) && o is MetaSymbol) {
+                    var dbgVars = Array.Empty<object> ();                    
+                    if (dbgMeth.TryGetValue (Symbol.Variables, out var o) && o is MetaSymbol) {
                         if (m.Metadata.TryGetValue ((Symbol)o, out o)) {
                             dbgVars = ((IEnumerable<object>)o).ToArray ();
                         }
@@ -923,7 +968,7 @@ namespace Iril
                     declaringType.Methods.Add (md);
 
                     var def = new DefinedFunction {
-                        Symbol = iskv.Key,
+                        Symbol = sym,
                         IRModule = m,
                         IRDefinition = f,
                         ILDefinition = md,
@@ -941,47 +986,68 @@ namespace Iril
                         mdefs[def.Symbol] = def;
                     }
                 }
-            }
+                else if (node.FunctionDecl != null) {
+                    var sym = node.FunctionDecl.Symbol;
 
-            //
-            // Generate method definitions for declations
-            //
-            foreach (var m in Modules) {
-                foreach (var iskv in m.FunctionDeclarations) {
-                    if (iskv.Key.Text.StartsWith ("@llvm.", StringComparison.Ordinal))
-                        continue;
-                    if (externalMethodDefs.ContainsKey (iskv.Key))
-                        continue;
+                    if (!externalMethodDefs.ContainsKey (sym)) {
 
-                    var f = iskv.Value;
-                    var mname = new IR.MangledName (iskv.Key);
-                    var mident = mname.Identifier;
+                        var f = node.FunctionDecl;
+                        var mident = node.Name;
 
-                    var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Static;
-                    var md = new MethodDefinition (mident, mattrs, GetClrType (f.ReturnType));
+                        var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Static;
+                        var md = new MethodDefinition (mident, mattrs, GetClrType (f.ReturnType));
 
-                    //
-                    // Create parameters
-                    //
-                    var paramSyms = new SymbolTable<ParameterDefinition> ();
-                    for (var i = 0; i < f.Parameters.Length; i++) {
-                        var fp = f.Parameters[i];
-                        var pname = "p" + i;
-                        var pt = GetClrType (fp.ParameterType);
-                        var p = new ParameterDefinition (pname, ParameterAttributes.None, pt);
-                        md.Parameters.Add (p);
-                        paramSyms[fp.Symbol] = p;
+                        //
+                        // Create parameters
+                        //
+                        var paramSyms = new SymbolTable<ParameterDefinition> ();
+                        for (var i = 0; i < f.Parameters.Length; i++) {
+                            var fp = f.Parameters[i];
+                            var pname = "p" + i;
+                            var pt = GetClrType (fp.ParameterType);
+                            var p = new ParameterDefinition (pname, ParameterAttributes.None, pt);
+                            md.Parameters.Add (p);
+                            paramSyms[fp.Symbol] = p;
+                        }
+
+                        declaringType.Methods.Add (md);
+
+                        externalMethodDefs[sym] = new DefinedFunction {
+                            Symbol = sym,
+                            IRModule = node.Module,
+                            IRDeclaration = f,
+                            ILDefinition = md,
+                            ParamSyms = paramSyms,
+                        };
                     }
+                }
+            }
+            else {
+                var isNamespace = node.Structure == null && parentType == null;
+                if (isNamespace) {
+                    isNamespace = node.Children.All (x => !x.IsFunction);
+                }
 
-                    funcstd.Methods.Add (md);
-
-                    externalMethodDefs[iskv.Key] = new DefinedFunction {
-                        Symbol = iskv.Key,
-                        IRModule = m,
-                        IRDeclaration = f,
-                        ILDefinition = md,
-                        ParamSyms = paramSyms,
-                    };
+                if (isNamespace) {
+                    var newNamespace = namesp.Length > 0 ? namesp + "." + node.Name : node.Name;
+                    foreach (var c in node.Children) {
+                        CreateFunctionDefinitions (newNamespace, parentType, c);
+                    }
+                }
+                else {
+                    if (node.Children.Count > 0) {
+                        var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed;
+                        var td = new TypeDefinition (namesp, node.Name, tattrs, sysObj);
+                        if (parentType != null) {
+                            parentType.NestedTypes.Add (td);
+                        }
+                        else {
+                            mod.Types.Add (td);
+                        }
+                        foreach (var c in node.Children) {
+                            CreateFunctionDefinitions (namesp, td, c);
+                        }
+                    }
                 }
             }
         }

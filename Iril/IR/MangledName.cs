@@ -25,25 +25,31 @@ namespace Iril.IR
                 var encoding = ParseEncoding (3);
                 Identifier = SanitizeIdentifier (encoding.Identifier);
                 Ancestry = encoding.Ancestry.Select (SanitizeIdentifier).ToArray ();
-                Console.WriteLine (text);
-                Console.WriteLine ($"  DE: {encoding}");
-                Console.WriteLine ($"  AN: {string.Join (" >> ", Ancestry)}");
-                Console.WriteLine ($"  ID: {Identifier}");
+                //Console.WriteLine (text);
+                //Console.WriteLine ($"  DE: {encoding}");
+                //Console.WriteLine ($"  AN: {string.Join (" >> ", Ancestry)}");
+                //Console.WriteLine ($"  ID: {Identifier}");
             }
-            else if (text.StartsWith ("%\"struct.", StringComparison.Ordinal) ||
-                     text.StartsWith ("%\"class.", StringComparison.Ordinal)) {
+            else if (text.StartsWith ("%struct.", StringComparison.Ordinal) ||
+                     text.StartsWith ("%class.", StringComparison.Ordinal) ||
+                     text.StartsWith ("%union.", StringComparison.Ordinal) ||
+                     text.StartsWith ("%\"struct.", StringComparison.Ordinal) ||
+                     text.StartsWith ("%\"class.", StringComparison.Ordinal) ||
+                     text.StartsWith ("%\"union.", StringComparison.Ordinal)) {
                 var d = text.IndexOf ('.');
-                var itext = text.Substring (d + 1, text.Length - d - 2);
+                var rrem = text[text.Length - 1] == '\"' ? 1 : 0;
+                var itext = text.Substring (d + 1, text.Length - d - 1 - rrem);
                 var cparts = itext.Split (new[] { ':' }, StringSplitOptions.RemoveEmptyEntries).Select(SanitizeIdentifier).ToArray ();
 
                 Identifier = cparts[cparts.Length-1];
                 Ancestry = cparts.Take(cparts.Length - 1).ToArray ();
-                Console.WriteLine (text);
-                Console.WriteLine ($"  AN: {string.Join (" >> ", Ancestry)}");
-                Console.WriteLine ($"  ID: {Identifier}");
+                //Console.WriteLine (text);
+                //Console.WriteLine ($"  AN: {string.Join (" >> ", Ancestry)}");
+                //Console.WriteLine ($"  ID: {Identifier}");
             }
             else {
-                Identifier = SanitizeIdentifier (symbol.Text.Substring (1));
+                var skip = text[0] == '@' || text[0] == '%';
+                Identifier = SanitizeIdentifier (skip ? text.Substring (1) : text);
                 Ancestry = Array.Empty<string> ();
             }
         }
