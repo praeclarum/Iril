@@ -1014,6 +1014,8 @@ namespace Iril
 
         public string GetIdentifier (Symbol symbol)
         {
+            var name = new IR.MangledName (symbol);
+
             var b = new System.Text.StringBuilder ();
             foreach (var c in symbol.Text.Skip (1)) {
                 if (char.IsDigit (c)) {

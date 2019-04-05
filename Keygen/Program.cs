@@ -6,7 +6,7 @@ namespace Keygen
 {
     class Program
     {
-        // dotnet run -- "Alex Blount|0|m"
+        // dotnet run --project Keygen/Keygen.csproj -- "Frank A. Krueger|0|m"
 
         static int Main(string[] args)
         {

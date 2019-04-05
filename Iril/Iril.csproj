@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <PreBuildEvent Condition="$(HOME.StartsWith('/Users/fak'))">cd /Users/fak/Dropbox/Projects/Iril &amp;&amp; make Iril/IR/Parser.cs</PreBuildEvent>
+    <PreBuildEvent Condition="$(HOME.StartsWith('/Users/fak'))">cd /Users/fak/Dropbox/Projects/Iril &amp;&amp; make</PreBuildEvent>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
   </PropertyGroup>
   

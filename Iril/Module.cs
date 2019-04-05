@@ -55,13 +55,13 @@ namespace Iril
         {
             var module = new Module ();
             module.FilePath = !string.IsNullOrEmpty (filename) ? System.IO.Path.GetFullPath (filename) : "";
-            module.Symbol = GetIdentifier (filename);
+            module.Symbol = GetSymbolFromFileName (filename);
             var parser = new Parser (module);
             var lex = new Lexer (llvm);
             try {
                 parser.yyparse (lex, null);
                 if (!string.IsNullOrEmpty (module.SourceFilename))
-                    module.Symbol = GetIdentifier (module.SourceFilename);
+                    module.Symbol = GetSymbolFromFileName (module.SourceFilename);
             }
             catch (Exception ex) {
                 module.Errors.Add (new Message (ex.Message, ex) {
@@ -72,7 +72,7 @@ namespace Iril
             return module;
         }
 
-        static Symbol GetIdentifier (string rawName)
+        static Symbol GetSymbolFromFileName (string rawName)
         {
             var name = System.IO.Path.GetFileNameWithoutExtension (rawName ?? "");
             var lastName = name.Split (new[] { '.', ' ', '\t', '\r', '\n', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault ();
