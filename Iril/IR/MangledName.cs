@@ -66,6 +66,27 @@ namespace Iril.IR
             var ch = t[p];
 
             switch (ch) {
+                case 'v':
+                    p++;
+                    return TypeName.Void;
+                case 'w':
+                    p++;
+                    return TypeName.Wchar;
+                case 'b':
+                    p++;
+                    return TypeName.Bool;
+                case 'c':
+                    p++;
+                    return TypeName.Char;
+                case 'a':
+                    p++;
+                    return TypeName.SChar;
+                case 'h':
+                    p++;
+                    return TypeName.UChar;
+                case 's':
+                    p++;
+                    return TypeName.Short;
                 case 'i':
                     p++;
                     return TypeName.Int;
@@ -145,6 +166,12 @@ namespace Iril.IR
             var t = Symbol.Text;
             var ch = t[p];
 
+            if (ch == 'C' || ch == 'D') {
+                var n = new CtorName { Kind = t.Substring (p, 2) };
+                p += 2;
+                return n;
+            }
+
             Name prefix = null;
             if (ch == 'S' && p + 1 < t.Length && t[p + 1] == 't') {
                 p += 2;
@@ -185,7 +212,57 @@ namespace Iril.IR
         TypeName ParseTemplateArg (ref int p)
         {
             var t = Symbol.Text;
+
+            if (t[p] == 'J') {
+                p++;
+                var tr = new TemplateArgsType ();
+                while (t[p] != 'E') {
+                    var a = ParseTemplateArg (ref p);
+                    tr.Args.Add (a);
+                }
+                p++;
+                return tr;
+            }
+
+            var r = TryParseExpression (ref p);
+            if (r != null)
+                return r;
+
             return ParseType (ref p);
+        }
+
+        TypeName TryParseExpression (ref int p)
+        {
+            var t = Symbol.Text;
+            switch (t[p]) {
+                case 'L':
+                    p++;
+                    return ParsePrimaryExpression (ref p);
+                default:
+                    return null;
+            }
+        }
+
+        TypeName ParsePrimaryExpression (ref int p)
+        {
+            var t = Symbol.Text;
+
+            var typ = ParseType (ref p);
+
+            if (char.IsDigit (t[p])) {
+                var e = p;
+                while (e < t.Length && char.IsDigit (t[e])) {
+                    e++;
+                }
+                var value = int.Parse (t.Substring (p, e - p));
+                typ = new ValueExprType { Type = typ, Value = value };
+                p = e;
+            }
+
+            while (p < t.Length && t[p] != 'E') p++;
+            p++;
+
+            return typ;
         }
 
         object ParseSubstitution (ref int p)
@@ -211,6 +288,12 @@ namespace Iril.IR
         abstract class Name
         {
             public static readonly Name Std = new UnqualifiedName { Text = "std" };
+        }
+
+        class CtorName : Name
+        {
+            public string Kind;
+            public override string ToString () => Kind;
         }
 
         class UnqualifiedName : Name
@@ -249,7 +332,27 @@ namespace Iril.IR
 
         abstract class TypeName
         {
-            public static readonly TypeName Int = new NamedType { Name = new UnqualifiedName { Text = "int" } };
+            public static readonly TypeName Void = new BuiltinType { Name = "void" };
+            public static readonly TypeName Wchar = new BuiltinType { Name = "wchar_t" };
+            public static readonly TypeName Bool = new BuiltinType { Name = "bool" };
+            public static readonly TypeName Char = new BuiltinType { Name = "char" };
+            public static readonly TypeName SChar = new BuiltinType { Name = "signed char" };
+            public static readonly TypeName UChar = new BuiltinType { Name = "unsigned char" };
+            public static readonly TypeName Short = new BuiltinType { Name = "short" };
+            public static readonly TypeName Int = new BuiltinType { Name = "int" };
+        }
+
+        class ValueExprType : TypeName
+        {
+            public TypeName Type;
+            public int Value;
+            public override string ToString () => Value.ToString ();
+        }
+
+        class BuiltinType : TypeName
+        {
+            public string Name;
+            public override string ToString () => Name;
         }
 
         class NamedType : TypeName
@@ -262,6 +365,12 @@ namespace Iril.IR
         {
             public TypeName ElementType;
             public override string ToString () => $"{ElementType}*";
+        }
+
+        class TemplateArgsType : TypeName
+        {
+            public List<TypeName> Args = new List<TypeName> ();
+            public override string ToString () => "!<" + string.Join (", ", Args) + ">!";
         }
 
         abstract class Encoding
