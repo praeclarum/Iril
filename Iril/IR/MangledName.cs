@@ -189,9 +189,9 @@ namespace Iril.IR
 
         Name ParseNestedName (ref int p)
         {
-            ParseCVQualifiers (ref p);
+            var q = ParseCVQualifiers (ref p);
             var t = Symbol.Text;
-            var nn = new NestedName ();
+            var nn = new NestedName { Qualifiers = q };
             while (t[p] != 'E') {
                 if (t[p] == 'I') {
                     p++;
@@ -214,15 +214,27 @@ namespace Iril.IR
             return nn;
         }
 
-        void ParseCVQualifiers (ref int p)
+        [Flags]
+        enum CVQualifiers
         {
+            Const = 1 << 1,
+        }
+
+        CVQualifiers ParseCVQualifiers (ref int p)
+        {
+            CVQualifiers q = 0;
             var t = Symbol.Text;
-            if (t[p] == 'r')
+            if (t[p] == 'r') {
                 p++;
-            if (t[p] == 'V')
+            }
+            if (t[p] == 'V') {
                 p++;
-            if (t[p] == 'K')
+            }
+            if (t[p] == 'K') {
                 p++;
+                q |= CVQualifiers.Const;
+            }
+            return q;
         }
 
         Name ParseUnqualifiedName (ref int p)
@@ -488,6 +500,7 @@ namespace Iril.IR
 
         class NestedName : Name
         {
+            public CVQualifiers Qualifiers;
             public List<Name> Names = new List<Name> ();
             public override string ToString ()
             {
@@ -542,6 +555,8 @@ namespace Iril.IR
                     var n = x.Name.Identifier;
                     if (x.TArgs != null)
                         n += "_" + x.TArgs.Identifier;
+                    if (Qualifiers.HasFlag (CVQualifiers.Const))
+                        n += "_const";
                     return n;
                 }
             }
