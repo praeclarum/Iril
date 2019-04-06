@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -23,10 +24,19 @@ namespace Iril.IR
             var text = Symbol.Text;
 
             if (text.StartsWith ("@_Z", StringComparison.Ordinal)) {
-                var encoding = ParseEncoding (3);
-                Demangled = encoding.ToString ();
-                Identifier = SanitizeIdentifier (encoding.Identifier);
-                Ancestry = encoding.Ancestry.Select (SanitizeIdentifier).ToArray ();
+                try {
+                    var encoding = ParseEncoding (3);
+                    Demangled = encoding.ToString ();
+                    Identifier = SanitizeIdentifier (encoding.Identifier);
+                    Ancestry = encoding.Ancestry.Select (SanitizeIdentifier).ToArray ();
+                }
+                catch (Exception ex) {
+                    Debug.WriteLine (ex.ToString ());
+                    var skip = text[0] == '@' || text[0] == '%';
+                    Demangled = skip ? text.Substring (1) : text;
+                    Identifier = SanitizeIdentifier (Demangled);
+                    Ancestry = Array.Empty<string> ();
+                }
                 //Console.WriteLine (text);
                 //Console.WriteLine ($"  DE: {encoding}");
                 //Console.WriteLine ($"  AN: {string.Join (" >> ", Ancestry)}");

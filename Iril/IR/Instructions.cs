@@ -598,13 +598,15 @@ namespace Iril.IR
     public class LandingPadInstruction : Instruction
     {
         public readonly LType Type;
+        public readonly TypedValue CatchValue;
 
-        public LandingPadInstruction (LType type)
+        public LandingPadInstruction (LType type, TypedValue catchValue = null)
         {
-            Type = type;
+            Type = type ?? throw new ArgumentNullException (nameof (type));
+            CatchValue = catchValue;
         }
 
-        public override IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
+        public override IEnumerable<LocalSymbol> ReferencedLocals => CatchValue?.ReferencedLocals ?? Enumerable.Empty<LocalSymbol> ();
         public override LType ResultType (Module module) => Type;
     }
 

@@ -718,7 +718,7 @@ namespace Iril
                         mglobals.Add (symbol, f);
                     }
                     else {
-                        ErrorMessage (m.SourceFilename, $"Global variable `{IR.MangledName.Demangle (symbol)}` is undefined");
+                        ErrorMessage (m.SourceFilename, $"Missing definition of global variable `{IR.MangledName.Demangle (symbol)}` ({symbol})");
                     }
                 }
             }
@@ -1127,12 +1127,12 @@ namespace Iril
                         fc.CompileFunction ();
                     }
                     catch (Exception ex) {
-                        ErrorMessage (m.IRModule.SourceFilename, $"Failed to compile `{IR.MangledName.Demangle (m.Symbol)}`: {ex.Message}", ex);
+                        ErrorMessage (m.IRModule.SourceFilename, $"Failed to compile function `{IR.MangledName.Demangle (m.Symbol)}` ({m.Symbol}): {ex.Message}", ex);
                         CompileFailedFunction (m, ex);
                     }
                 }
                 else {
-                    ErrorMessage (m.IRModule.SourceFilename, $"Missing definition of `{IR.MangledName.Demangle (m.Symbol)}`");
+                    ErrorMessage (m.IRModule.SourceFilename, $"Missing definition of function `{IR.MangledName.Demangle (m.Symbol)}` ({m.Symbol})");
                     CompileMissingFunction (m);
                 }
             }
@@ -1304,7 +1304,7 @@ namespace Iril
                 case VarArgsType vat:
                     return sysObjArray;
                 default:
-                    throw new NotSupportedException ($"Cannot get CLR type for {irType} ({irType?.GetType().Name})");
+                    throw new NotSupportedException ($"Cannot get CLR type for `{irType}` ({irType?.GetType().Name})");
             }
         }
 

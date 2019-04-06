@@ -141,21 +141,33 @@ namespace Cli
                 //
                 // Show errors
                 //
-                var errors = (from m in modules from e in m.Errors select e).Concat (comp.Messages).ToList ();
+                var errors = (from m in modules from e in m.Errors select e)
+                    .Concat (comp.Messages)
+                    .OrderBy (x => x.FilePath).ThenBy (x => x.Text)
+                    .ToList ();
                 foreach (var e in errors) {
-                    string msg;
-                    if (!string.IsNullOrEmpty (e.Surrounding)) {
-                        msg = $"{e.FilePath}: {e.Text}\n{e.Surrounding}";
+                    Console.Write ("iril: ");
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.Write ("error: ");
+                    Console.ResetColor ();
+
+                    if (!string.IsNullOrEmpty (e.FilePath)) {
+                        Console.ForegroundColor = ConsoleColor.Gray;
+                        Console.Write (e.FilePath);
+                        Console.Write (": ");
+                        Console.ResetColor ();
                     }
-                    else {
-                        msg = $"{e.FilePath}: {e.Text}";
+
+                    Console.WriteLine (e.Text);
+
+                    if (!string.IsNullOrEmpty (e.Surrounding)) {
+                        Console.WriteLine (e.Surrounding);
                     }
 #if DEBUGDEBUG
                     if (e.Exception != null) {
-                        msg += Environment.NewLine + e.Exception;
+                        Console.WriteLine (e.Exception);
                     }
 #endif
-                    Error (msg);
                 }
 
                 //

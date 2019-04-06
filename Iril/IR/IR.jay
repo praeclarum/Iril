@@ -23,7 +23,7 @@ namespace Iril.IR
 %token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR NOALIAS ELLIPSIS GLOBAL
 %token CONSTANT PRIVATE INTERNAL EXTERNAL LINKONCE LINKONCE_ODR WEAK FASTCC SIGNEXT ZEROEXT VOLATILE RETURNED
 %token DEREFERENCEABLE AVAILABLE_EXTERNALLY PERSONALITY SRET CLEANUP
-%token NONNULL NOCAPTURE WRITEONLY READONLY READNONE
+%token NONNULL NOCAPTURE WRITEONLY READONLY READNONE HIDDEN
 %token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND UNWIND SPECULATABLE SSP UWTABLE ARGMEMONLY
 %token SEQ_CST DSO_LOCAL DSO_PREEMPTABLE
 %token RET BR SWITCH INDIRECTBR INVOKE RESUME CATCHSWITCH CATCHRET CLEANUPRET UNREACHABLE
@@ -39,7 +39,7 @@ namespace Iril.IR
 %token ICMP EQ NE UGT UGE ULT ULE SGT SGE SLT SLE
 %token FCMP OEQ OGT OGE OLT OLE ONE ORD UEQ UNE UNO
 %token PHI SELECT CALL TAIL VA_ARG
-%token LANDINGPAD CATCHPAD CLEANUPPAD
+%token LANDINGPAD CATCH CATCHPAD CLEANUPPAD
 
 %start module
 
@@ -182,6 +182,10 @@ linkage
     
 visibility
     : PRIVATE { $$ = true; }
+    ;
+
+visibility_style
+    : HIDDEN { $$ = true; }
     ;
     
 metadata_args
@@ -417,6 +421,10 @@ define_header
     | DEFINE define_header_attributes return_type
     {
         $$ = Tuple.Create ($2, $3);
+    }
+    | DEFINE define_header_attributes visibility_style return_type
+    {
+        $$ = Tuple.Create ($2, $4);
     }
     | DEFINE define_header_attributes parameter_attributes return_type
     {
@@ -737,21 +745,21 @@ blocks
     ;
 
 block
-    : assignments terminator_instruction
+    : assignments terminator_assignment
     {
-        $$ = new Block (LocalSymbol.None, (List<Assignment>)$1, (TerminatorInstruction)$2);
+        $$ = new Block (LocalSymbol.None, (List<Assignment>)$1, (Assignment)$2);
     }
-    | assignments terminator_instruction metadata_kvs
+    | assignments terminator_assignment metadata_kvs
     {
-        $$ = new Block (LocalSymbol.None, (List<Assignment>)$1, (TerminatorInstruction)$2);
+        $$ = new Block (LocalSymbol.None, (List<Assignment>)$1, (Assignment)$2);
     }
-    | terminator_instruction
+    | terminator_assignment
     {
-        $$ = new Block (LocalSymbol.None, Enumerable.Empty<Assignment>(), (TerminatorInstruction)$1);
+        $$ = new Block (LocalSymbol.None, Enumerable.Empty<Assignment>(), (Assignment)$1);
     }
-    | terminator_instruction metadata_kvs
+    | terminator_assignment metadata_kvs
     {
-        $$ = new Block (LocalSymbol.None, Enumerable.Empty<Assignment>(), (TerminatorInstruction)$1);
+        $$ = new Block (LocalSymbol.None, Enumerable.Empty<Assignment>(), (Assignment)$1);
     }
     ;
     
@@ -919,6 +927,17 @@ calling_convention
 atomic_constraint
     : SEQ_CST { $$ = AtomicConstraint.SequentiallyConsistent; }
     ;
+
+terminator_assignment
+    : terminator_instruction
+    {
+        $$ = new Assignment (LocalSymbol.None, (Instruction)$1);
+    }
+    | LOCAL_SYMBOL '=' invoke_instruction
+    {
+        $$ = new Assignment ((LocalSymbol)$1, (Instruction)$3);
+    }
+    ;
     
 terminator_instruction
     : BR label_value
@@ -928,14 +947,6 @@ terminator_instruction
     | BR INTEGER_TYPE value ',' label_value ',' label_value
     {
         $$ = new ConditionalBrInstruction ((Value)$3, (LabelValue)$5, (LabelValue)$7);
-    }
-    | INVOKE return_type function_pointer function_args TO label_value UNWIND label_value
-    {
-        $$ = new InvokeInstruction ((LType)$2, (Value)$3, (IEnumerable<Argument>)$4, (LabelValue)$6, (LabelValue)$8);
-    }
-    | INVOKE calling_convention return_type function_pointer function_args TO label_value UNWIND label_value
-    {
-        $$ = new InvokeInstruction ((LType)$3, (Value)$4, (IEnumerable<Argument>)$5, (LabelValue)$7, (LabelValue)$9);
     }
     | RESUME typed_value
     {
@@ -953,7 +964,28 @@ terminator_instruction
     {
         $$ = UnreachableInstruction.Unreachable;
     }
+    | invoke_instruction
     ;
+    
+invoke_instruction
+    : INVOKE return_type function_pointer function_args TO label_value UNWIND label_value
+    {
+        $$ = new InvokeInstruction ((LType)$2, (Value)$3, (IEnumerable<Argument>)$4, (LabelValue)$6, (LabelValue)$8);
+    }
+    | INVOKE parameter_attributes return_type function_pointer function_args TO label_value UNWIND label_value
+    {
+        $$ = new InvokeInstruction ((LType)$3, (Value)$4, (IEnumerable<Argument>)$5, (LabelValue)$7, (LabelValue)$9);
+    }
+    | INVOKE calling_convention return_type function_pointer function_args TO label_value UNWIND label_value
+    {
+        $$ = new InvokeInstruction ((LType)$3, (Value)$4, (IEnumerable<Argument>)$5, (LabelValue)$7, (LabelValue)$9);
+    }
+    | INVOKE calling_convention parameter_attributes return_type function_pointer function_args TO label_value UNWIND label_value
+    {
+        $$ = new InvokeInstruction ((LType)$4, (Value)$5, (IEnumerable<Argument>)$6, (LabelValue)$8, (LabelValue)$10);
+    }
+    ;
+    
     
 instruction
     : ADD type value ',' value
@@ -1123,6 +1155,10 @@ instruction
     | LANDINGPAD type CLEANUP
     {
         $$ = new LandingPadInstruction ((LType)$2);
+    }
+    | LANDINGPAD type CATCH typed_value
+    {
+        $$ = new LandingPadInstruction ((LType)$2, (TypedValue)$4);
     }
     | LOAD type ',' typed_pointer_value ',' ALIGN INTEGER
     {
