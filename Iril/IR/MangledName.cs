@@ -236,7 +236,29 @@ namespace Iril.IR
             }
 
             if (ch == 'C' || ch == 'D') {
-                var n = new CtorName { Kind = t.Substring (p, 2) };
+                var k = t.Substring (p, 2);
+                var ident = k;
+                switch (k) {
+                    case "C1":
+                        ident = "ctor";
+                        break;
+                    case "C2":
+                        ident = "ctor_base";
+                        break;
+                    case "C3":
+                        ident = "ctor_alloc";
+                        break;
+                    case "D0":
+                        ident = "dtor_free";
+                        break;
+                    case "D1":
+                        ident = "dtor";
+                        break;
+                    case "D2":
+                        ident = "dtor_base";
+                        break;
+                }
+                var n = new CtorName { Kind = k, Ident = ident };
                 p += 2;
                 return n;
             }
@@ -364,78 +386,81 @@ namespace Iril.IR
         class CtorName : Name
         {
             public string Kind;
+            public string Ident;
             public override string ToString () => Kind;
-            public override string Identifier => Kind;
+            public override string Identifier => Ident;
             public override string[] Ancestry => Array.Empty<string> ();
         }
 
         class OperatorName : Name
         {
             public readonly string Name;
+            public readonly string Ident;
             public readonly string Text;
             public override string ToString () => "operator " + Text;
-            public override string Identifier => Name;
+            public override string Identifier => Ident;
             public override string[] Ancestry => Array.Empty<string> ();
             public OperatorName ()
             {
             }
-            public OperatorName (string name, string text)
+            public OperatorName (string name, string ident, string text)
             {
                 Name = name;
                 Text = text;
+                Ident = ident;
             }
 
             static readonly Dictionary<string, OperatorName> ops = new Dictionary<string, OperatorName> ();
             static OperatorName ()
             {
-                ops["nw"] = new OperatorName ("nw", "new");
-                ops["na"] = new OperatorName ("na", "new[]");
-                ops["dl"] = new OperatorName ("dl", "delete");
-                ops["da"] = new OperatorName ("da", "delete[]");
-                ops["ps"] = new OperatorName ("ps", "+");
-                ops["ng"] = new OperatorName ("ng", "-");
-                ops["ad"] = new OperatorName ("ad", "&");
-                ops["de"] = new OperatorName ("de", "*");
-                ops["co"] = new OperatorName ("co", "~");
-                ops["pl"] = new OperatorName ("pl", "+");
-                ops["mi"] = new OperatorName ("mi", "-");
-                ops["ml"] = new OperatorName ("ml", "*");
-                ops["dv"] = new OperatorName ("dv", "/");
-                ops["rm"] = new OperatorName ("rm", "%");
-                ops["an"] = new OperatorName ("an", "&");
-                ops["or"] = new OperatorName ("or", "|");
-                ops["eo"] = new OperatorName ("eo", "^");
-                ops["aS"] = new OperatorName ("aS", "=");
-                ops["pL"] = new OperatorName ("pL", "+=");
-                ops["mI"] = new OperatorName ("mI", "-=");
-                ops["mL"] = new OperatorName ("mL", "*=");
-                ops["dV"] = new OperatorName ("dV", "/=");
-                ops["rM"] = new OperatorName ("rM", "%=");
-                ops["aN"] = new OperatorName ("aN", "&=");
-                ops["oR"] = new OperatorName ("oR", "|=");
-                ops["eO"] = new OperatorName ("eO", "^=");
-                ops["ls"] = new OperatorName ("ls", "<<");
-                ops["rs"] = new OperatorName ("rs", ">>");
-                ops["lS"] = new OperatorName ("lS", "<<=");
-                ops["rS"] = new OperatorName ("rS", ">>=");
-                ops["eq"] = new OperatorName ("eq", "==");
-                ops["ne"] = new OperatorName ("ne", "!=");
-                ops["lt"] = new OperatorName ("lt", "<");
-                ops["gt"] = new OperatorName ("gt", ">");
-                ops["le"] = new OperatorName ("le", "<=");
-                ops["ge"] = new OperatorName ("ge", ">=");
-                ops["ss"] = new OperatorName ("ss", "<=>");
-                ops["nt"] = new OperatorName ("nt", "!");
-                ops["aa"] = new OperatorName ("aa", "&&");
-                ops["oo"] = new OperatorName ("oo", "||");
-                ops["pp"] = new OperatorName ("pp", "++");
-                ops["mm"] = new OperatorName ("mm", "--");
-                ops["cm"] = new OperatorName ("cm", ",");
-                ops["pm"] = new OperatorName ("pm", "->*");
-                ops["pt"] = new OperatorName ("pt", "->");
-                ops["cl"] = new OperatorName ("cl", "()");
-                ops["ix"] = new OperatorName ("ix", "[]");
-                ops["qu"] = new OperatorName ("qu", "?");
+                ops["nw"] = new OperatorName ("nw", "new", "new");
+                ops["na"] = new OperatorName ("na", "new_array", "new[]");
+                ops["dl"] = new OperatorName ("dl", "delete", "delete");
+                ops["da"] = new OperatorName ("da", "delete_array", "delete[]");
+                ops["ps"] = new OperatorName ("ps", "ps", "+");
+                ops["ng"] = new OperatorName ("ng", "ng", "-");
+                ops["ad"] = new OperatorName ("ad", "ad", "&");
+                ops["de"] = new OperatorName ("de", "de", "*");
+                ops["co"] = new OperatorName ("co", "co", "~");
+                ops["pl"] = new OperatorName ("pl", "pl", "+");
+                ops["mi"] = new OperatorName ("mi", "mi", "-");
+                ops["ml"] = new OperatorName ("ml", "ml", "*");
+                ops["dv"] = new OperatorName ("dv", "dv", "/");
+                ops["rm"] = new OperatorName ("rm", "rm", "%");
+                ops["an"] = new OperatorName ("an", "an", "&");
+                ops["or"] = new OperatorName ("or", "or", "|");
+                ops["eo"] = new OperatorName ("eo", "eo", "^");
+                ops["aS"] = new OperatorName ("aS", "aS", "=");
+                ops["pL"] = new OperatorName ("pL", "pL", "+=");
+                ops["mI"] = new OperatorName ("mI", "mI", "-=");
+                ops["mL"] = new OperatorName ("mL", "mL", "*=");
+                ops["dV"] = new OperatorName ("dV", "dV", "/=");
+                ops["rM"] = new OperatorName ("rM", "rM", "%=");
+                ops["aN"] = new OperatorName ("aN", "aN", "&=");
+                ops["oR"] = new OperatorName ("oR", "oR", "|=");
+                ops["eO"] = new OperatorName ("eO", "eO", "^=");
+                ops["ls"] = new OperatorName ("ls", "ls", "<<");
+                ops["rs"] = new OperatorName ("rs", "rs", ">>");
+                ops["lS"] = new OperatorName ("lS", "lS", "<<=");
+                ops["rS"] = new OperatorName ("rS", "rS", ">>=");
+                ops["eq"] = new OperatorName ("eq", "eq", "==");
+                ops["ne"] = new OperatorName ("ne", "ne", "!=");
+                ops["lt"] = new OperatorName ("lt", "lt", "<");
+                ops["gt"] = new OperatorName ("gt", "gt", ">");
+                ops["le"] = new OperatorName ("le", "le", "<=");
+                ops["ge"] = new OperatorName ("ge", "ge", ">=");
+                ops["ss"] = new OperatorName ("ss", "ss", "<=>");
+                ops["nt"] = new OperatorName ("nt", "nt", "!");
+                ops["aa"] = new OperatorName ("aa", "aa", "&&");
+                ops["oo"] = new OperatorName ("oo", "oo", "||");
+                ops["pp"] = new OperatorName ("pp", "pp", "++");
+                ops["mm"] = new OperatorName ("mm", "mm", "--");
+                ops["cm"] = new OperatorName ("cm", "cm", ",");
+                ops["pm"] = new OperatorName ("pm", "pm", "->*");
+                ops["pt"] = new OperatorName ("pt", "pt", "->");
+                ops["cl"] = new OperatorName ("cl", "cl", "()");
+                ops["ix"] = new OperatorName ("ix", "ix", "[]");
+                ops["qu"] = new OperatorName ("qu", "qu", "?");
             }
             public static OperatorName TryGet (string text, ref int index)
             {
