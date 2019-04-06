@@ -128,7 +128,7 @@ namespace Cli
                 var modules = llfiles.AsParallel ().Select (x => {
                     var code = File.ReadAllText (x);
                     return Module.Parse (code, x);
-                });
+                }).ToList ();
 
                 //
                 // Compile
@@ -139,28 +139,33 @@ namespace Cli
                 comp.Compile ();
 
                 //
+                // Show errors
+                //
+                var errors = (from m in modules from e in m.Errors select e).Concat (comp.Messages).ToList ();
+                foreach (var e in errors) {
+                    string msg;
+                    if (!string.IsNullOrEmpty (e.Surrounding)) {
+                        msg = $"{e.FilePath}: {e.Text}\n{e.Surrounding}";
+                    }
+                    else {
+                        msg = $"{e.FilePath}: {e.Text}";
+                    }
+#if DEBUGDEBUG
+                    if (e.Exception != null) {
+                        msg += Environment.NewLine + e.Exception;
+                    }
+#endif
+                    Error (msg);
+                }
+
+                //
                 // Output
                 //
                 Info ($"Writing {outName}...");
                 comp.WriteAssembly (outName);
 
-                //
-                // Show errors
-                //
-                foreach (var m in modules) {
-                    foreach (var e in m.Errors) {
-                        if (!string.IsNullOrEmpty (e.Surrounding)) {
-                            Error ($"{e.FilePath}: {e.Text}\n{e.Surrounding}");
-                        }
-                        else {
-                            Error ($"{e.FilePath}: {e.Text}");
-                        }
-#if DEBUG
-                        if (e.Exception != null) {
-                            Error (e.Exception.ToString ());
-                        }
-#endif
-                    }
+                if (errors.Count > 0) {
+                    Info ($"{errors.Count} errors");
                 }
 
                 return modules.Any (m => m.HasErrors) ? 3 : 0;

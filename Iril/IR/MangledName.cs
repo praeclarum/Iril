@@ -54,6 +54,14 @@ namespace Iril.IR
             }
         }
 
+        public static string Demangle (Symbol symbol)
+        {
+            var n = new MangledName (symbol);
+            if (n.Ancestry.Length == 0)
+                return n.Identifier;
+            return $"{string.Join("::", n.Ancestry)}::{n.Identifier}";
+        }
+
         public static string SanitizeIdentifier (string text)
         {
             var b = new System.Text.StringBuilder ();

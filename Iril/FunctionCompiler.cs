@@ -1811,7 +1811,7 @@ namespace Iril
                 Emit(il.Create(OpCodes.Calli, CreateCallSite(ft)));
                 return;
             }
-            throw new NotSupportedException("Cannot call " + call.Pointer);
+            throw new NotSupportedException($"Cannot call `{call.Pointer}`");
         }
 
         private void EmitVarArgs(CallInstruction call, int numFixedArgs)

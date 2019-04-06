@@ -166,7 +166,7 @@ namespace Iril
             FindSystemTypes ();
             FindStructures ();
             FindFunctions ();
-            PrintNameTree ();
+            //PrintNameTree ();
             CompileStructures ();
             EmitSyscalls ();
             EmitGlobalVariables ();
@@ -718,7 +718,7 @@ namespace Iril
                         mglobals.Add (symbol, f);
                     }
                     else {
-                        ErrorMessage ($"Global variable `{symbol}` is undefined");
+                        ErrorMessage (m.SourceFilename, $"Global variable `{IR.MangledName.Demangle (symbol)}` is undefined");
                     }
                 }
             }
@@ -1127,11 +1127,12 @@ namespace Iril
                         fc.CompileFunction ();
                     }
                     catch (Exception ex) {
-                        ErrorMessage ($"Failed to compile {m.Symbol}: {ex.Message}", ex);
+                        ErrorMessage (m.IRModule.SourceFilename, $"Failed to compile `{IR.MangledName.Demangle (m.Symbol)}`: {ex.Message}", ex);
                         CompileFailedFunction (m, ex);
                     }
                 }
                 else {
+                    ErrorMessage (m.IRModule.SourceFilename, $"Missing definition of `{IR.MangledName.Demangle (m.Symbol)}`");
                     CompileMissingFunction (m);
                 }
             }
@@ -1153,9 +1154,11 @@ namespace Iril
         public bool HasErrors => Messages.Exists (m => m.Type == MessageType.Error);
         public int ErrorCount => Messages.Count (m => m.Type == MessageType.Error);
 
-        void ErrorMessage (string message, Exception exception = null)
+        void ErrorMessage (string filePath, string message, Exception exception = null)
         {
-            Messages.Add (new Message (message, exception));
+            var msg = new Message (message, exception);
+            msg.FilePath = filePath;
+            Messages.Add (msg);
         }
 
         void CompileFailedFunction (DefinedFunction function, Exception ex)
@@ -1301,7 +1304,7 @@ namespace Iril
                 case VarArgsType vat:
                     return sysObjArray;
                 default:
-                    throw new NotSupportedException ($"{irType} ({irType?.GetType().Name}) not supported");
+                    throw new NotSupportedException ($"Cannot get CLR type for {irType} ({irType?.GetType().Name})");
             }
         }
 
