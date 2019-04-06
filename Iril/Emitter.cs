@@ -261,9 +261,10 @@ namespace Iril
                     var field = cst.Fields[(int)iconst.Value];
                     Emit(il.Create(OpCodes.Ldflda, field));
                     Emit(il.Create(OpCodes.Conv_U));
-                    if (0 <= i && i < st.Elements.Length)
+                    var iindex = iconst.Int32Value;
+                    if (0 <= iindex && iindex < st.Elements.Length)
                     {
-                        t = st.Elements[i];
+                        t = st.Elements[iindex];
                     }
                     else
                     {

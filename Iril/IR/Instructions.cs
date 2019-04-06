@@ -580,7 +580,7 @@ namespace Iril.IR
             }
         }
 
-        public override IEnumerable<LocalSymbol> NextLabelSymbols => throw new NotImplementedException ();
+        public override IEnumerable<LocalSymbol> NextLabelSymbols => new[] { NormalLabel.Symbol, ExceptionLabel.Symbol };
 
         public override LType ResultType (Module module) => ReturnType;
 
