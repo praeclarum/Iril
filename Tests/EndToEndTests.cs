@@ -110,7 +110,7 @@ namespace Tests
             var types = asm.GetTypes ();
             Assert.Greater (types.Length, 0);
 
-            var funcs = asm.GetType ("SuiteSparse.Functions");
+            var funcs = asm.GetType ("SuiteSparse.Globals");
             Assert.NotNull (funcs);
             var klu_defaults = funcs.GetMethod ("klu_defaults");
             var klu_analyze = funcs.GetMethod ("klu_analyze");

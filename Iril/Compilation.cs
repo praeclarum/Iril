@@ -488,7 +488,7 @@ namespace Iril
                 var a = ancestry;
                 if (a.Length == 0) {
                     if (isExternal) {
-                        a = new[] { namespac, "Functions" };
+                        a = new[] { namespac, "Globals" };
                     }
                     else {
                         a = new[] { namespac, IR.MangledName.SanitizeIdentifier (nn.Module.Symbol.Text) };
