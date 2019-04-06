@@ -13,6 +13,7 @@ namespace Iril.IR
         public readonly Symbol Symbol;
         public readonly string[] Ancestry;
         public readonly string Identifier;
+        public readonly string Demangled;
 
         readonly List<object> subs = new List<object> ();
 
@@ -23,6 +24,7 @@ namespace Iril.IR
 
             if (text.StartsWith ("@_Z", StringComparison.Ordinal)) {
                 var encoding = ParseEncoding (3);
+                Demangled = encoding.ToString ();
                 Identifier = SanitizeIdentifier (encoding.Identifier);
                 Ancestry = encoding.Ancestry.Select (SanitizeIdentifier).ToArray ();
                 //Console.WriteLine (text);
@@ -40,7 +42,7 @@ namespace Iril.IR
                 var rrem = text[text.Length - 1] == '\"' ? 1 : 0;
                 var itext = text.Substring (d + 1, text.Length - d - 1 - rrem);
                 var cparts = itext.Split (new[] { ':' }, StringSplitOptions.RemoveEmptyEntries).Select(SanitizeIdentifier).ToArray ();
-
+                Demangled = itext;
                 Identifier = cparts[cparts.Length-1];
                 Ancestry = cparts.Take(cparts.Length - 1).ToArray ();
                 //Console.WriteLine (text);
@@ -49,7 +51,8 @@ namespace Iril.IR
             }
             else {
                 var skip = text[0] == '@' || text[0] == '%';
-                Identifier = SanitizeIdentifier (skip ? text.Substring (1) : text);
+                Demangled = skip ? text.Substring (1) : text;
+                Identifier = SanitizeIdentifier (Demangled);
                 Ancestry = Array.Empty<string> ();
             }
         }
@@ -57,9 +60,7 @@ namespace Iril.IR
         public static string Demangle (Symbol symbol)
         {
             var n = new MangledName (symbol);
-            if (n.Ancestry.Length == 0)
-                return n.Identifier;
-            return $"{string.Join("::", n.Ancestry)}::{n.Identifier}";
+            return n.Demangled;
         }
 
         public static string SanitizeIdentifier (string text)
@@ -407,7 +408,7 @@ namespace Iril.IR
         {
             public string Kind;
             public string Ident;
-            public override string ToString () => Kind;
+            public override string ToString () => Ident;
             public override string Identifier => Ident;
             public override string[] Ancestry => Array.Empty<string> ();
         }
