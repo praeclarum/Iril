@@ -23,10 +23,16 @@ namespace Iril
 
         public void Emit()
         {
+            EmitAllocateException ();
             EmitAssertRtn ();
             EmitCalloc ();
+            EmitDelete ();
             EmitFree ();
+            EmitFreeException ();
             EmitMalloc ();
+            EmitNew ();
+            EmitPersonality ();
+            EmitThrow ();
             EmitVFPrintf ();
             EmitPrintf ();
             EmitVPrintf ();
@@ -42,7 +48,7 @@ namespace Iril
         {
             var mattrs = MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.Static;
             var md = new MethodDefinition (
-                IR.MangledName.SanitizeIdentifier (symbol.Text.Substring (1)),
+                new IR.MangledName (symbol).Identifier,
                 mattrs,
                 compilation.GetClrType (returnType));
             foreach (var p in parameters) {
@@ -56,6 +62,19 @@ namespace Iril
             syscallsType.Methods.Add (md);
             Calls[symbol] = md;
             return md;
+        }
+
+        void EmitAllocateException ()
+        {
+            var m = NewMethod ("@__cxa_allocate_exception", Types.PointerType.I8Pointer, ("size", IntegerType.I64));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Call, compilation.sysIntPtrFromInt64));
+            il.Append (il.Create (OpCodes.Call, compilation.sysAllocHGlobal));
+            il.Append (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
+            il.Append (il.Create (OpCodes.Ret));
+            b.Optimize ();
         }
 
         void EmitAssertRtn ()
@@ -104,7 +123,7 @@ namespace Iril
             il.Append (il.Create (OpCodes.Ret));
             b.Optimize ();
         }
-
+        
         void EmitMalloc ()
         {
             var m = NewMethod ("@malloc", Types.PointerType.I8Pointer, ("size", IntegerType.I64));
@@ -123,6 +142,40 @@ namespace Iril
 
             il.Append (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
             il.Append (il.Create (OpCodes.Ret));
+            b.Optimize ();
+        }
+        
+        void EmitNew ()
+        {
+            var m = NewMethod ("@_Znwm", Types.PointerType.I8Pointer, ("size", IntegerType.I64));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Call, compilation.sysIntPtrFromInt64));
+            il.Append (il.Create (OpCodes.Call, compilation.sysAllocHGlobal));
+            il.Append (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
+            il.Append (il.Create (OpCodes.Ret));
+            b.Optimize ();
+        }
+
+        void EmitPersonality ()
+        {
+            var m = NewMethod ("@__gxx_personality_v0", Types.IntegerType.I32, ("arguments", VarArgsType.VarArgs));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Ret));
+            b.Optimize ();
+        }
+
+        void EmitThrow ()
+        {
+            var m = NewMethod ("@__cxa_throw", Types.VoidType.Void, ("p0", Types.PointerType.I8Pointer), ("p1", Types.PointerType.I8Pointer), ("p2", Types.PointerType.I8Pointer));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+            il.Append (il.Create (OpCodes.Ldstr, "C++ Exception"));
+            il.Append (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
+            il.Append (il.Create (OpCodes.Throw));
             b.Optimize ();
         }
 
@@ -249,9 +302,33 @@ namespace Iril
             b.Optimize ();
         }
 
+        void EmitDelete ()
+        {
+            var m = NewMethod ("@_ZdlPv", Types.VoidType.Void, ("ptr", Types.PointerType.I8Pointer));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Call, compilation.sysIntPtrFromPointer));
+            il.Append (il.Create (OpCodes.Call, compilation.sysFreeHGlobal));
+            il.Append (il.Create (OpCodes.Ret));
+            b.Optimize ();
+        }
+
         void EmitFree ()
         {
             var m = NewMethod ("@free", Types.VoidType.Void, ("ptr", Types.PointerType.I8Pointer));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Call, compilation.sysIntPtrFromPointer));
+            il.Append (il.Create (OpCodes.Call, compilation.sysFreeHGlobal));
+            il.Append (il.Create (OpCodes.Ret));
+            b.Optimize ();
+        }
+
+        void EmitFreeException ()
+        {
+            var m = NewMethod ("@__cxa_free_exception", Types.VoidType.Void, ("ptr", Types.PointerType.I8Pointer));
             var b = m.Body;
             var il = b.GetILProcessor ();
             il.Append (il.Create (OpCodes.Ldarg_0));

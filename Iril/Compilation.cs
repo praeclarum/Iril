@@ -166,7 +166,7 @@ namespace Iril
             FindSystemTypes ();
             FindStructures ();
             FindFunctions ();
-            //PrintNameTree ();
+            PrintNameTree ();
             CompileStructures ();
             EmitSyscalls ();
             EmitGlobalVariables ();
