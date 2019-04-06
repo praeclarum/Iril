@@ -165,11 +165,11 @@ namespace Iril
         {
             FindSystemTypes ();
             FindStructures ();
-            CompileStructures ();
             FindFunctions ();
+            //PrintNameTree ();
+            CompileStructures ();
             EmitSyscalls ();
             EmitGlobalVariables ();
-            PrintNameTree ();
             CreateFunctionDefinitions ();
             EmitGlobalInitializers ();
             CompileFunctions ();
@@ -372,6 +372,7 @@ namespace Iril
         {
             public NameNode Parent;
             public string Name;
+            public Symbol Symbol;
 
             public Module Module;
             public IR.FunctionDefinition Function;
@@ -447,6 +448,7 @@ namespace Iril
                     var mname = new IR.MangledName (sym);
                     var nn = new NameNode {
                         Name = mname.Identifier,
+                        Symbol = mname.Symbol,
                         Module = m,
                         Function = f,
                     };
@@ -471,6 +473,7 @@ namespace Iril
                     var mname = new IR.MangledName (sym);
                     var nn = new NameNode {
                         Name = mname.Identifier,
+                        Symbol = mname.Symbol,
                         Module = m,
                         FunctionDecl = f,
                     };
@@ -504,7 +507,7 @@ namespace Iril
             foreach (var m in Modules) {
                 foreach (var iskv in m.IdentifiedStructures) {
                     var sym = iskv.Key;
-                    var isExternal = sym.Text.IndexOf(".anon", StringComparison.Ordinal) < 0;
+                    var isExternal = true;// sym.Text.IndexOf(".anon", StringComparison.Ordinal) < 0;
 
                     if (isExternal) {
                         if (externals.Contains (sym))
@@ -516,6 +519,7 @@ namespace Iril
                     var s = iskv.Value;
                     var nn = new NameNode {
                         Name = tname.Identifier,
+                        Symbol = tname.Symbol,
                         Module = m,
                         Structure = s
                     };
@@ -538,30 +542,10 @@ namespace Iril
 
         void CompileStructures ()
         {
-            var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.Public;
-
             var todo = new List<(Module, LiteralStructureType, TypeDefinition)> ();
 
-            foreach (var m in Modules) {
-                foreach (var iskv in m.IdentifiedStructures) {
-                    if (structs.ContainsKey (iskv.Key))
-                        continue;
-                    var tname = new IR.MangledName (iskv.Key);
-                    if (iskv.Value is LiteralStructureType l) {
-                        var td = new TypeDefinition (namespac, tname.Identifier, tattrs, sysVal);
-                        mod.Types.Add (td);
-                        structs[iskv.Key] = (l, td);
-                        todo.Add ((m, l, td));
-                    }
-                    else if (iskv.Value is OpaqueStructureType) {
-                        var td = new TypeDefinition (namespac, tname.Identifier, tattrs, sysVal);
-                        mod.Types.Add (td);
-                        structs[iskv.Key] = (null, td);
-                    }
-                    else {
-                        throw new NotSupportedException ($"Cannot compile {iskv.Value}");
-                    }
-                }
+            foreach (var c in globalName.Children) {
+                CompileStructures ("", null, c, todo);
             }
 
             foreach (var (m, l, td) in todo) {
@@ -572,6 +556,63 @@ namespace Iril
 
                 foreach (var f in fields) {
                     td.Fields.Add (f);
+                }
+            }
+        }
+
+        void CompileStructures (string namesp, TypeDefinition parentType, NameNode node, List<(Module, LiteralStructureType, TypeDefinition)> todo)
+        {
+            if (node.IsFunction) {
+            }
+            else {
+                var isNamespace = node.Structure == null && parentType == null;
+                if (isNamespace) {
+                    isNamespace = node.Children.All (x => !x.IsFunction);
+                }
+
+                if (isNamespace) {
+                    var newNamespace = namesp.Length > 0 ? namesp + "." + node.Name : node.Name;
+                    foreach (var c in node.Children) {
+                        CompileStructures (newNamespace, parentType, c, todo);
+                    }
+                }
+                else {
+                    if (node.Structure != null || node.Children.Count > 0) {
+                        TypeDefinition td;
+                        var ns = parentType == null ? namesp : null;
+                        var vis = parentType == null ? TypeAttributes.Public : TypeAttributes.NestedPublic;
+                        if (node.Structure != null) {
+                            var tattrs = TypeAttributes.BeforeFieldInit | vis | TypeAttributes.Sealed | TypeAttributes.SequentialLayout;
+                            if (node.Structure is LiteralStructureType l) {
+                                td = new TypeDefinition (ns, node.Name, tattrs, sysVal);
+                                structs[node.Symbol] = (l, td);
+                                todo.Add ((node.Module, l, td));
+                            }
+                            else if (node.Structure is OpaqueStructureType) {
+                                td = new TypeDefinition (ns, node.Name, tattrs, sysVal);
+                                structs[node.Symbol] = (null, td);
+                            }
+                            else {
+                                throw new NotSupportedException ($"Cannot compile {node.Structure}");
+                            }
+                        }
+                        else {
+                            var tattrs = TypeAttributes.BeforeFieldInit | vis | TypeAttributes.Abstract | TypeAttributes.Sealed;
+                            td = new TypeDefinition (ns, node.Name, tattrs, sysObj);
+                        }
+
+                        if (parentType != null) {
+                            parentType.NestedTypes.Add (td);
+                        }
+                        else {
+                            mod.Types.Add (td);
+                        }
+                        //Console.WriteLine ("EMIT " + td);
+
+                        foreach (var c in node.Children) {
+                            CompileStructures (namesp, td, c, todo);
+                        }
+                    }
                 }
             }
         }
@@ -599,16 +640,22 @@ namespace Iril
 
                 var allVarsPrivate = m.GlobalVariables.All (x => x.Value.IsExternal || x.Value.IsPrivate);
 
-                var moduleType = new TypeDefinition (
-                    namespac, m.Symbol.ToString (),
-                    TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract | TypeAttributes.Sealed
-                    | (allVarsPrivate ? 0 : TypeAttributes.Public),
-                    sysObj);
-                mod.Types.Add (moduleType);
-                moduleTypes.Add (m.Symbol, moduleType);
+                var moduleTypeName = new IR.MangledName (m.Symbol).Identifier;
+                var moduleType = mod.Types.FirstOrDefault (x => x.Namespace == namespac && x.Name == moduleTypeName);
+                if (moduleType == null) {
+                    moduleTypes.TryGetValue (m.Symbol, out moduleType);
+                }
+                if (moduleType == null) {
+                    moduleType = new TypeDefinition (
+                                        namespac, m.Symbol.ToString (),
+                                        TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract | TypeAttributes.Sealed
+                                        | (allVarsPrivate ? 0 : TypeAttributes.Public),
+                                        sysObj);
+                    mod.Types.Add (moduleType);
+                }
+                moduleTypes[m.Symbol] = moduleType;
 
-                List<(IR.GlobalVariable, FieldDefinition)> needsInit
-                    = new List<(IR.GlobalVariable, FieldDefinition)> ();
+                var needsInit = new List<(IR.GlobalVariable, FieldDefinition)> ();
                 foreach (var kv in m.GlobalVariables) {
 
                     var symbol = kv.Key;
@@ -966,6 +1013,7 @@ namespace Iril
                     }
 
                     declaringType.Methods.Add (md);
+                    //Console.WriteLine ("EMIT " + md);
 
                     var def = new DefinedFunction {
                         Symbol = sym,
@@ -1035,15 +1083,18 @@ namespace Iril
                     }
                 }
                 else {
-                    if (node.Children.Count > 0) {
-                        var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed;
-                        var td = new TypeDefinition (namesp, node.Name, tattrs, sysObj);
+                    if (node.Structure != null || node.Children.Count > 0) {
+                        TypeDefinition td;
                         if (parentType != null) {
-                            parentType.NestedTypes.Add (td);
+                            td = parentType.NestedTypes.FirstOrDefault (x => x.Name == node.Name);
+                            if (td == null) {
+                                throw new InvalidOperationException ($"Failed to find nested {node.Name} in {parentType}");
+                            }
                         }
                         else {
-                            mod.Types.Add (td);
+                            td = mod.GetType (namesp + "." + node.Name);
                         }
+                        Debug.Assert (td != null);
                         foreach (var c in node.Children) {
                             CreateFunctionDefinitions (namesp, td, c);
                         }
