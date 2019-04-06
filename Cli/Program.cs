@@ -163,9 +163,11 @@ namespace Cli
                     if (!string.IsNullOrEmpty (e.Surrounding)) {
                         Console.WriteLine (e.Surrounding);
                     }
-#if DEBUGDEBUG
+#if DEBUGD
                     if (e.Exception != null) {
+                        Console.ForegroundColor = ConsoleColor.DarkYellow;
                         Console.WriteLine (e.Exception);
+                        Console.ResetColor ();
                     }
 #endif
                 }

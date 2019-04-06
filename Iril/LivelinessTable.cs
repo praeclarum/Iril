@@ -41,13 +41,12 @@ namespace Iril
                 var i = new BlockInfo {
                     Block = b,
                     References = new HashSet<LocalSymbol> (
-                        b.Assignments.Select (x => x.Instruction)
+                        b.AllAssignments.Select (x => x.Instruction)
                         .Where (x => !(x is PhiInstruction))
-                        .Concat (new IR.Instruction[] { b.Terminator })
                         .SelectMany (x => x.ReferencedLocals.Distinct ())
                         .Distinct ()),
                     Definitions = new HashSet<LocalSymbol> (
-                        b.Assignments.Where (x => !(x.Instruction is PhiInstruction) && x.HasResult)
+                        b.AllAssignments.Where (x => !(x.Instruction is PhiInstruction) && x.HasResult)
                         .Select (x => x.Result)),
                     PhiDefinitions = new HashSet<LocalSymbol> (
                         b.Assignments.Where (x => x.Instruction is PhiInstruction && x.HasResult)

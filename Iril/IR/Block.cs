@@ -9,6 +9,7 @@ namespace Iril.IR
         public readonly LocalSymbol Symbol;
         public readonly Assignment[] Assignments;
         public readonly Assignment TerminatorAssignment;
+        public IEnumerable<Assignment> AllAssignments => Assignments.Concat (new[] { TerminatorAssignment });
         public TerminatorInstruction Terminator => (TerminatorInstruction)TerminatorAssignment.Instruction;
 
         public Block(LocalSymbol symbol, IEnumerable<Assignment> assignments, Assignment terminator)

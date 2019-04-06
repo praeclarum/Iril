@@ -89,7 +89,7 @@ namespace Iril
             }
             foreach (var b in f.Blocks)
             {
-                foreach (var i in b.Assignments)
+                foreach (var i in b.AllAssignments)
                 {
                     if (i.HasResult)
                         localCounts.Add(i.Result, 0);
@@ -137,11 +137,11 @@ namespace Iril
             }
             foreach (var b in f.Blocks)
             {
-                var ins = b.Assignments.Select(x => x.Instruction).Concat(new IR.Instruction[] { b.Terminator }).ToList();
+                var all = b.AllAssignments.ToList();
 
-                for (var i = 0; i < b.Assignments.Length; i++)
+                for (var i = 0; i < all.Count; i++)
                 {
-                    var a = b.Assignments[i];
+                    var a = all[i];
                     if (!a.HasResult)
                         continue;
                     var symbol = a.Result;
@@ -155,15 +155,14 @@ namespace Iril
                     {
                         // Make sure it's used in this block
                         should = false;
-                        for (var j = i + 1; j < b.Assignments.Length; j++)
+                        for (var j = i + 1; j < all.Count; j++)
                         {
-                            if (b.Assignments[j].Instruction.ReferencedLocals.Contains(symbol))
+                            if (all[j].Instruction.ReferencedLocals.Contains(symbol))
                             {
                                 should = true;
                                 break;
                             }
                         }
-                        should = should || (b.Terminator.ReferencedLocals.Contains(symbol));
 
                         // Decide based on what the instruction does
                         if (a.Instruction.IsIdempotent(function.IRDefinition))
@@ -173,15 +172,15 @@ namespace Iril
                         else if (a.Instruction is IR.LoadInstruction)
                         {
                             // Make sure it's used is before a state-changing instruction
-                            for (var j = i + 1; should && j < ins.Count; j++)
+                            for (var j = i + 1; should && j < all.Count; j++)
                             {
-                                if (ins[j].ReferencedLocals.FirstOrDefault() == symbol)
+                                if (all[j].Instruction.ReferencedLocals.FirstOrDefault() == symbol)
                                 {
                                     //Console.WriteLine ($"Inline {b.Assignments[i]} in {ins[j]}");
                                     should = true;
                                     break;
                                 }
-                                if (!ins[j].IsIdempotent(function.IRDefinition))
+                                if (!all[j].Instruction.IsIdempotent(function.IRDefinition))
                                 {
                                     should = false;
                                     break;

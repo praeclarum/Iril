@@ -657,27 +657,29 @@ namespace Iril
 
                 var needsInit = new List<(IR.GlobalVariable, FieldDefinition)> ();
                 foreach (var kv in m.GlobalVariables) {
-
                     var symbol = kv.Key;
                     var g = kv.Value;
-
                     if (g.IsExternal)
                         continue;
                     if (globals.ContainsKey (symbol))
                         continue;
+                    try {
+                        var gname = new IR.MangledName (symbol);
 
-                    var gname = new IR.MangledName (symbol);
+                        var gtype = GetClrType (g.Type);
+                        var field = new FieldDefinition (
+                            gname.Identifier,
+                            FieldAttributes.Static | (FieldAttributes.Public), gtype);
 
-                    var gtype = GetClrType (g.Type);
-                    var field = new FieldDefinition (
-                        gname.Identifier,
-                        FieldAttributes.Static | (FieldAttributes.Public), gtype);
+                        moduleType.Fields.Add (field);
+                        mglobals.Add (symbol, (g, field));
 
-                    moduleType.Fields.Add (field);
-                    mglobals.Add (symbol, (g, field));
-
-                    if (g.Initializer != null) {
-                        needsInit.Add ((g, field));
+                        if (g.Initializer != null) {
+                            needsInit.Add ((g, field));
+                        }
+                    }
+                    catch (Exception ex) {
+                        ErrorMessage (m.SourceFilename, $"Failed to emit global variable `{IR.MangledName.Demangle(symbol)}` ({symbol}): {ex.Message}", ex);
                     }
                 }
 
@@ -718,7 +720,7 @@ namespace Iril
                         mglobals.Add (symbol, f);
                     }
                     else {
-                        ErrorMessage (m.SourceFilename, $"Missing definition of global variable `{IR.MangledName.Demangle (symbol)}` ({symbol})");
+                        ErrorMessage (m.SourceFilename, $"Undefined global variable `{IR.MangledName.Demangle (symbol)}` ({symbol})");
                     }
                 }
             }
@@ -1132,7 +1134,7 @@ namespace Iril
                     }
                 }
                 else {
-                    ErrorMessage (m.IRModule.SourceFilename, $"Missing definition of function `{IR.MangledName.Demangle (m.Symbol)}` ({m.Symbol})");
+                    ErrorMessage (m.IRModule.SourceFilename, $"Undefined function `{IR.MangledName.Demangle (m.Symbol)}` ({m.Symbol})");
                     CompileMissingFunction (m);
                 }
             }

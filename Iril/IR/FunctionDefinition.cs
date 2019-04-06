@@ -66,18 +66,18 @@ namespace Iril.IR
         public Assignment GetAssignment (LocalValue local)
         {
             foreach (var b in Blocks) {
-                foreach (var a in b.Assignments) {
+                foreach (var a in b.AllAssignments) {
                     if (ReferenceEquals (a.Result, local.Symbol))
                         return a;
                 }
             }
-            throw new KeyNotFoundException ($"{local}");
+            throw new KeyNotFoundException ($"Undeclared local {local}");
         }
 
         public Assignment FindAssignment (LocalValue local)
         {
             foreach (var b in Blocks) {
-                foreach (var a in b.Assignments) {
+                foreach (var a in b.AllAssignments) {
                     if (ReferenceEquals (a.Result, local.Symbol))
                         return a;
                 }

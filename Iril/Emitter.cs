@@ -89,7 +89,7 @@ namespace Iril
                     }
                     else
                     {
-                        throw new NotSupportedException($"Cannot find global value `{IR.MangledName.Demangle (g.Symbol)}`");
+                        throw new NotSupportedException($"Undeclared global variable `{IR.MangledName.Demangle (g.Symbol)}` ({g.Symbol})");
                     }
                     break;
                 case IR.HexIntegerConstant i:

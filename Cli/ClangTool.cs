@@ -24,7 +24,7 @@ namespace Cli
             var iswin = Environment.OSVersion.Platform == PlatformID.Win32NT;
 
             var args = new List<string> {
-                "-g", "-O1", "-S", "-emit-llvm", "-std=c++17"
+                "-g", "-O1", "-S", "-emit-llvm", "-std=c++17", "-frtti"
             };
             if (!iswin)
                 args.Add ("-fpic");
