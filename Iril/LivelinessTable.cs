@@ -15,9 +15,7 @@ namespace Iril
         class BlockInfo
         {
             public Block Block;
-            public HashSet<LocalSymbol> References;
             public HashSet<LocalSymbol> Definitions;
-            public HashSet<LocalSymbol> PhiDefinitions;
             public Bitvector Def;
             public Bitvector Use;
             public Bitvector PhiIns;
@@ -65,10 +63,6 @@ namespace Iril
                 var i = new BlockInfo {
                     Block = b,
                     Definitions = new HashSet<LocalSymbol> (),
-                    References = new HashSet<LocalSymbol> (),
-                    PhiDefinitions = new HashSet<LocalSymbol> (
-                        b.Assignments.Where (x => x.Instruction is PhiInstruction && x.HasResult)
-                        .Select (x => x.Result)),
                     Nexts = new HashSet<LocalSymbol> (b.Terminator.NextLabelSymbols),
                     Def = symbols.NewBitvector (),
                     Use = symbols.NewBitvector (),
@@ -99,7 +93,6 @@ namespace Iril
 
                     foreach (var r in a.Instruction.ReferencedLocals) {
                         if (!i.Definitions.Contains (r)) {
-                            i.References.Add (r);
                             i.Use.Set (r);
                         }
                     }
@@ -134,7 +127,12 @@ namespace Iril
                 visited.Add (b.Symbol);
                 foreach (var s in b.Nexts) {
                     if (!visited.Contains (s)) {
-                        Search (blockIndex[s], visited);
+                        if (blockIndex.TryGetValue (s, out var sb)) {
+                            Search (blockIndex[s], visited);
+                        }
+                        else {
+                            throw new Exception ($"Undefined block {s} in {function.Symbol} ({string.Join(", ", blockIndex.Keys)})");
+                        }
                     }
                 }
                 dfn[b.Symbol] = orderIndex;
