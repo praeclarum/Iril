@@ -39,7 +39,7 @@ namespace Iril.IR
                     bs.Add (b.WithSymbol (s));
                     implicitLocalCounter++;
                 }
-                foreach (var a in b.Assignments) {
+                foreach (var a in b.AllAssignments) {
                     if (a.HasResult && a.Result.HasNumericValue) {
                         implicitLocalCounter = a.Result.NumericValue + 1;
                     }
