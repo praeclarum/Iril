@@ -644,20 +644,7 @@ namespace Iril
 
                 var allVarsPrivate = m.GlobalVariables.All (x => x.Value.IsExternal || x.Value.IsPrivate);
 
-                var moduleTypeName = new IR.MangledName (m.Symbol).Identifier;
-                var moduleType = mod.Types.FirstOrDefault (x => x.Namespace == namespac && x.Name == moduleTypeName);
-                if (moduleType == null) {
-                    moduleTypes.TryGetValue (m.Symbol, out moduleType);
-                }
-                if (moduleType == null) {
-                    moduleType = new TypeDefinition (
-                                        namespac, m.Symbol.ToString (),
-                                        TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract | TypeAttributes.Sealed
-                                        | (allVarsPrivate ? 0 : TypeAttributes.Public),
-                                        sysObj);
-                    mod.Types.Add (moduleType);
-                }
-                moduleTypes[m.Symbol] = moduleType;
+                var moduleType = GetModuleType (m, allVarsPrivate);
 
                 var needsInit = new List<(IR.GlobalVariable, FieldDefinition)> ();
                 foreach (var kv in m.GlobalVariables) {
@@ -683,7 +670,7 @@ namespace Iril
                         }
                     }
                     catch (Exception ex) {
-                        ErrorMessage (m.SourceFilename, $"Failed to emit global variable `{IR.MangledName.Demangle(symbol)}` ({symbol}): {ex.Message}", ex);
+                        ErrorMessage (m.SourceFilename, $"Failed to emit global variable `{IR.MangledName.Demangle (symbol)}` ({symbol}): {ex.Message}", ex);
                     }
                 }
 
@@ -714,20 +701,50 @@ namespace Iril
                     if (!g.IsExternal)
                         continue;
 
-                    var field = from ms in globals.Values
+                    var fieldq = from ms in globals.Values
                                 from mkv in ms
                                 let mg = mkv.Value
                                 where mg.Field.IsPublic && mg.Field.Name == ident
                                 select mg;
-                    var f = field.FirstOrDefault ();
+                    var f = fieldq.FirstOrDefault ();
+                    if (f.Field == null) {
+                        ErrorMessage (m.SourceFilename, $"Undefined global variable `{IR.MangledName.Demangle (symbol)}` ({symbol})");
+
+                        var gname = new IR.MangledName (symbol);
+
+                        var gtype = GetClrType (g.Type);
+                        var field = new FieldDefinition (
+                            gname.Identifier,
+                            FieldAttributes.Static | (FieldAttributes.Public), gtype);
+
+                        var moduleType = GetModuleType (m, false);
+                        moduleType.Fields.Add (field);
+                        mglobals.Add (symbol, (g, field));
+                    }
                     if (f.Field != null) {
                         mglobals.Add (symbol, f);
                     }
-                    else {
-                        ErrorMessage (m.SourceFilename, $"Undefined global variable `{IR.MangledName.Demangle (symbol)}` ({symbol})");
-                    }
                 }
             }
+        }
+
+        TypeDefinition GetModuleType (Module m, bool allVarsPrivate)
+        {
+            var moduleTypeName = new IR.MangledName (m.Symbol).Identifier;
+            var moduleType = mod.Types.FirstOrDefault (x => x.Namespace == namespac && x.Name == moduleTypeName);
+            if (moduleType == null) {
+                moduleTypes.TryGetValue (m.Symbol, out moduleType);
+            }
+            if (moduleType == null) {
+                moduleType = new TypeDefinition (
+                                    namespac, m.Symbol.ToString (),
+                                    TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract | TypeAttributes.Sealed
+                                    | (allVarsPrivate ? 0 : TypeAttributes.Public),
+                                    sysObj);
+                mod.Types.Add (moduleType);
+            }
+            moduleTypes[m.Symbol] = moduleType;
+            return moduleType;
         }
 
         void EmitGlobalInitializers ()
