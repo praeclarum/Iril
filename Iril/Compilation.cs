@@ -23,6 +23,7 @@ namespace Iril
         readonly AssemblyDefinition asm;
         readonly string namespac;
         readonly Resolver resolver = new Resolver ();
+        const string pidNamespace = "<PrivateImplementationDetails>";
 
         readonly SymbolTable<(LiteralStructureType, TypeDefinition)> structs =
             new SymbolTable<(LiteralStructureType, TypeDefinition)> ();
@@ -94,6 +95,9 @@ namespace Iril
 
         readonly Dictionary<(int, string), SimdVector> vectorTypes =
             new Dictionary<(int, string), SimdVector> ();
+
+        readonly Dictionary<TypeReference[], AnonymousStruct> astructTypes =
+            new Dictionary<TypeReference[], AnonymousStruct> (AnonymousStruct.TypesEquality);
 
         readonly SymbolTable<DefinedFunction> externalMethodDefs =
             new SymbolTable<DefinedFunction> ();
@@ -743,8 +747,7 @@ namespace Iril
 
         TypeDefinition CreateDataType ()
         {
-            var name = "<PrivateImplementationDetails>";
-            var td = new TypeDefinition ("", name, TypeAttributes.AnsiClass | TypeAttributes.Sealed, sysObj);
+            var td = new TypeDefinition ("", pidNamespace, TypeAttributes.AnsiClass | TypeAttributes.Sealed, sysObj);
             var compGen = new CustomAttribute (sysCompGenCtor);
             td.CustomAttributes.Add (compGen);
             mod.Types.Add (td);
@@ -1299,6 +1302,8 @@ namespace Iril
                         return ntSym.Item2;
                     else
                         throw new Exception ($"Cannot find {nt.Symbol}");
+                case LiteralStructureType st:
+                    return GetAnonymousStructType (st).ClrType;
                 case VectorType vt:
                     return GetVectorType (vt).ClrType;
                 case VoidType vdt:
@@ -1308,6 +1313,38 @@ namespace Iril
                 default:
                     throw new NotSupportedException ($"Cannot get CLR type for `{irType}` ({irType?.GetType().Name})");
             }
+        }
+
+        public AnonymousStruct GetAnonymousStructType (LiteralStructureType st)
+        {
+            var key = st.Elements.Select (x => GetClrType (x)).ToArray ();
+            if (astructTypes.TryGetValue (key, out var vct)) {
+                return vct;
+            }
+            return AddAnonymousStruct (key, st);
+        }
+
+        AnonymousStruct AddAnonymousStruct (TypeReference[] key, LiteralStructureType st)
+        {
+            var tname = $"AnonymousStruct{key.Length}_{string.Join("_", key.Select(x => x.Name))}";
+
+            var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout;
+            var td = new TypeDefinition (pidNamespace, tname, tattrs, sysVal);
+            for (var i = 0; i < key.Length; i++) {
+                var f = new FieldDefinition ("F" + i, FieldAttributes.Public, key[i]);
+                td.Fields.Add (f);
+            }
+
+            var r = new AnonymousStruct {
+                ElementClrTypes = key,
+                ClrType = td,
+                ElementFields = td.Fields.Select (x => (FieldReference)x).ToArray (),
+            };
+
+            mod.Types.Add (td);
+            astructTypes[key] = r;
+
+            return r;
         }
 
         public SimdVector GetVectorType (VectorType vt)
@@ -1324,7 +1361,7 @@ namespace Iril
         {
             var tname = $"Vector{key.Length}{elementType.Name}";
 
-            var td = new TypeDefinition (namespac, tname, TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout, sysVal);
+            var td = new TypeDefinition (pidNamespace, tname, TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout, sysVal);
 
             for (var i = 0; i < key.Length; i++) {
                 var f = new FieldDefinition ("E" + i, FieldAttributes.Public, elementType);
