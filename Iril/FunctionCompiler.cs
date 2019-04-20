@@ -7,8 +7,8 @@ using Mono.Cecil.Rocks;
 using Iril.Types;
 using CecilInstruction = Mono.Cecil.Cil.Instruction;
 using System.Runtime.InteropServices;
-using Iril.IR;
 using System.Numerics;
+using Iril.IR;
 
 namespace Iril
 {
@@ -181,7 +181,7 @@ namespace Iril
             //
             foreach (var b in f.Blocks)
             {
-                foreach (var a in b.Assignments)
+                foreach (var a in b.AllAssignments)
                 {
                     var symbol = a.Result;
                     if (a.HasResult
@@ -240,6 +240,8 @@ namespace Iril
             //
             foreach (var b in f.Blocks)
             {
+                if (b.FirstInstruction is LandingPadInstruction)
+                    continue;
                 var phipreds = b.PhiPredecessors.ToList();
 
                 var firstI = il.Create(OpCodes.Nop);
@@ -304,6 +306,8 @@ namespace Iril
             for (var i = 0; i < f.Blocks.Length; i++)
             {
                 var b = f.Blocks[i];
+                if (b.FirstInstruction is LandingPadInstruction)
+                    continue;
                 var nextBlock = i + 1 < f.Blocks.Length ? f.Blocks[i + 1] : null;
 
                 //
@@ -363,12 +367,33 @@ namespace Iril
                 //
                 // Emit terminator
                 //
-                EmitInstruction(LocalSymbol.None, b.Terminator, b, nextBlock);
+                EmitInstruction(b.TerminatorAssignment.Result, b.Terminator, b, nextBlock);
 
                 blockLastInstr[b.Symbol] = prev;
             }
 
-            body.Optimize();
+            body.Optimize ();
+
+            //
+            // Emit try handlers
+            //
+            foreach (var eh in ehs) {
+                var hend = eh.CatchLast.Next;
+                if (hend == null) {
+                    hend = il.Create (OpCodes.Nop);
+                    Emit (hend);
+                }
+                var handler = new ExceptionHandler (ExceptionHandlerType.Catch) {
+                    TryStart = eh.TryStart,
+                    TryEnd = eh.TryLast.Next,
+                    HandlerStart = eh.TryLast.Next,
+                    HandlerEnd = hend,
+                    CatchType = compilation.sysException,
+                };
+                body.ExceptionHandlers.Add (handler);
+            }
+
+            //body.Optimize();
 
             //
             // Add sequence points
@@ -401,6 +426,8 @@ namespace Iril
 
             foreach (var b in f.Blocks)
             {
+                if (b.FirstInstruction is LandingPadInstruction)
+                    continue;
                 var scope = new ScopeDebugInformation(blockFirstInstr[b.Symbol], blockLastInstr[b.Symbol]);
                 foreach (var a in b.Assignments)
                 {
@@ -718,6 +745,12 @@ namespace Iril
                             throw new NotSupportedException($"Cannot inttoptr {inttoptr.Type}");
                     }
                     break;
+                case IR.InvokeInstruction invoke:
+                    EmitInvoke (assignedSymbol, invoke, block);
+                    break;
+                case IR.LandingPadInstruction landing:
+                    Emit (OpCodes.Pop);
+                    break;
                 case IR.LoadInstruction load:
                     EmitLoad(load);
                     break;
@@ -764,6 +797,9 @@ namespace Iril
                         default:
                             throw new NotSupportedException($"Cannot ptrtoint {zext.Type}");
                     }
+                    break;
+                case IR.ResumeInstruction resume:
+                    Emit (il.Create (OpCodes.Rethrow));
                     break;
                 case IR.RetInstruction ret:
                     EmitTypedValue(ret.Value);
@@ -1055,7 +1091,7 @@ namespace Iril
                     }
                     break;
                 default:
-                    throw new NotImplementedException(instruction.ToString());
+                    throw new NotImplementedException($"{instruction.GetType().Name}: {instruction}");
             }
         }
 
@@ -1550,7 +1586,7 @@ namespace Iril
             }
         }
 
-        void EmitVectorFunc(Value value, Types.VectorType type, MethodReference func)
+        void EmitVectorFunc(IR.Value value, Types.VectorType type, MethodReference func)
         {
             var temp = GetVectorTempVariable(GetVectorType(type), value, 0);
             EmitValue(value, type);
@@ -1610,6 +1646,66 @@ namespace Iril
             Emit(il.Create(OpCodes.Brtrue, trueTarget));
         }
 
+        void EmitInvoke (LocalSymbol assignedSymbol, IR.InvokeInstruction invoke, IR.Block block)
+        {
+            if ((invoke.Pointer is IR.GlobalValue gv)
+                && (compilation.TryGetFunction (module, gv.Symbol, out var m))) {
+
+                var ps = m.ILDefinition.Parameters;
+                var nps = ps.Count;
+                var hasVarArgs =
+                    nps > 0
+                    && ps[nps - 1].ParameterType.IsArray
+                    && ps[nps - 1].ParameterType.GetElementType ().FullName == "System.Object";
+                if (hasVarArgs)
+                    nps--;
+                if (invoke.Arguments.Length < nps) {
+                    throw new InvalidOperationException ($"Too few arguments to {function.IRDefinition.Symbol}");
+                }
+
+                for (var i = 0; i < nps; i++) {
+                    var a = invoke.Arguments[i];
+                    EmitValue (a.Value, a.Type);
+                }
+                if (hasVarArgs) {
+                    EmitVarArgs (invoke.Arguments, nps);
+                }
+
+                var calli = il.Create (OpCodes.Call, m.ILDefinition);
+                Emit (calli);
+
+                // LLVM allows for return type mismatches with void
+                if (m.ILDefinition.ReturnType.FullName == "System.Void" && !(invoke.ReturnType is VoidType)) {
+                    EmitZeroValue (invoke.ReturnType);
+                }
+                else if (m.ILDefinition.ReturnType.FullName != "System.Void" && (invoke.ReturnType is VoidType)) {
+                    Emit (OpCodes.Pop);
+                }
+
+                // Assign it now
+                if (locals.TryGetValue (assignedSymbol, out var vd)) {
+                    Emit (il.Create (OpCodes.Stloc, vd));
+                }
+
+                Emit (il.Create (OpCodes.Leave, blockFirstInstr[invoke.NormalLabel.Symbol]));
+
+                var tryLast = prev;
+
+                var catchBlock = function.IRDefinition.Blocks.First(x => x.Symbol == invoke.ExceptionLabel.Symbol);
+                foreach (var catchA in catchBlock.AllAssignments) {
+                    EmitInstruction (catchA.Result, catchA.Instruction, block, nextBlock: null);
+                }
+                var catchLast = prev;
+                ehs.Add ((calli, tryLast, catchLast));
+            }
+            else {
+                throw new Exception ($"Cannot invoke {invoke.Pointer}");
+            }
+        }
+
+        readonly List<(CecilInstruction TryStart, CecilInstruction TryLast, CecilInstruction CatchLast)> ehs =
+            new List<(CecilInstruction TryStart, CecilInstruction TryLast, CecilInstruction CatchLast)> ();
+
         void EmitCall(IR.CallInstruction call)
         {
             if (call.Pointer is IR.GlobalValue gv)
@@ -1644,7 +1740,7 @@ namespace Iril
                     case "@llvm.objectsize.i32.p0i8" when call.Arguments.Length >= 3:
                         {
                             var min = 0;
-                            if (call.Arguments[1].Value is Constant osizeConst)
+                            if (call.Arguments[1].Value is IR.Constant osizeConst)
                             {
                                 min = osizeConst.Int32Value;
                             }
@@ -1661,7 +1757,7 @@ namespace Iril
                     case "@llvm.objectsize.i64.p0i8" when call.Arguments.Length >= 3:
                         {
                             var min = 0;
-                            if (call.Arguments[1].Value is Constant osizeConst)
+                            if (call.Arguments[1].Value is IR.Constant osizeConst)
                             {
                                 min = osizeConst.Int32Value;
                             }
@@ -1733,7 +1829,7 @@ namespace Iril
                             }
                             if (hasVarArgs)
                             {
-                                EmitVarArgs(call, nps);
+                                EmitVarArgs(call.Arguments, nps);
                             }
 
                             Emit(il.Create(OpCodes.Call, m.ILDefinition));
@@ -1782,7 +1878,7 @@ namespace Iril
                 }
                 if (hasVarArgs)
                 {
-                    EmitVarArgs(call, nps);
+                    EmitVarArgs(call.Arguments, nps);
                 }
                 EmitValue(lv, ltype);
                 Emit(il.Create(OpCodes.Calli, CreateCallSite(ft)));
@@ -1791,15 +1887,15 @@ namespace Iril
             throw new NotSupportedException($"Cannot call `{call.Pointer}`");
         }
 
-        private void EmitVarArgs(CallInstruction call, int numFixedArgs)
+        private void EmitVarArgs(IR.Argument[] arguments, int numFixedArgs)
         {
-            var numVarArgs = call.Arguments.Length - numFixedArgs;
+            var numVarArgs = arguments.Length - numFixedArgs;
             Emit(il.Create(OpCodes.Ldc_I4, numVarArgs));
             Emit(il.Create(OpCodes.Newarr, compilation.sysObj));
             for (var i = 0; i < numVarArgs; i++)
             {
                 Emit(il.Create(OpCodes.Dup));
-                var a = call.Arguments[numFixedArgs + i];
+                var a = arguments[numFixedArgs + i];
                 Emit(il.Create(OpCodes.Ldc_I4, i));
                 EmitValue(a.Value, a.Type);
                 if (a.Type is Types.PointerType)

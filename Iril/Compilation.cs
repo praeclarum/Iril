@@ -23,7 +23,7 @@ namespace Iril
         readonly AssemblyDefinition asm;
         readonly string namespac;
         readonly Resolver resolver = new Resolver ();
-        const string pidNamespace = "<PrivateImplementationDetails>";
+        const string pidTypeName = "<PrivateImplementationDetails>";
 
         readonly SymbolTable<(LiteralStructureType, TypeDefinition)> structs =
             new SymbolTable<(LiteralStructureType, TypeDefinition)> ();
@@ -63,7 +63,7 @@ namespace Iril
         TypeReference sysNotSupp;
         MethodReference sysNotSuppCtor;
         TypeReference sysMath;
-        TypeReference sysException;
+        public TypeReference sysException;
         TypeReference sysParamsAttr;
         public MethodReference sysParamsAttrCtor;
         public MethodReference sysExceptionCtor;
@@ -764,7 +764,7 @@ namespace Iril
 
         TypeDefinition CreateDataType ()
         {
-            var td = new TypeDefinition ("", pidNamespace, TypeAttributes.AnsiClass | TypeAttributes.Sealed, sysObj);
+            var td = new TypeDefinition ("", pidTypeName, TypeAttributes.AnsiClass | TypeAttributes.Sealed, sysObj);
             var compGen = new CustomAttribute (sysCompGenCtor);
             td.CustomAttributes.Add (compGen);
             mod.Types.Add (td);
@@ -1346,7 +1346,7 @@ namespace Iril
             var tname = $"AnonymousStruct{key.Length}_{string.Join("_", key.Select(x => x.Name))}";
 
             var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout;
-            var td = new TypeDefinition (pidNamespace, tname, tattrs, sysVal);
+            var td = new TypeDefinition ("", tname, tattrs, sysVal);
             for (var i = 0; i < key.Length; i++) {
                 var f = new FieldDefinition ("F" + i, FieldAttributes.Public, key[i]);
                 td.Fields.Add (f);
@@ -1358,7 +1358,8 @@ namespace Iril
                 ElementFields = td.Fields.Select (x => (FieldReference)x).ToArray (),
             };
 
-            mod.Types.Add (td);
+            var ptd = dataType.Value;
+            ptd.NestedTypes.Add (td);
             astructTypes[key] = r;
 
             return r;
@@ -1378,7 +1379,7 @@ namespace Iril
         {
             var tname = $"Vector{key.Length}{elementType.Name}";
 
-            var td = new TypeDefinition (pidNamespace, tname, TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout, sysVal);
+            var td = new TypeDefinition (pidTypeName, tname, TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout, sysVal);
 
             for (var i = 0; i < key.Length; i++) {
                 var f = new FieldDefinition ("E" + i, FieldAttributes.Public, elementType);

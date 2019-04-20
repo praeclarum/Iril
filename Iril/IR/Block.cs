@@ -12,6 +12,8 @@ namespace Iril.IR
         public IEnumerable<Assignment> AllAssignments => Assignments.Concat (new[] { TerminatorAssignment });
         public TerminatorInstruction Terminator => (TerminatorInstruction)TerminatorAssignment.Instruction;
 
+        public Instruction FirstInstruction => Assignments.Length > 0 ? Assignments[0].Instruction : Terminator;
+
         public Block(LocalSymbol symbol, IEnumerable<Assignment> assignments, Assignment terminator)
         {
             if (assignments == null)

@@ -586,7 +586,7 @@ namespace Iril.IR
 
         public override string ToString ()
         {
-            return $"{ReturnType} {Pointer}({String.Join (", ", (object[])Arguments)})";
+            return $"invoke {ReturnType} {Pointer}({String.Join (", ", (object[])Arguments)})";
         }
 
         public override bool IsIdempotent (FunctionDefinition function)
