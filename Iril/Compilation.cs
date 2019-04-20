@@ -23,6 +23,9 @@ namespace Iril
         readonly AssemblyDefinition asm;
         readonly string namespac;
         readonly Resolver resolver = new Resolver ();
+
+        bool hasEntryPoint = false;
+
         const string pidTypeName = "<PrivateImplementationDetails>";
 
         readonly SymbolTable<(LiteralStructureType, TypeDefinition)> structs =
@@ -183,6 +186,7 @@ namespace Iril
             CreateFunctionDefinitions ();
             EmitGlobalInitializers ();
             CompileFunctions ();
+            EmitEntrypoint ();
             RemoveUnusedFunctions ();
         }
 
@@ -980,22 +984,22 @@ namespace Iril
         {
             nativeException = new Lazy<TypeDefinition> (() => {
                 var td = new TypeDefinition (namespac, "Exception", TypeAttributes.Public | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit, sysException);
-                var nativeExceptionData = new FieldDefinition ("NativeData", FieldAttributes.Public, sysObj);
-                td.Fields.Add (nativeExceptionData);
-                var nativeExceptionCtor = new MethodDefinition (".ctor", MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName, sysVoid);
+                var data = new FieldDefinition ("NativeData", FieldAttributes.Public, sysObj);
+                td.Fields.Add (data);
+                var ctor = new MethodDefinition (".ctor", MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName, sysVoid);
                 var p = new ParameterDefinition ("data", ParameterAttributes.None, sysObj);
-                nativeExceptionCtor.Parameters.Add (p);
-                var body = new MethodBody (nativeExceptionCtor);
+                ctor.Parameters.Add (p);
+                var body = new MethodBody (ctor);
                 var il = body.GetILProcessor ();
                 il.Append (il.Create (OpCodes.Ldarg_0));
                 il.Append (il.Create (OpCodes.Call, sysExceptionCtorVoid));
                 il.Append (il.Create (OpCodes.Ldarg_0));
                 il.Append (il.Create (OpCodes.Ldarg, p));
-                il.Append (il.Create (OpCodes.Stfld, nativeExceptionData));
+                il.Append (il.Create (OpCodes.Stfld, data));
                 il.Append (il.Create (OpCodes.Ret));
                 body.Optimize ();
-                nativeExceptionCtor.Body = body;
-                td.Methods.Add (nativeExceptionCtor);
+                ctor.Body = body;
+                td.Methods.Add (ctor);
                 mod.Types.Add (td);
                 return td;
             });
@@ -1189,6 +1193,58 @@ namespace Iril
                     ErrorMessage (m.IRModule.SourceFilename, $"Undefined function `{IR.MangledName.Demangle (m.Symbol)}` ({m.Symbol})");
                     CompileMissingFunction (m);
                 }
+            }
+        }
+
+        void EmitEntrypoint ()
+        {
+            var q = from em in externalMethodDefs.Values
+                    let d = em.ILDefinition
+                    where d.Name == "main"
+                    where d.IsStatic
+                    where d.Parameters.Count == 0 || d.Parameters.Count == 2
+                    orderby d.Parameters.Count descending
+                    select em;
+            var maind = q.FirstOrDefault ();
+            if (maind != null) {
+                var main = maind.ILDefinition;
+
+                var md = new MethodDefinition ("Main", MethodAttributes.Static | MethodAttributes.Public, sysInt32);
+                var em = new EntrypointEmitter (this, maind, md);
+                em.Run ();
+
+                main.DeclaringType.Methods.Add (md);
+                mod.EntryPoint = md;
+                hasEntryPoint = true;
+            }
+        }
+
+        class EntrypointEmitter : Emitter
+        {
+            readonly DefinedFunction maind;
+
+            public EntrypointEmitter (Compilation compilation, DefinedFunction main, MethodDefinition methodDefinition) : base (compilation, main.IRModule, methodDefinition)
+            {
+                this.maind = main;
+            }
+
+            public void Run()
+            {
+                var args = new ParameterDefinition ("args", ParameterAttributes.None, compilation.sysString.MakeArrayType ());
+                method.Parameters.Add (args);
+
+                foreach (var p in maind.IRDefinition.Parameters) {
+                    EmitZeroValue (p.ParameterType);
+                }
+                il.Append (il.Create (OpCodes.Call, maind.ILDefinition));
+
+                if (maind.ILDefinition.ReturnType.FullName == "System.Void") {
+                    il.Append (il.Create (OpCodes.Ldc_I4_0));
+                }
+
+                il.Append (il.Create (OpCodes.Ret));
+                body.Optimize ();
+                method.Body = body;
             }
         }
 
@@ -1567,6 +1623,21 @@ namespace Iril
                 SymbolWriterProvider = new PortablePdbWriterProvider (),
             };
             asm.Write (path, ps);
+
+            if (hasEntryPoint) {
+                var text = @"{
+    ""runtimeOptions"": {
+        ""tfm"": ""netcoreapp2.1"",
+        ""framework"": {
+            ""name"": ""Microsoft.NETCore.App"",
+            ""version"": ""2.1.0""
+        }
+    }
+}
+";
+                var rtjsonPath = Path.ChangeExtension (path, ".runtimeconfig.json");
+                File.WriteAllText (rtjsonPath, text);
+            }
         }
     }
 }
