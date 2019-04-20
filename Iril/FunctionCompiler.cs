@@ -174,6 +174,30 @@ namespace Iril
                 }
             }
 
+            //
+            // Mark exception values to be inlined
+            //
+            foreach (var b in f.Blocks) {
+                if (b.Assignments.Length <= 0)
+                    continue;
+
+                var a = b.Assignments[0];
+
+                if (!a.HasResult)
+                    continue;
+                var symbol = a.Result;
+
+                if (a.Instruction is LandingPadInstruction landingPad
+                    && b.Terminator is ResumeInstruction resume
+                    && resume.Value.Value is LocalValue rlocal
+                    && rlocal.Symbol == symbol
+                    && localCounts[symbol] == 1) {
+
+                    shouldInline[symbol] = true;
+                }
+
+            }
+
             var vdbgs = new List<VariableDebugInformation>();
 
             //
