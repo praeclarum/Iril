@@ -4,6 +4,7 @@ using Mono.Cecil.Cil;
 using Iril.Types;
 using CecilInstruction = Mono.Cecil.Cil.Instruction;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace Iril
 {
@@ -22,6 +23,7 @@ namespace Iril
         protected CecilInstruction prev;
 
         readonly SymbolTable<VariableDefinition> structTempLocals = new SymbolTable<VariableDefinition> ();
+        readonly Dictionary<TypeReference[], VariableDefinition> astructTempLocals = new Dictionary<TypeReference[], VariableDefinition> (AnonymousStruct.TypesEquality);
 
         protected Emitter(Compilation compilation, Module module, MethodDefinition methodDefinition)
         {
@@ -32,6 +34,12 @@ namespace Iril
             body = new MethodBody (methodDefinition);
             il = body.GetILProcessor();
             prev = default(CecilInstruction);
+
+            nativeExceptionLocal = new Lazy<VariableDefinition> (() => {
+                var r = new VariableDefinition (compilation.nativeException.Value);
+                body.Variables.Add (r);
+                return r;
+            });
         }
 
         protected void Emit (OpCode code)
@@ -389,6 +397,20 @@ namespace Iril
             }
         }
 
+        protected VariableDefinition GetStructTempLocal (LType type)
+        {
+            switch (type) {
+                case NamedType named:
+                    return GetStructTempLocal (named);
+                case LiteralStructureType literal:
+                    return GetStructTempLocal (literal);
+                default:
+                    throw new NotSupportedException ($"Cannot get struct temp local for {type}");
+            }
+        }
+
+        protected readonly Lazy<VariableDefinition> nativeExceptionLocal;        
+
         protected VariableDefinition GetStructTempLocal (NamedType type)
         {
             if (structTempLocals.TryGetValue (type.Symbol, out var v))
@@ -397,6 +419,18 @@ namespace Iril
             v = new VariableDefinition (t);
             body.Variables.Add (v);
             structTempLocals[type.Symbol] = v;
+            return v;
+        }
+
+        protected VariableDefinition GetStructTempLocal (LiteralStructureType type)
+        {
+            var key = type.Elements.Select (x => compilation.GetClrType (x)).ToArray ();
+            if (astructTempLocals.TryGetValue (key, out var v))
+                return v;
+            var t = compilation.GetClrType (type);
+            v = new VariableDefinition (t);
+            body.Variables.Add (v);
+            astructTempLocals[key] = v;
             return v;
         }
 

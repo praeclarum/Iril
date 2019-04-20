@@ -749,7 +749,24 @@ namespace Iril
                     EmitInvoke (assignedSymbol, invoke, block);
                     break;
                 case IR.LandingPadInstruction landing:
-                    Emit (OpCodes.Pop);
+                    if (locals.TryGetValue (assignedSymbol, out var _)) {
+                        var locData = GetStructTempLocal (landing.Type);
+                        Emit (il.Create (OpCodes.Ldloca, locData));
+                        Emit (il.Create (OpCodes.Initobj, locData.VariableType));
+                        Emit (il.Create (OpCodes.Isinst, compilation.nativeException.Value));
+                        Emit (OpCodes.Dup);
+                        Emit (il.Create (OpCodes.Stloc, nativeExceptionLocal.Value));
+                        var next = il.Create (OpCodes.Ldloc, locData);
+                        Emit (il.Create (OpCodes.Brfalse, next));
+                        Emit (il.Create (OpCodes.Ldloc, nativeExceptionLocal.Value));
+                        Emit (il.Create (OpCodes.Ldfld, compilation.nativeExceptionData));
+                        Emit (il.Create (OpCodes.Unbox_Any, locData.VariableType));
+                        Emit (il.Create (OpCodes.Stloc, locData));
+                        Emit (next);
+                    }
+                    else {
+                        Emit (OpCodes.Pop);
+                    }
                     break;
                 case IR.LoadInstruction load:
                     EmitLoad(load);
@@ -1693,10 +1710,19 @@ namespace Iril
 
                 var catchBlock = function.IRDefinition.Blocks.First(x => x.Symbol == invoke.ExceptionLabel.Symbol);
                 foreach (var catchA in catchBlock.AllAssignments) {
-                    EmitInstruction (catchA.Result, catchA.Instruction, block, nextBlock: null);
+                    EmitInstruction (catchA.Result, catchA.Instruction, catchBlock, nextBlock: null);
+                    if (locals.TryGetValue (catchA.Result, out vd)) {
+                        Emit (il.Create (OpCodes.Stloc, vd));
+                    }
                 }
                 var catchLast = prev;
                 ehs.Add ((calli, tryLast, catchLast));
+
+                //try {
+
+                //}
+                //catch (Exception exx) {
+                //}
             }
             else {
                 throw new Exception ($"Cannot invoke {invoke.Pointer}");

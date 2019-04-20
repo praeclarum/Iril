@@ -67,6 +67,7 @@ namespace Iril
         TypeReference sysParamsAttr;
         public MethodReference sysParamsAttrCtor;
         public MethodReference sysExceptionCtor;
+        public MethodReference sysExceptionCtorVoid;
         public MethodReference sysMathAbsD;
         public MethodReference sysMathCeilD;
         public MethodReference sysMathFloorD;
@@ -92,6 +93,10 @@ namespace Iril
         public MethodReference sysConsoleWriteChar;
         public MethodReference sysConsoleWriteObj;
         public MethodReference sysConsoleWriteLine;
+
+        public Lazy<TypeDefinition> nativeException;
+        public MethodDefinition nativeExceptionCtor => nativeException.Value.GetConstructors ().First ();
+        public FieldDefinition nativeExceptionData => nativeException.Value.Fields.First ();
 
         readonly Dictionary<(int, string), SimdVector> vectorTypes =
             new Dictionary<(int, string), SimdVector> ();
@@ -173,6 +178,7 @@ namespace Iril
             //PrintNameTree ();
             CompileStructures ();
             EmitSyscalls ();
+            EmitNativeExceptions ();
             EmitGlobalVariables ();
             CreateFunctionDefinitions ();
             EmitGlobalInitializers ();
@@ -296,6 +302,7 @@ namespace Iril
             sysDoubleIsNaN = ImportMethod (sysDouble, sysBoolean, "IsNaN", sysDouble);
             sysException = Import ("System.Exception");
             sysExceptionCtor = ImportMethod (sysException, sysVoid, ".ctor", sysString);
+            sysExceptionCtorVoid = ImportMethod (sysException, sysVoid, ".ctor");
             sysNotImpl = Import ("System.NotImplementedException");
             sysNotImplCtor = ImportMethod (sysNotImpl, sysVoid, ".ctor");
             sysNotSupp = Import ("System.NotSupportedException");
@@ -967,6 +974,31 @@ namespace Iril
                     ParamSyms = new SymbolTable<ParameterDefinition> (),
                 };
             }
+        }
+
+        void EmitNativeExceptions ()
+        {
+            nativeException = new Lazy<TypeDefinition> (() => {
+                var td = new TypeDefinition (namespac, "Exception", TypeAttributes.Public | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit, sysException);
+                var nativeExceptionData = new FieldDefinition ("NativeData", FieldAttributes.Public, sysObj);
+                td.Fields.Add (nativeExceptionData);
+                var nativeExceptionCtor = new MethodDefinition (".ctor", MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName, sysVoid);
+                var p = new ParameterDefinition ("data", ParameterAttributes.None, sysObj);
+                nativeExceptionCtor.Parameters.Add (p);
+                var body = new MethodBody (nativeExceptionCtor);
+                var il = body.GetILProcessor ();
+                il.Append (il.Create (OpCodes.Ldarg_0));
+                il.Append (il.Create (OpCodes.Call, sysExceptionCtorVoid));
+                il.Append (il.Create (OpCodes.Ldarg_0));
+                il.Append (il.Create (OpCodes.Ldarg, p));
+                il.Append (il.Create (OpCodes.Stfld, nativeExceptionData));
+                il.Append (il.Create (OpCodes.Ret));
+                body.Optimize ();
+                nativeExceptionCtor.Body = body;
+                td.Methods.Add (nativeExceptionCtor);
+                mod.Types.Add (td);
+                return td;
+            });
         }
 
         void CreateFunctionDefinitions ()
