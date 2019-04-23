@@ -627,9 +627,8 @@ namespace Iril
                         Emit(il.Create(OpCodes.Ldfld, field));
                     }
                     break;
-                case IR.ExtractValueInstruction ee: {
-                        EmitExtractValue (ee.Value, ee.Indices);
-                    }
+                case IR.ExtractValueInstruction ee:
+                    EmitExtractValue (ee.Value, ee.Indices);
                     break;
                 case IR.FaddInstruction fadd:
                     if (fadd.Type is Types.VectorType)
@@ -759,8 +758,8 @@ namespace Iril
                 case IR.IcmpInstruction icmp:
                     EmitIcmp(icmp);
                     break;
-                case IR.InsertElementInstruction insertElement:
-                    EmitTypedValue(insertElement.Value);
+                case IR.InsertValueInstruction iv:
+                    EmitInsertValue (iv.Value, iv.Indices);
                     break;
                 case IR.InttoptrInstruction inttoptr:
                     EmitTypedValue(inttoptr.Value);
@@ -1696,6 +1695,8 @@ namespace Iril
             if ((invoke.Pointer is IR.GlobalValue gv)
                 && (compilation.TryGetFunction (module, gv.Symbol, out var m))) {
 
+                var tryPrev = prev;
+
                 var ps = m.ILDefinition.Parameters;
                 var nps = ps.Count;
                 var hasVarArgs =
@@ -1716,8 +1717,7 @@ namespace Iril
                     EmitVarArgs (invoke.Arguments, nps);
                 }
 
-                var calli = il.Create (OpCodes.Call, m.ILDefinition);
-                Emit (calli);
+                Emit (il.Create (OpCodes.Call, m.ILDefinition));
 
                 // LLVM allows for return type mismatches with void
                 if (m.ILDefinition.ReturnType.FullName == "System.Void" && !(invoke.ReturnType is VoidType)) {
@@ -1744,7 +1744,7 @@ namespace Iril
                     }
                 }
                 var catchLast = prev;
-                ehs.Add ((calli, tryLast, catchLast));
+                ehs.Add ((tryPrev.Next, tryLast, catchLast));
             }
             else if (invoke.Pointer is IR.LocalValue lv) {
                 LType ltype;

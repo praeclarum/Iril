@@ -56,9 +56,9 @@ namespace Iril
             prev = i;
         }
 
-        protected void EmitTypedValue(IR.TypedValue value)
+        protected void EmitTypedValue (IR.TypedValue value)
         {
-            EmitValue(value.Value, value.Type);
+            EmitValue (value.Value, value.Type);
         }
 
         protected void EmitValue(IR.Value value, LType type)
@@ -226,6 +226,19 @@ namespace Iril
             throw new NotSupportedException();
         }
 
+        protected void EmitTypedLValue (IR.TypedValue value)
+        {
+            EmitLValue (value.Value, value.Type);
+        }
+
+        protected void EmitLValue (IR.Value value, LType type)
+        {
+            switch (value) {
+                default:
+                    throw new NotSupportedException ($"Cannot emit lvalue {value} ({value?.GetType ()?.Name}) with type {type}");
+            }
+        }
+
         protected void EmitGetElementPointer(IR.TypedValue pointer, IR.TypedValue[] indices)
         {
             EmitTypedValue (pointer);
@@ -371,6 +384,33 @@ namespace Iril
                 else {
                     if (i + 1 < n) {
                         throw new InvalidOperationException ("Cannot extract value from " + t);
+                    }
+                }
+            }
+        }
+
+        protected void EmitInsertValue (IR.TypedValue aggregateValue, IR.Value[] indices)
+        {
+            EmitTypedLValue (aggregateValue);
+            var t = aggregateValue.Type;
+            var n = indices.Length;
+            for (var i = 0; i < n; i++) {
+                var index = (IR.Constant)indices[i];
+                if (t.Resolve (module) is Types.LiteralStructureType st && false) {
+                    var iindex = index.Int32Value;
+                    var cst = compilation.GetClrType (st).Resolve ();
+                    var field = cst.Fields[iindex];
+                    Emit (il.Create (OpCodes.Ldfld, field));
+                    if (0 <= iindex && iindex < st.Elements.Length) {
+                        t = st.Elements[iindex];
+                    }
+                    else {
+                        throw new InvalidOperationException ($"Cannot insert value #{i} from {st} ({t})");
+                    }
+                }
+                else {
+                    if (i + 1 < n) {
+                        throw new InvalidOperationException ("Cannot insert value to " + t);
                     }
                 }
             }

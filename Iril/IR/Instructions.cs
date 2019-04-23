@@ -527,17 +527,17 @@ namespace Iril.IR
     {
         public readonly TypedValue Value;
         public readonly TypedValue Element;
-        public readonly List<Value> Index;
+        public readonly Value[] Indices;
 
-        public InsertValueInstruction (TypedValue value, TypedValue element, List<Value> index)
+        public InsertValueInstruction (TypedValue value, TypedValue element, List<Value> indices)
         {
             Value = value ?? throw new ArgumentNullException (nameof (value));
             Element = element ?? throw new ArgumentNullException (nameof (element));
-            Index = index ?? throw new ArgumentNullException (nameof (index));
+            Indices = indices?.ToArray () ?? throw new ArgumentNullException (nameof (indices));
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals =>
-            Value.ReferencedLocals.Concat (Element.ReferencedLocals).Concat (Index.SelectMany (x => x.ReferencedLocals));
+            Value.ReferencedLocals.Concat (Element.ReferencedLocals).Concat (Indices.SelectMany (x => x.ReferencedLocals));
 
         public override LType ResultType (Module module) => Value.Type;
     }
