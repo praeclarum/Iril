@@ -1264,9 +1264,16 @@ namespace Iril
         public bool HasErrors => Messages.Exists (m => m.Type == MessageType.Error);
         public int ErrorCount => Messages.Count (m => m.Type == MessageType.Error);
 
-        void ErrorMessage (string filePath, string message, Exception exception = null)
+        public void ErrorMessage (string filePath, string message, Exception exception = null)
         {
             var msg = new Message (message, exception);
+            msg.FilePath = filePath;
+            Messages.Add (msg);
+        }
+
+        public void WarningMessage (string filePath, string message)
+        {
+            var msg = new Message (MessageType.Warning, message);
             msg.FilePath = filePath;
             Messages.Add (msg);
         }

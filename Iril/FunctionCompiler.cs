@@ -1741,12 +1741,57 @@ namespace Iril
                 }
                 var catchLast = prev;
                 ehs.Add ((calli, tryLast, catchLast));
+            }
+            else if (invoke.Pointer is IR.LocalValue lv) {
+                LType ltype;
+                if (function.ParamSyms.TryGetValue (lv.Symbol, out var p)) {
+                    ltype = function.IRDefinition.Parameters.First (x => x.Symbol == lv.Symbol).ParameterType;
+                }
+                else {
+                    var lva = function.IRDefinition.GetAssignment (lv);
+                    ltype = lva.Instruction.ResultType (function.IRModule);
+                }
+                var ft = (FunctionType)((Types.PointerType)ltype).ElementType;
+                var ps = ft.ParameterTypes;
+                var nps = ps.Length;
+                var hasVarArgs = nps > 0 && (ps[nps - 1] is VarArgsType);
+                if (hasVarArgs)
+                    nps--;
+                if (invoke.Arguments.Length < nps) {
+                    throw new InvalidOperationException ($"Too few arguments to {function.IRDefinition.Symbol}");
+                }
+                for (var i = 0; i < nps; i++) {
+                    var a = invoke.Arguments[i];
+                    EmitValue (a.Value, a.Type);
+                }
+                if (hasVarArgs) {
+                    EmitVarArgs (invoke.Arguments, nps);
+                }
+                EmitValue (lv, ltype);
 
-                //try {
+                var calli = il.Create (OpCodes.Calli, CreateCallSite (ft));
+                Emit (calli);
 
-                //}
-                //catch (Exception exx) {
-                //}
+                // Assign it now
+                if (locals.TryGetValue (assignedSymbol, out var vd)) {
+                    Emit (il.Create (OpCodes.Stloc, vd));
+                }
+
+                Emit (il.Create (OpCodes.Leave, blockFirstInstr[invoke.NormalLabel.Symbol]));
+
+                var tryLast = prev;
+
+                var catchBlock = function.IRDefinition.Blocks.First (x => x.Symbol == invoke.ExceptionLabel.Symbol);
+                foreach (var catchA in catchBlock.AllAssignments) {
+                    EmitInstruction (catchA.Result, catchA.Instruction, catchBlock, nextBlock: null);
+                    if (locals.TryGetValue (catchA.Result, out vd)) {
+                        Emit (il.Create (OpCodes.Stloc, vd));
+                    }
+                }
+                var catchLast = prev;
+                ehs.Add ((calli, tryLast, catchLast));
+
+                return;
             }
             else {
                 throw new Exception ($"Cannot invoke {invoke.Pointer}");
@@ -1854,6 +1899,24 @@ namespace Iril
                         EmitValue(call.Arguments[2].Value, call.Arguments[2].Type);
                         Emit(il.Create(OpCodes.Conv_U4));
                         Emit(il.Create(OpCodes.Cpblk));
+                        return;
+                    // declare void @llvm.memmove.p0i8.p0i8.i64(i8* <dest>, i8* <src>,
+                    //                                         i64 <len>, i1 <isvolatile>)
+                    //case "@llvm.memmove.p0i8.p0i8.i64" when call.Arguments.Length >= 3:
+                    //    EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                    //    EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                    //    EmitValue (call.Arguments[2].Value, call.Arguments[2].Type);
+                    //    Emit (il.Create (OpCodes.Conv_U4));
+                    //    Emit (il.Create (OpCodes.Cpblk));
+                    //    return;
+                    case "@llvm.stacksave":
+                        compilation.WarningMessage (module.SourceFilename, $"Stack save is not supported in `{MangledName.Demangle (function.Symbol)}`");
+                        Emit (il.Create (OpCodes.Ldc_I4_0));
+                        Emit (il.Create (OpCodes.Conv_U));
+                        return;
+                    case "@llvm.stackrestore":
+                        compilation.WarningMessage (module.SourceFilename, $"Stack restore is not supported in `{MangledName.Demangle (function.Symbol)}`");
+                        Emit (il.Create (OpCodes.Pop));
                         return;
                     default:
                         if (compilation.TryGetFunction(module, gv.Symbol, out var m))

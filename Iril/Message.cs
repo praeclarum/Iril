@@ -18,6 +18,12 @@ namespace Iril
             this.exception = exception;
         }
 
+        public Message (MessageType type, string message)
+        {
+            Type = type;
+            Text = message ?? throw new ArgumentNullException (nameof (message));
+        }
+
         public override string ToString ()
         {
 #if DEBUG
@@ -30,6 +36,7 @@ namespace Iril
 
     public enum MessageType
     {
-        Error
+        Error,
+        Warning
     }
 }

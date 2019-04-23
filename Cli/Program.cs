@@ -147,8 +147,14 @@ namespace Cli
                     .ToList ();
                 foreach (var e in errors) {
                     Console.Write ("iril: ");
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.Write ("error: ");
+                    if (e.Type == MessageType.Error) {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.Write ("error: ");
+                    }
+                    else {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.Write ("warning: ");
+                    }
                     Console.ResetColor ();
 
                     if (!string.IsNullOrEmpty (e.FilePath)) {
