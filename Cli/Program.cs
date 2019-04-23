@@ -12,6 +12,11 @@ namespace Cli
         static int Main(string[] args)
         {
             //
+            // Start loading in the background
+            //
+            Library.LoadStandardLibrariesAsync ();
+
+            //
             // Inputs
             //
             var files = new List<string> ();

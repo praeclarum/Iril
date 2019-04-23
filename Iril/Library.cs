@@ -24,19 +24,19 @@ namespace Iril
             Modules = modules ?? throw new ArgumentNullException (nameof (modules));
         }
 
-        public static Library FromZip (Symbol symbol, Stream stream)
+        public static Library FromZip (Symbol librarySymbol, Stream stream)
         {
             var zip = new ZipArchive (stream, ZipArchiveMode.Read);
             var llentries = zip.Entries.Where (x => x.Name.EndsWith (".ll", StringComparison.InvariantCultureIgnoreCase));
             var modules = llentries.Select (ReadModule).Where (x => x != null).ToArray ();
 
-            return new Library (symbol, modules);
+            return new Library (librarySymbol, modules);
 
             Module ReadModule (ZipArchiveEntry entry)
             {
                 using (var s = entry.Open ()) {
                     using (var r = new StreamReader (s)) {
-                        var name = entry.Name;
+                        var name = Path.Combine (librarySymbol.Text, entry.Name);
                         var llvm = r.ReadToEnd ();
                         try {
                             var m = Module.Parse (llvm, name);
@@ -57,6 +57,11 @@ namespace Iril
         static readonly Task<SymbolTable<Library>> standardLibraries;
 
         public static SymbolTable<Library> StandardLibraries => standardLibraries.Result;
+
+        public static Task LoadStandardLibrariesAsync ()
+        {
+            return standardLibraries;
+        }
 
         static Library()
         {
