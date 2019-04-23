@@ -245,12 +245,12 @@ namespace Iril.IR
     public class ExtractValueInstruction : Instruction
     {
         public readonly TypedValue Value;
-        public readonly List<Value> Indices;
+        public readonly Value[] Indices;
 
         public ExtractValueInstruction (TypedValue value, List<Value> indices)
         {
             Value = value ?? throw new ArgumentNullException (nameof (value));
-            Indices = indices ?? throw new ArgumentNullException (nameof (indices));
+            Indices = indices?.ToArray () ?? throw new ArgumentNullException (nameof (indices));
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals =>

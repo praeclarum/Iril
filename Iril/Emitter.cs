@@ -349,6 +349,33 @@ namespace Iril
             return true;
         }
 
+        protected void EmitExtractValue (IR.TypedValue aggregateValue, IR.Value[] indices)
+        {
+            EmitTypedValue (aggregateValue);
+            var t = aggregateValue.Type;
+            var n = indices.Length;
+            for (var i = 0; i < n; i++) {
+                var index = (IR.Constant)indices[i];
+                if (t.Resolve (module) is Types.LiteralStructureType st) {
+                    var iindex = index.Int32Value;
+                    var cst = compilation.GetClrType (st).Resolve ();
+                    var field = cst.Fields[iindex];
+                    Emit (il.Create (OpCodes.Ldfld, field));
+                    if (0 <= iindex && iindex < st.Elements.Length) {
+                        t = st.Elements[iindex];
+                    }
+                    else {
+                        throw new InvalidOperationException ($"Cannot extract value #{i} from {st} ({t})");
+                    }
+                }
+                else {
+                    if (i + 1 < n) {
+                        throw new InvalidOperationException ("Cannot extract value from " + t);
+                    }
+                }
+            }
+        }
+
         protected void EmitZeroValue(LType type)
         {
             if (type is VectorType vt) {

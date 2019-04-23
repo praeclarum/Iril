@@ -627,6 +627,10 @@ namespace Iril
                         Emit(il.Create(OpCodes.Ldfld, field));
                     }
                     break;
+                case IR.ExtractValueInstruction ee: {
+                        EmitExtractValue (ee.Value, ee.Indices);
+                    }
+                    break;
                 case IR.FaddInstruction fadd:
                     if (fadd.Type is Types.VectorType)
                     {
