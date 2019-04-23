@@ -32,9 +32,7 @@ namespace Iril
         bool triedToCompile;
         readonly LivelinessTable liveliness;
         readonly SymbolTable<VariableDefinition> phiLocals = new SymbolTable<VariableDefinition>();
-        readonly SymbolTable<VariableDefinition> locals = new SymbolTable<VariableDefinition>();
         readonly SymbolTable<bool> shouldInline = new SymbolTable<bool>();
-        readonly Dictionary<(string, int), VariableDefinition> vectorTemps = new Dictionary<(string, int), VariableDefinition>();
         readonly SymbolTable<CecilInstruction> blockFirstInstr = new SymbolTable<CecilInstruction>();
         readonly SymbolTable<SymbolTable<CecilInstruction>> blockPredInstr = new SymbolTable<SymbolTable<CecilInstruction>>();
         readonly SymbolTable<CecilInstruction> blockHeadLastInstr = new SymbolTable<CecilInstruction>();
@@ -757,6 +755,9 @@ namespace Iril
                     break;
                 case IR.IcmpInstruction icmp:
                     EmitIcmp(icmp);
+                    break;
+                case IR.InsertElementInstruction ie:
+                    EmitInsertElement (ie.Value, ie.Element, ie.Index);
                     break;
                 case IR.InsertValueInstruction iv:
                     EmitInsertValue (iv.Value, iv.Indices);
@@ -1553,34 +1554,6 @@ namespace Iril
 
             //if (nextBlock.Symbol != sw.DefaultLabel.Symbol)
             Emit(il.Create(OpCodes.Br, GetLabel(sw.DefaultLabel, block)));
-        }
-
-        VariableDefinition GetVectorTempVariable(SimdVector type, IR.Value value, int uid)
-        {
-            //
-            // First check if this value is already stored into a local
-            // If so, just use that.
-            //
-            if (value is IR.LocalValue lv && locals.TryGetValue(lv.Symbol, out var vd))
-                return vd;
-
-            //
-            // Ah, the value was inlined. Lookup/Allocate a register for it.
-            //
-            var key = (type.ClrType.FullName, uid);
-            if (vectorTemps.TryGetValue(key, out vd))
-                return vd;
-
-
-            vd = new VariableDefinition(type.ClrType);
-            vectorTemps[key] = vd;
-            body.Variables.Add(vd);
-
-            //var name = $"vectorTemp{vectorTemps.Count}";
-            //var dbg = new VariableDebugInformation (vd, name);
-            //vdbgs.Add (dbg);
-
-            return vd;
         }
 
         void EmitVectorUnop(OpCode op, IR.TypedValue op1, Types.VectorType type)

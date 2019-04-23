@@ -21,7 +21,9 @@ namespace Iril
 
         // Working Variables
         protected CecilInstruction prev;
+        protected readonly SymbolTable<VariableDefinition> locals = new SymbolTable<VariableDefinition> ();
 
+        readonly Dictionary<(string, int), VariableDefinition> vectorTemps = new Dictionary<(string, int), VariableDefinition> ();
         readonly SymbolTable<VariableDefinition> structTempLocals = new SymbolTable<VariableDefinition> ();
         readonly Dictionary<TypeReference[], VariableDefinition> astructTempLocals = new Dictionary<TypeReference[], VariableDefinition> (AnonymousStruct.TypesEquality);
 
@@ -234,6 +236,18 @@ namespace Iril
         protected void EmitLValue (IR.Value value, LType type)
         {
             switch (value) {
+                case IR.UndefinedConstant uc when type is VectorType vt: {
+                        var v = GetVectorTempVariable (compilation.GetVectorType (vt), value, 0);
+                        Emit (il.Create (OpCodes.Ldloca, v));
+                    }
+                    break;
+                case IR.LocalValue lv when type is VectorType vt: {
+                        var v = GetVectorTempVariable (compilation.GetVectorType (vt), value, 0);
+                        EmitValue (value, type);
+                        Emit (il.Create (OpCodes.Stloc, v));
+                        Emit (il.Create (OpCodes.Ldloca, v));
+                    }
+                    break;
                 default:
                     throw new NotSupportedException ($"Cannot emit lvalue {value} ({value?.GetType ()?.Name}) with type {type}");
             }
@@ -389,6 +403,22 @@ namespace Iril
             }
         }
 
+        protected void EmitInsertElement (IR.TypedValue vectorValue, IR.TypedValue elementValue, IR.TypedValue index)
+        {
+            var vt = compilation.GetVectorType ((VectorType)vectorValue.Type);
+            
+            EmitTypedLValue (vectorValue);
+            Emit (OpCodes.Dup);
+            EmitTypedValue (elementValue);
+            if (index.Value is IR.Constant ic) {
+                Emit (il.Create (OpCodes.Stfld, vt.ElementFields[ic.Int32Value]));
+                Emit (il.Create (OpCodes.Ldobj, vt.ClrType));
+            }
+            else {
+                throw new NotSupportedException ("Cannot insert into variable element index");
+            }
+        }
+
         protected void EmitInsertValue (IR.TypedValue aggregateValue, IR.Value[] indices)
         {
             EmitTypedLValue (aggregateValue);
@@ -462,6 +492,34 @@ namespace Iril
             else {
                 throw new NotSupportedException ("Cannot get zero for " + type);
             }
+        }
+
+        protected VariableDefinition GetVectorTempVariable (SimdVector type, IR.Value value, int uid)
+        {
+            //
+            // First check if this value is already stored into a local
+            // If so, just use that.
+            //
+            if (value is IR.LocalValue lv && locals.TryGetValue (lv.Symbol, out var vd))
+                return vd;
+
+            //
+            // Ah, the value was inlined. Lookup/Allocate a register for it.
+            //
+            var key = (type.ClrType.FullName, uid);
+            if (vectorTemps.TryGetValue (key, out vd))
+                return vd;
+
+
+            vd = new VariableDefinition (type.ClrType);
+            vectorTemps[key] = vd;
+            body.Variables.Add (vd);
+
+            //var name = $"vectorTemp{vectorTemps.Count}";
+            //var dbg = new VariableDebugInformation (vd, name);
+            //vdbgs.Add (dbg);
+
+            return vd;
         }
 
         protected VariableDefinition GetStructTempLocal (LType type)
