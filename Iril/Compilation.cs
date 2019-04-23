@@ -44,6 +44,7 @@ namespace Iril
         TypeReference sysVal;
         TypeReference sysBoolean;
         TypeReference sysByte;
+        TypeReference sysByteArray;
         TypeReference sysInt16;
         public TypeReference sysInt32;
         public TypeReference sysUInt32;
@@ -96,6 +97,9 @@ namespace Iril
         public MethodReference sysConsoleWriteChar;
         public MethodReference sysConsoleWriteObj;
         public MethodReference sysConsoleWriteLine;
+        TypeReference sysEncoding;
+        public MethodReference sysAscii;
+        public MethodReference sysAsciiGetBytes;
 
         public Lazy<TypeDefinition> nativeException;
         public MethodDefinition nativeExceptionCtor => nativeException.Value.GetConstructors ().First ();
@@ -289,6 +293,7 @@ namespace Iril
             sysVoidPtrPtr = sysVoidPtr.MakePointerType ();
             sysString = Import ("System.String");
             sysChar = Import ("System.Char");
+            sysByteArray = sysByte.MakeArrayType ();
             sysCharArray = sysChar.MakeArrayType ();
             sysObjArray = sysObj.MakeArrayType ();
             sysStringToCharArray = ImportMethod (sysString, sysCharArray, "ToCharArray");
@@ -334,6 +339,9 @@ namespace Iril
             sysPtrToStringAuto = ImportMethod (sysMarshal, sysString, "PtrToStringAuto", sysIntPtr);
             sysParamsAttr = Import (typeof(ParamArrayAttribute).FullName);
             sysParamsAttrCtor = ImportMethod (sysParamsAttr, sysVoid, ".ctor");
+            sysEncoding = Import ("System.Text.Encoding");
+            sysAscii = ImportMethod (sysEncoding, sysEncoding, "get_ASCII");
+            sysAsciiGetBytes = ImportMethod (sysEncoding, sysByteArray, "GetBytes", sysString);
         }
 
         readonly SymbolTable<Mono.Cecil.Cil.Document> fileDocuments = new SymbolTable<Mono.Cecil.Cil.Document> ();
@@ -897,13 +905,22 @@ namespace Iril
                                 }
                             }
                             var bytes = chars.ToArray ();
+                            var isAscii = bytes.All (x => x < 128);
                             var size = bytes.Length;
-                            var dataField = compilation.AddDataField (bytes);
-                            Emit (il.Create (OpCodes.Ldc_I4, size));
-                            Emit (il.Create (OpCodes.Newarr, compilation.sysByte));
-                            Emit (il.Create (OpCodes.Dup));
-                            Emit (il.Create (OpCodes.Ldtoken, dataField));
-                            Emit (il.Create (OpCodes.Call, compilation.sysRuntimeHelpersInitArray));
+                            if (isAscii) {
+                                var str = System.Text.Encoding.ASCII.GetString (bytes);
+                                Emit (il.Create (OpCodes.Call, compilation.sysAscii));
+                                Emit (il.Create (OpCodes.Ldstr, str));
+                                Emit (il.Create (OpCodes.Callvirt, compilation.sysAsciiGetBytes));
+                            }
+                            else {
+                                var dataField = compilation.AddDataField (bytes);
+                                Emit (il.Create (OpCodes.Ldc_I4, size));
+                                Emit (il.Create (OpCodes.Newarr, compilation.sysByte));
+                                Emit (il.Create (OpCodes.Dup));
+                                Emit (il.Create (OpCodes.Ldtoken, dataField));
+                                Emit (il.Create (OpCodes.Call, compilation.sysRuntimeHelpersInitArray));
+                            }
                             Emit (OpCodes.Ldc_I4_3);
                             Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
                             Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
