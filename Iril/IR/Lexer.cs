@@ -149,6 +149,7 @@ namespace Iril.IR
             { Symbol.Intern ("linkonce"), Token.LINKONCE },
             { Symbol.Intern ("linkonce_odr"), Token.LINKONCE_ODR },
             { Symbol.Intern ("weak"), Token.WEAK },
+            { Symbol.Intern ("weak_odr"), Token.WEAK_ODR },
             { Symbol.Intern ("dereferenceable"), Token.DEREFERENCEABLE },
             { Symbol.Intern ("available_externally"), Token.AVAILABLE_EXTERNALLY },
             { Symbol.Intern ("personality"), Token.PERSONALITY },
