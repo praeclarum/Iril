@@ -149,6 +149,8 @@ namespace Iril
         readonly Lazy<TypeDefinition> dataType;
         readonly Dictionary<int, TypeDefinition> dataFieldTypes = new Dictionary<int, TypeDefinition> ();
 
+        readonly SymbolTable<Library> libraries;
+
         public int MaxFunctions { get; set; } = int.MaxValue;
 
         public Compilation (IEnumerable<Module> documents, string assemblyName)
@@ -171,6 +173,8 @@ namespace Iril
             globalName = new NameNode {
                 Name = "global"
             };
+
+            libraries = Library.StandardLibraries;
         }
 
         public void Compile ()

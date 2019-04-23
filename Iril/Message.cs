@@ -26,11 +26,16 @@ namespace Iril
 
         public override string ToString ()
         {
+            var m = $"{Type}: {FilePath}: {Text}";
+            if (!string.IsNullOrEmpty(Surrounding)) {
+                m += "\n" + Surrounding;
+            }
 #if DEBUG
-            return $"{Type}: {Text}\n{Exception}";
-#else
-            return $"{Type}: {Text}";
+            if (Exception != null) {
+                m += "\n" + Exception;
+            }
 #endif
+            return m;
         }
     }
 

@@ -9,7 +9,7 @@ unzip -n ${TMPDIR}stl.zip  -x /clang-tools-extra/* clang compiler-rt debuginfo-t
 
 pushd ${TMPDIR}stlwork/llvm-project-release-8.x/libcxx/src
 
-clang -g -O1 -S -emit-llvm -std=c++17 -frtti -D_LIBCPP_BUILDING_LIBRARY *.cpp
+clang -g -O1 -S -emit-llvm -std=c++17 -frtti -fpic -D_LIBCPP_BUILDING_LIBRARY *.cpp
 
 zip libcxx.zip *.ll
 
