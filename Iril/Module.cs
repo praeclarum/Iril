@@ -54,7 +54,7 @@ namespace Iril
         public static Module Parse (string llvm, string filename = "")
         {
             var module = new Module ();
-            module.FilePath = !string.IsNullOrEmpty (filename) ? System.IO.Path.GetFullPath (filename) : "";
+            module.FilePath = !string.IsNullOrEmpty (filename) ? filename : "";
             module.Symbol = GetSymbolFromFileName (filename);
             var parser = new Parser (module);
             var lex = new Lexer (llvm);
