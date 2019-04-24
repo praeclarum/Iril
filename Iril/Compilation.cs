@@ -44,6 +44,7 @@ namespace Iril
         TypeReference sysVal;
         TypeReference sysBoolean;
         TypeReference sysByte;
+        public TypeReference sysBytePtr;
         TypeReference sysByteArray;
         TypeReference sysInt16;
         public TypeReference sysInt32;
@@ -100,6 +101,11 @@ namespace Iril
         TypeReference sysEncoding;
         public MethodReference sysAscii;
         public MethodReference sysAsciiGetBytes;
+        TypeReference sysStackTrace;
+        public MethodReference sysStackTraceCtor;
+        public MethodReference sysStackTraceGetFrameCount;
+        public MethodReference sysStringCharCountCtor;
+        public MethodReference sysStringConcat;
 
         public Lazy<TypeDefinition> nativeException;
         public MethodDefinition nativeExceptionCtor => nativeException.Value.GetConstructors ().First ();
@@ -293,6 +299,7 @@ namespace Iril
             sysVoidPtrPtr = sysVoidPtr.MakePointerType ();
             sysString = Import ("System.String");
             sysChar = Import ("System.Char");
+            sysBytePtr = sysByte.MakePointerType ();
             sysByteArray = sysByte.MakeArrayType ();
             sysCharArray = sysChar.MakeArrayType ();
             sysObjArray = sysObj.MakeArrayType ();
@@ -342,6 +349,11 @@ namespace Iril
             sysEncoding = Import ("System.Text.Encoding");
             sysAscii = ImportMethod (sysEncoding, sysEncoding, "get_ASCII");
             sysAsciiGetBytes = ImportMethod (sysEncoding, sysByteArray, "GetBytes", sysString);
+            sysStackTrace = Import ("System.Diagnostics.StackTrace");
+            sysStackTraceCtor = ImportMethod (sysStackTrace, sysVoid, ".ctor");
+            sysStackTraceGetFrameCount = ImportMethod (sysStackTrace, sysInt32, "get_FrameCount");
+            sysStringCharCountCtor = ImportMethod (sysString, sysVoid, ".ctor", sysChar, sysInt32);
+            sysStringConcat = ImportMethod (sysString, sysString, "Concat", sysString, sysString);
         }
 
         readonly SymbolTable<Mono.Cecil.Cil.Document> fileDocuments = new SymbolTable<Mono.Cecil.Cil.Document> ();
@@ -1461,7 +1473,7 @@ namespace Iril
         {
             var tname = $"AnonymousStruct{key.Length}_{string.Join("_", key.Select(x => x.Name))}";
 
-            var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout;
+            var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.NestedPublic;
             var td = new TypeDefinition ("", tname, tattrs, sysVal);
             for (var i = 0; i < key.Length; i++) {
                 var f = new FieldDefinition ("F" + i, FieldAttributes.Public, key[i]);

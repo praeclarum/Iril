@@ -33,10 +33,12 @@ namespace Iril
         readonly LivelinessTable liveliness;
         readonly SymbolTable<VariableDefinition> phiLocals = new SymbolTable<VariableDefinition>();
         readonly SymbolTable<bool> shouldInline = new SymbolTable<bool>();
-        readonly SymbolTable<CecilInstruction> blockFirstInstr = new SymbolTable<CecilInstruction>();
-        readonly SymbolTable<SymbolTable<CecilInstruction>> blockPredInstr = new SymbolTable<SymbolTable<CecilInstruction>>();
-        readonly SymbolTable<CecilInstruction> blockHeadLastInstr = new SymbolTable<CecilInstruction>();
-        readonly SymbolTable<CecilInstruction> blockLastInstr = new SymbolTable<CecilInstruction>();
+        readonly BlocksContext mainContext = new BlocksContext ();
+
+        readonly SymbolTable<LandingPad> landingPads = new SymbolTable<LandingPad> ();
+        readonly SymbolTable<bool> isLandingPad = new SymbolTable<bool> ();
+
+        bool shouldTrace = true;
 
         public FunctionCompiler(Compilation compilation, DefinedFunction function)
             : base(compilation, function.IRModule, function.ILDefinition)
@@ -44,6 +46,8 @@ namespace Iril
             this.function = function;
             liveliness = new LivelinessTable(function);
         }
+
+        readonly SymbolTable<int> localCounts = new SymbolTable<int> ();
 
         public void CompileFunction()
         {
@@ -57,8 +61,7 @@ namespace Iril
 
             //
             // Get local usage count
-            //
-            var localCounts = new SymbolTable<int>();
+            //            
             foreach (var p in paramSyms)
             {
                 localCounts.Add(p.Key, 0);
@@ -174,6 +177,7 @@ namespace Iril
 
             //
             // Mark exception values to be inlined
+            // if they are only used in a simple resume
             //
             foreach (var b in f.Blocks) {
                 if (b.Assignments.Length <= 0)
@@ -193,7 +197,6 @@ namespace Iril
 
                     shouldInline[symbol] = true;
                 }
-
             }
 
             var vdbgs = new List<VariableDebugInformation>();
@@ -255,143 +258,30 @@ namespace Iril
                 }
             }
 
-            var shouldTrace = false;
+            //
+            // Find landing pads
+            //
+            FindLandingPads ();
 
             //
             // Create target instructions for each block
             //
-            foreach (var b in f.Blocks)
-            {
-                if (b.FirstInstruction is LandingPadInstruction)
-                    continue;
-                var phipreds = b.PhiPredecessors.ToList();
-
-                var firstI = il.Create(OpCodes.Nop);
-                var i = firstI;
-
-                if (phipreds.Count > 0)
-                {
-                    var phis = b.Assignments.Where(x => x.Instruction is PhiInstruction).ToList();
-                    var pis = new SymbolTable<CecilInstruction>();
-                    blockPredInstr[b.Symbol] = pis;
-                    for (var j = 0; j < phipreds.Count; j++)
-                    {
-                        var pred = phipreds[j];
-                        i = il.Create(OpCodes.Nop);
-                        pis[pred] = i;
-                        il.Append(i);
-                        var phiVs = new List<(Assignment Assignment, PhiInstruction Phi, Value Value)>();
-                        foreach (var oa in phis)
-                        {
-                            var phi = (PhiInstruction)oa.Instruction;
-                            foreach (var v in phi.Values.Where(x => ((LocalValue)x.Label).Symbol == pred))
-                            {
-                                phiVs.Add((oa, phi, v.Value));
-                            }
-                        }
-                        prev = i;
-                        EmitPhis(phiVs);
-                        if (j + 1 < phipreds.Count)
-                        {
-                            il.Append(il.Create(OpCodes.Br, firstI));
-                        }
-                    }
-                }
-
-                i = firstI;
-                il.Append(i);
-                blockFirstInstr[b.Symbol] = i;
-
-                //
-                // Block Trace
-                //
-                if (shouldTrace)
-                {
-                    il.Append(il.Create(OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
-                    i = il.Create(OpCodes.Call, compilation.sysConsoleWriteLine);
-                    il.Append(i);
-                }
-
-                //
-                // Block Debugger Break
-                //
-                //i = il.Create (OpCodes.Call, compilation.sysDebuggerBreak);
-                //il.Append (i);
-
-                blockHeadLastInstr[b.Symbol] = i;
+            var emitBlocks = (from b in f.Blocks
+                              where !(isLandingPad.ContainsKey (b.Symbol) && isLandingPad[b.Symbol])
+                              select b).ToList ();
+            prev = null;
+            foreach (var b in emitBlocks) {
+                EmitBlockFirstInstruction (b, mainContext);
             }
 
             //
-            // Emit each block
+            // Emit block assignments
             //
             var sqpts = new List<(CecilInstruction, MetaSymbol)>();
-            for (var i = 0; i < f.Blocks.Length; i++)
-            {
-                var b = f.Blocks[i];
-                if (b.FirstInstruction is LandingPadInstruction)
-                    continue;
-                var nextBlock = i + 1 < f.Blocks.Length ? f.Blocks[i + 1] : null;
-
-                //
-                // Emit the assignments
-                //
-                prev = blockHeadLastInstr[b.Symbol];
-                foreach (var a in b.Assignments)
-                {
-                    if (!ShouldInline(a.Result)
-                        && !(a.Instruction is IR.PhiInstruction))
-                    {
-
-                        EmitInstruction(a.Result, a.Instruction, b, nextBlock);
-
-                        if (a.HasDebugSymbol)
-                        {
-                            //sqpts.Add ((prev, a.DebugSymbol));
-                        }
-
-                        // If we need to assign it, do so
-                        if (locals.TryGetValue(a.Result, out var vd))
-                        {
-                            Emit(il.Create(OpCodes.Stloc, vd));
-                        }
-                        else
-                        {
-                            // If it produced a value but it's discarded, pop it
-                            if (a.Result != LocalSymbol.None && localCounts[a.Result] == 0)
-                            {
-                                Emit(il.Create(OpCodes.Pop));
-                            }
-                        }
-                    }
-                }
-
-                //
-                // Emit phi variables
-                //
-                foreach (var ob in f.Blocks)
-                {
-                    var phiVs = new List<(IR.Assignment Assignment, IR.PhiInstruction Phi, IR.Value)>();
-                    foreach (var oa in ob.Assignments)
-                    {
-                        if (oa.Result != LocalSymbol.None && oa.Instruction is IR.PhiInstruction phi)
-                        {
-                            var vs = phi.Values.Where(x => x.Label is IR.LocalValue l && l.Symbol == b.Symbol);
-                            foreach (var v in vs)
-                            {
-                                phiVs.Add((oa, phi, v.Value));
-                            }
-                        }
-                    }
-                    //EmitPhis (phiVs);
-
-                }
-
-                //
-                // Emit terminator
-                //
-                EmitInstruction(b.TerminatorAssignment.Result, b.Terminator, b, nextBlock);
-
-                blockLastInstr[b.Symbol] = prev;
+            for (var i = 0; i < emitBlocks.Count; i++) {
+                var b = emitBlocks[i];
+                var nextBlock = i + 1 < emitBlocks.Count ? emitBlocks[i + 1] : null;
+                EmitBlockAssignments (b, nextBlock, mainContext);
             }
 
             body.Optimize ();
@@ -414,8 +304,6 @@ namespace Iril
                 };
                 body.ExceptionHandlers.Add (handler);
             }
-
-            //body.Optimize();
 
             //
             // Add sequence points
@@ -446,11 +334,9 @@ namespace Iril
 
             var bodyDbg = new ScopeDebugInformation(body.Instructions.First(), null);
 
-            foreach (var b in f.Blocks)
+            foreach (var b in emitBlocks)
             {
-                if (b.FirstInstruction is LandingPadInstruction)
-                    continue;
-                var scope = new ScopeDebugInformation(blockFirstInstr[b.Symbol], blockLastInstr[b.Symbol]);
+                var scope = new ScopeDebugInformation(mainContext.BlockFirstInstr[b.Symbol], mainContext.BlockLastInstr[b.Symbol]);
                 foreach (var a in b.Assignments)
                 {
                     if (!a.HasResult)
@@ -475,6 +361,201 @@ namespace Iril
 
             md.DebugInformation.Scope = bodyDbg;
             md.Body = body;
+        }
+
+        void EmitBlockAssignments (Block b, Block nextBlock, BlocksContext context)
+        {
+            prev = context.BlockHeadLastInstr[b.Symbol];
+
+            foreach (var a in b.Assignments) {
+                if (!ShouldInline (a.Result)
+                    && !(a.Instruction is IR.PhiInstruction)) {
+
+                    EmitInstruction (a.Result, a.Instruction, b, nextBlock, context);
+
+                    if (a.HasDebugSymbol) {
+                        //sqpts.Add ((prev, a.DebugSymbol));
+                    }
+
+                    // If we need to assign it, do so
+                    if (locals.TryGetValue (a.Result, out var vd)) {
+                        Emit (il.Create (OpCodes.Stloc, vd));
+                    }
+                    else {
+                        // If it produced a value but it's discarded, pop it
+                        if (a.Result != LocalSymbol.None && localCounts[a.Result] == 0) {
+                            Emit (il.Create (OpCodes.Pop));
+                        }
+                    }
+                }
+            }
+
+            //
+            // Emit terminator
+            //
+            EmitInstruction (b.TerminatorAssignment.Result, b.Terminator, b, nextBlock, context);
+
+            context.BlockLastInstr[b.Symbol] = prev;
+        }
+
+        class BlocksContext
+        {
+            public readonly bool IsExceptionHandler;
+            public readonly SymbolTable<CecilInstruction> BlockFirstInstr;
+            public readonly SymbolTable<SymbolTable<CecilInstruction>> BlockPredInstr;
+            public readonly SymbolTable<CecilInstruction> BlockHeadLastInstr;
+            public readonly SymbolTable<CecilInstruction> BlockLastInstr;
+            public BlocksContext ()
+            {
+                IsExceptionHandler = false;
+                BlockFirstInstr = new SymbolTable<CecilInstruction> ();
+                BlockPredInstr = new SymbolTable<SymbolTable<CecilInstruction>> ();
+                BlockHeadLastInstr = new SymbolTable<CecilInstruction> ();
+                BlockLastInstr = new SymbolTable<CecilInstruction> ();
+            }
+            public BlocksContext (BlocksContext other)
+            {
+                IsExceptionHandler = true;
+                BlockFirstInstr = new SymbolTable<CecilInstruction> (other.BlockFirstInstr);
+                BlockHeadLastInstr = new SymbolTable<CecilInstruction> (other.BlockHeadLastInstr);
+                BlockLastInstr = new SymbolTable<CecilInstruction> (other.BlockLastInstr);
+                BlockPredInstr = new SymbolTable<SymbolTable<CecilInstruction>> ();
+                foreach (var kv in other.BlockPredInstr) {
+                    var r = new SymbolTable<CecilInstruction> (kv.Value);
+                    BlockPredInstr[kv.Key] = r;
+                }
+            }
+        }
+
+        private void EmitBlockFirstInstruction (Block b, BlocksContext context)
+        {
+            var firstI = il.Create (OpCodes.Nop);
+
+            var phipreds = b.PhiPredecessors.ToList ();
+            if (phipreds.Count > 0) {
+                var phis = b.Assignments.Where (x => x.Instruction is PhiInstruction).ToList ();
+                var pis = new SymbolTable<CecilInstruction> ();
+                context.BlockPredInstr[b.Symbol] = pis;
+                for (var j = 0; j < phipreds.Count; j++) {
+                    var pred = phipreds[j];
+                    var i = il.Create (OpCodes.Nop);
+                    pis[pred] = i;
+                    Emit (i);
+                    var phiVs = new List<(Assignment Assignment, PhiInstruction Phi, Value Value)> ();
+                    foreach (var oa in phis) {
+                        var phi = (PhiInstruction)oa.Instruction;
+                        foreach (var v in phi.Values.Where (x => ((LocalValue)x.Label).Symbol == pred)) {
+                            phiVs.Add ((oa, phi, v.Value));
+                        }
+                    }
+                    EmitPhis (phiVs);
+                    if (j + 1 < phipreds.Count) {
+                        Emit (il.Create (OpCodes.Br, firstI));
+                    }
+                }
+            }
+
+            Emit (firstI);
+            context.BlockFirstInstr[b.Symbol] = firstI;
+
+            //
+            // Block Trace
+            //
+            if (shouldTrace) {
+                Emit (il.Create (OpCodes.Ldc_I4, 32));
+                Emit (il.Create (OpCodes.Newobj, compilation.sysStackTraceCtor));
+                Emit (il.Create (OpCodes.Callvirt, compilation.sysStackTraceGetFrameCount));
+                Emit (il.Create (OpCodes.Ldc_I4, 4));
+                Emit (il.Create (OpCodes.Mul));
+                Emit (il.Create (OpCodes.Newobj, compilation.sysStringCharCountCtor));
+
+                Emit (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
+
+                Emit (il.Create (OpCodes.Call, compilation.sysStringConcat));
+
+                Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
+            }
+
+            //
+            // Block Debugger Break
+            //
+            //i = il.Create (OpCodes.Call, compilation.sysDebuggerBreak);
+            //il.Append (i);
+
+            context.BlockHeadLastInstr[b.Symbol] = prev;
+        }
+
+        void FindLandingPads ()
+        {
+            var blocks = function.IRDefinition.Blocks;
+            var blockIndex = new SymbolTable<Block> ();
+            foreach (var b in blocks)
+                blockIndex[b.Symbol] = b;
+
+            foreach (var ab in blocks) {
+                var s = ab.Symbol;
+                var first = ab.FirstNonPhiAssignment;
+                if (first.Instruction is LandingPadInstruction landing) {
+                    var l = new LandingPad {
+                        Block = ab,
+                        Assignment = first,
+                        Blocks = new List<Block> (),
+                    };
+                    landingPads[s] = l;
+                    var needsVisit = new List<Symbol> { ab.Symbol };
+                    var visited = new SymbolTable<bool> ();
+                    while (needsVisit.Count > 0) {
+                        var b = blockIndex[needsVisit[0]];
+                        needsVisit.RemoveAt (0);
+                        visited[b.Symbol] = true;
+                        isLandingPad[b.Symbol] = true;
+                        l.Blocks.Add (b);
+
+                        var t = b.Terminator;
+                        if (t is IR.ResumeInstruction resume) {
+                            b = null;
+                        }
+                        else if (t is IR.InvokeInstruction invoke) {
+                            var ns = invoke.NormalLabel.Symbol;
+                            if (!visited.ContainsKey (ns) && !needsVisit.Contains (ns)) {
+                                needsVisit.Add (ns);
+                            }
+                        }
+                        else {
+                            foreach (var ns in t.NextLabelSymbols) {
+                                if (!visited.ContainsKey (ns) && !needsVisit.Contains (ns)) {
+                                    needsVisit.Add (ns);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            //
+            // Unmark isLandingPad for blocks accessible from non-landing pads
+            //
+            var changed = true;
+            while (changed) {
+                changed = false;
+                foreach (var b in blocks) {
+                    if (changed)
+                        break;
+                    if (isLandingPad.TryGetValue (b.Symbol, out var isLanding) && isLanding)
+                        continue;
+                    if (b.Terminator is InvokeInstruction) {
+                    }
+                    else {
+                        foreach (var l in b.Terminator.NextLabelSymbols) {
+                            if (isLandingPad.TryGetValue (l, out isLanding) && isLanding) {
+                                changed = true;
+                                isLandingPad.Remove (l);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         void EmitPhis(List<(Assignment Assignment, PhiInstruction Phi, Value Value)> phiVs)
@@ -550,7 +631,7 @@ namespace Iril
             return phiLocals[assignment];
         }
 
-        void EmitInstruction(LocalSymbol assignedSymbol, IR.Instruction instruction, IR.Block block, IR.Block nextBlock)
+        void EmitInstruction(LocalSymbol assignedSymbol, IR.Instruction instruction, IR.Block block, IR.Block nextBlock, BlocksContext context)
         {
             switch (instruction)
             {
@@ -600,9 +681,9 @@ namespace Iril
                     EmitCall(call);
                     break;
                 case IR.ConditionalBrInstruction cbr:
-                    EmitBrtrue(cbr.Condition, Types.IntegerType.I1, GetLabel(cbr.IfTrue, block));
+                    EmitBrtrue(cbr.Condition, Types.IntegerType.I1, GetLabel(cbr.IfTrue, block, context));
                     //if (cbr.IfFalse.Symbol != nextBlock?.Symbol)
-                    Emit(il.Create(OpCodes.Br, GetLabel(cbr.IfFalse, block)));
+                    Emit(il.Create(OpCodes.Br, GetLabel(cbr.IfFalse, block, context)));
                     break;
                 case IR.DivInstruction div:
                     if (div.Type is Types.VectorType)
@@ -774,7 +855,7 @@ namespace Iril
                     }
                     break;
                 case IR.InvokeInstruction invoke:
-                    EmitInvoke (assignedSymbol, invoke, block);
+                    EmitInvoke (assignedSymbol, invoke, block, context);
                     break;
                 case IR.LandingPadInstruction landing:
                     if (locals.TryGetValue (assignedSymbol, out var _)) {
@@ -1020,7 +1101,7 @@ namespace Iril
                     }
                     break;
                 case IR.SwitchInstruction sw:
-                    EmitSwitch(sw, nextBlock, block);
+                    EmitSwitch(sw, nextBlock, block, context);
                     break;
                 case IR.TruncInstruction trunc:
                     EmitTypedValue(trunc.Value);
@@ -1081,9 +1162,15 @@ namespace Iril
                     break;
                 case IR.UnconditionalBrInstruction br:
                     //if (br.Destination.Symbol != nextBlock?.Symbol)
-                    Emit(il.Create(OpCodes.Br, GetLabel(br.Destination, block)));
+                    Emit(il.Create(OpCodes.Br, GetLabel(br.Destination, block, context)));
                     break;
                 case IR.UnreachableInstruction unreach:
+                    if (context.IsExceptionHandler) {
+                        if (function.IRDefinition.ReturnType != VoidType.Void) {
+                            EmitZeroValue (function.IRDefinition.ReturnType);
+                        }
+                        Emit (OpCodes.Ret);
+                    }
                     break;
                 case IR.UremInstruction urem:
                     if (urem.Type is Types.VectorType)
@@ -1362,7 +1449,7 @@ namespace Iril
                 else
                 {
                     var a = function.IRDefinition.GetAssignment(local);
-                    EmitInstruction(a.Result, a.Instruction, null, null);
+                    EmitInstruction(a.Result, a.Instruction, null, null, mainContext);
                 }
             }
         }
@@ -1504,7 +1591,7 @@ namespace Iril
             }
         }
 
-        void EmitSwitch(IR.SwitchInstruction sw, IR.Block block, IR.Block nextBlock)
+        void EmitSwitch(IR.SwitchInstruction sw, IR.Block block, IR.Block nextBlock, BlocksContext context)
         {
             var rem = new List<IR.SwitchCase>(sw.Cases.OrderBy(x => x.Value.Constant.Int32Value));
 
@@ -1531,7 +1618,7 @@ namespace Iril
                 {
                     var labels =
                         rem.Take(endIndex)
-                        .Select(x => GetLabel(x.Label, block))
+                        .Select(x => GetLabel(x.Label, block, context))
                         .ToArray();
                     if (offset != 0)
                     {
@@ -1547,13 +1634,13 @@ namespace Iril
                     {
                         EmitValue(new IR.IntegerConstant(0), c.Value.Type);
                     }
-                    Emit(il.Create(OpCodes.Beq, GetLabel(c.Label, block)));
+                    Emit(il.Create(OpCodes.Beq, GetLabel(c.Label, block, context)));
                     rem.RemoveAt(0);
                 }
             }
 
             //if (nextBlock.Symbol != sw.DefaultLabel.Symbol)
-            Emit(il.Create(OpCodes.Br, GetLabel(sw.DefaultLabel, block)));
+            Emit(il.Create(OpCodes.Br, GetLabel(sw.DefaultLabel, block, context)));
         }
 
         void EmitVectorUnop(OpCode op, IR.TypedValue op1, Types.VectorType type)
@@ -1663,12 +1750,13 @@ namespace Iril
             Emit(il.Create(OpCodes.Brtrue, trueTarget));
         }
 
-        void EmitInvoke (LocalSymbol assignedSymbol, IR.InvokeInstruction invoke, IR.Block block)
+        void EmitInvoke (LocalSymbol assignedSymbol, IR.InvokeInstruction invoke, IR.Block block, BlocksContext context)
         {
+            var tryPrev = prev;
+            TypeReference returnType;
+
             if ((invoke.Pointer is IR.GlobalValue gv)
                 && (compilation.TryGetFunction (module, gv.Symbol, out var m))) {
-
-                var tryPrev = prev;
 
                 var ps = m.ILDefinition.Parameters;
                 var nps = ps.Count;
@@ -1692,32 +1780,8 @@ namespace Iril
 
                 Emit (il.Create (OpCodes.Call, m.ILDefinition));
 
-                // LLVM allows for return type mismatches with void
-                if (m.ILDefinition.ReturnType.FullName == "System.Void" && !(invoke.ReturnType is VoidType)) {
-                    EmitZeroValue (invoke.ReturnType);
-                }
-                else if (m.ILDefinition.ReturnType.FullName != "System.Void" && (invoke.ReturnType is VoidType)) {
-                    Emit (OpCodes.Pop);
-                }
+                returnType = m.ILDefinition.ReturnType;
 
-                // Assign it now
-                if (locals.TryGetValue (assignedSymbol, out var vd)) {
-                    Emit (il.Create (OpCodes.Stloc, vd));
-                }
-
-                Emit (il.Create (OpCodes.Leave, blockFirstInstr[invoke.NormalLabel.Symbol]));
-
-                var tryLast = prev;
-
-                var catchBlock = function.IRDefinition.Blocks.First(x => x.Symbol == invoke.ExceptionLabel.Symbol);
-                foreach (var catchA in catchBlock.AllAssignments) {
-                    EmitInstruction (catchA.Result, catchA.Instruction, catchBlock, nextBlock: null);
-                    if (locals.TryGetValue (catchA.Result, out vd)) {
-                        Emit (il.Create (OpCodes.Stloc, vd));
-                    }
-                }
-                var catchLast = prev;
-                ehs.Add ((tryPrev.Next, tryLast, catchLast));
             }
             else if (invoke.Pointer is IR.LocalValue lv) {
                 LType ltype;
@@ -1746,33 +1810,59 @@ namespace Iril
                 }
                 EmitValue (lv, ltype);
 
-                var calli = il.Create (OpCodes.Calli, CreateCallSite (ft));
-                Emit (calli);
+                var site = CreateCallSite (ft);
+                Emit (il.Create (OpCodes.Calli, site));
 
-                // Assign it now
-                if (locals.TryGetValue (assignedSymbol, out var vd)) {
-                    Emit (il.Create (OpCodes.Stloc, vd));
-                }
-
-                Emit (il.Create (OpCodes.Leave, blockFirstInstr[invoke.NormalLabel.Symbol]));
-
-                var tryLast = prev;
-
-                var catchBlock = function.IRDefinition.Blocks.First (x => x.Symbol == invoke.ExceptionLabel.Symbol);
-                foreach (var catchA in catchBlock.AllAssignments) {
-                    EmitInstruction (catchA.Result, catchA.Instruction, catchBlock, nextBlock: null);
-                    if (locals.TryGetValue (catchA.Result, out vd)) {
-                        Emit (il.Create (OpCodes.Stloc, vd));
-                    }
-                }
-                var catchLast = prev;
-                ehs.Add ((calli, tryLast, catchLast));
-
-                return;
+                returnType = site.ReturnType;
             }
             else {
                 throw new Exception ($"Cannot invoke {invoke.Pointer}");
             }
+
+            // LLVM allows for return type mismatches with void
+            if (returnType.FullName == "System.Void" && !(invoke.ReturnType is VoidType)) {
+                EmitZeroValue (invoke.ReturnType);
+            }
+            else if (returnType.FullName != "System.Void" && (invoke.ReturnType is VoidType)) {
+                Emit (OpCodes.Pop);
+            }
+
+            // Assign it now
+            if (locals.TryGetValue (assignedSymbol, out var vd)) {
+                Emit (il.Create (OpCodes.Stloc, vd));
+            }
+
+            Emit (il.Create (OpCodes.Leave, context.BlockFirstInstr[invoke.NormalLabel.Symbol]));
+
+            var tryLast = prev;
+
+            var catchContext = new BlocksContext (context);
+
+            var pad = landingPads[invoke.ExceptionLabel.Symbol];
+
+            var emitBlocks = pad.Blocks;
+            foreach (var b in emitBlocks) {
+                EmitBlockFirstInstruction (b, catchContext);
+            }
+
+            //
+            // Emit block assignments
+            //
+            for (var i = 0; i < emitBlocks.Count; i++) {
+                var b = emitBlocks[i];
+                var nextBlock = i + 1 < emitBlocks.Count ? emitBlocks[i + 1] : null;
+                EmitBlockAssignments (b, nextBlock, catchContext);
+            }
+            
+            var catchLast = prev;
+            ehs.Add ((tryPrev.Next, tryLast, catchLast));
+        }
+
+        class LandingPad
+        {
+            public Block Block;
+            public Assignment Assignment;
+            public List<IR.Block> Blocks;
         }
 
         readonly List<(CecilInstruction TryStart, CecilInstruction TryLast, CecilInstruction CatchLast)> ehs =
@@ -2001,14 +2091,14 @@ namespace Iril
             }
         }
 
-        CecilInstruction GetLabel(IR.LabelValue label, IR.Block fromBlock)
+        CecilInstruction GetLabel(IR.LabelValue label, IR.Block fromBlock, BlocksContext context)
         {
-            if (blockPredInstr.TryGetValue(label.Symbol, out var preds))
+            if (context.BlockPredInstr.TryGetValue(label.Symbol, out var preds))
             {
                 if (preds.TryGetValue(fromBlock.Symbol, out var i))
                     return i;
             }
-            return blockFirstInstr[label.Symbol];
+            return context.BlockFirstInstr[label.Symbol];
         }
 
         class SharedVariable

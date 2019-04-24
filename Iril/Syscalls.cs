@@ -42,6 +42,7 @@ namespace Iril
             EmitMemsetPattern (4);
             EmitMemsetPattern (8);
             EmitMemsetPattern (16);
+            EmitStrlen ();
         }
 
         MethodDefinition NewMethod (Symbol symbol, LType returnType, params (string, LType)[] parameters)
@@ -389,6 +390,38 @@ namespace Iril
             il.Append (il.Create (OpCodes.Cpblk));
 
             il.Append (ret);
+
+            b.Optimize ();
+        }
+
+        void EmitStrlen ()
+        {
+            var m = NewMethod ("@strlen", Types.IntegerType.I64, ("str", Types.PointerType.I8Pointer));
+            var v = new VariableDefinition (compilation.sysBytePtr);
+            var b = m.Body;
+            b.Variables.Add (v);
+            var il = b.GetILProcessor ();
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Stloc_0));
+            var check = il.Create (OpCodes.Ldloc, v);
+            il.Append (il.Create (OpCodes.Br, check));
+
+            var loop = il.Create (OpCodes.Ldloc, v);
+            il.Append (loop);
+            il.Append (il.Create (OpCodes.Ldc_I4, 1));
+            il.Append (il.Create (OpCodes.Add));
+            il.Append (il.Create (OpCodes.Stloc, v));
+            il.Append (check);
+            il.Append (il.Create (OpCodes.Ldind_U1));
+            il.Append (il.Create (OpCodes.Brtrue, loop));
+
+            il.Append (il.Create (OpCodes.Ldloc, v));
+            il.Append (il.Create (OpCodes.Ldarg, m.Parameters[0]));
+            il.Append (il.Create (OpCodes.Sub));
+            il.Append (il.Create (OpCodes.Ldc_I4, 1));
+            il.Append (il.Create (OpCodes.Div));
+            il.Append (il.Create (OpCodes.Conv_I8));
+            il.Append (il.Create (OpCodes.Ret));
 
             b.Optimize ();
         }

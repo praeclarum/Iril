@@ -386,9 +386,9 @@ namespace Iril
                 if (t.Resolve (module) is Types.LiteralStructureType st) {
                     var iindex = index.Int32Value;
                     var cst = compilation.GetClrType (st).Resolve ();
-                    var field = cst.Fields[iindex];
-                    Emit (il.Create (OpCodes.Ldfld, field));
                     if (0 <= iindex && iindex < st.Elements.Length) {
+                        var field = cst.Fields[iindex];
+                        Emit (il.Create (OpCodes.Ldfld, field));
                         t = st.Elements[iindex];
                     }
                     else {
@@ -396,9 +396,7 @@ namespace Iril
                     }
                 }
                 else {
-                    if (i + 1 < n) {
-                        throw new InvalidOperationException ("Cannot extract value from " + t);
-                    }
+                    throw new InvalidOperationException ("Cannot extract value from " + t);
                 }
             }
         }

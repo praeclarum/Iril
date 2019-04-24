@@ -13,6 +13,7 @@ namespace Iril.IR
         public TerminatorInstruction Terminator => (TerminatorInstruction)TerminatorAssignment.Instruction;
 
         public Instruction FirstInstruction => Assignments.Length > 0 ? Assignments[0].Instruction : Terminator;
+        public Assignment FirstNonPhiAssignment => AllAssignments.FirstOrDefault (x => !(x.Instruction is PhiInstruction));
 
         public Block(LocalSymbol symbol, IEnumerable<Assignment> assignments, Assignment terminator)
         {

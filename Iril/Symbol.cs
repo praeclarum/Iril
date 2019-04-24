@@ -127,6 +127,16 @@ namespace Iril
 
     public class SymbolTable<T> : Dictionary<Symbol, T>
     {
+        public SymbolTable ()
+        {
+        }
+        public SymbolTable (SymbolTable<T> other)
+            : base (other.Count)
+        {
+            foreach (var kv in other) {
+                Add (kv.Key, kv.Value);
+            }
+        }
     }
 
     public class GlobalSymbol : Symbol
