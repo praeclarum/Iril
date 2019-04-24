@@ -1165,12 +1165,10 @@ namespace Iril
                     Emit(il.Create(OpCodes.Br, GetLabel(br.Destination, block, context)));
                     break;
                 case IR.UnreachableInstruction unreach:
-                    if (context.IsExceptionHandler) {
-                        if (function.IRDefinition.ReturnType != VoidType.Void) {
-                            EmitZeroValue (function.IRDefinition.ReturnType);
-                        }
-                        Emit (OpCodes.Ret);
+                    if (function.IRDefinition.ReturnType != VoidType.Void) {
+                        EmitZeroValue (function.IRDefinition.ReturnType);
                     }
+                    Emit (OpCodes.Ret);
                     break;
                 case IR.UremInstruction urem:
                     if (urem.Type is Types.VectorType)
