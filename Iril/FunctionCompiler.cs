@@ -841,7 +841,7 @@ namespace Iril
                     EmitInsertElement (ie.Value, ie.Element, ie.Index);
                     break;
                 case IR.InsertValueInstruction iv:
-                    EmitInsertValue (iv.Value, iv.Indices);
+                    EmitInsertValue (iv.Value, iv.Element, iv.Indices);
                     break;
                 case IR.InttoptrInstruction inttoptr:
                     EmitTypedValue(inttoptr.Value);

@@ -241,6 +241,16 @@ namespace Iril
                         Emit (il.Create (OpCodes.Ldloca, v));
                     }
                     break;
+                case IR.UndefinedConstant uc when type is LiteralStructureType st: {
+                        var v = GetStructTempLocal (st);
+                        Emit (il.Create (OpCodes.Ldloca, v));
+                    }
+                    break;
+                case IR.LocalValue lv when locals.ContainsKey (lv.Symbol): {
+                        var v = locals[lv.Symbol];
+                        Emit (il.Create (OpCodes.Ldloca, v));
+                    }
+                    break;
                 case IR.LocalValue lv when type is VectorType vt: {
                         var v = GetVectorTempVariable (compilation.GetVectorType (vt), value, 0);
                         EmitValue (value, type);
@@ -417,19 +427,21 @@ namespace Iril
             }
         }
 
-        protected void EmitInsertValue (IR.TypedValue aggregateValue, IR.Value[] indices)
+        protected void EmitInsertValue (IR.TypedValue aggregateValue, IR.TypedValue value, IR.Value[] indices)
         {
             EmitTypedLValue (aggregateValue);
+
             var t = aggregateValue.Type;
             var n = indices.Length;
+            CecilInstruction seti = null;
             for (var i = 0; i < n; i++) {
                 var index = (IR.Constant)indices[i];
-                if (t.Resolve (module) is Types.LiteralStructureType st && false) {
+                if (t.Resolve (module) is Types.LiteralStructureType st) {
                     var iindex = index.Int32Value;
                     var cst = compilation.GetClrType (st).Resolve ();
-                    var field = cst.Fields[iindex];
-                    Emit (il.Create (OpCodes.Ldfld, field));
                     if (0 <= iindex && iindex < st.Elements.Length) {
+                        var field = cst.Fields[iindex];
+                        seti = il.Create (OpCodes.Stfld, field);
                         t = st.Elements[iindex];
                     }
                     else {
@@ -437,10 +449,19 @@ namespace Iril
                     }
                 }
                 else {
-                    if (i + 1 < n) {
-                        throw new InvalidOperationException ("Cannot insert value to " + t);
-                    }
+                    throw new InvalidOperationException ("Cannot insert value to " + t);
                 }
+            }
+
+            if (seti != null) {
+                Emit (OpCodes.Dup);
+                EmitTypedValue (value);
+                Emit (seti);
+                Emit (il.Create (OpCodes.Ldobj, compilation.GetClrType(aggregateValue.Type)));
+            }
+            else {
+                compilation.ErrorMessage (module.SourceFilename, $"No insertvalue indices");
+                Emit (OpCodes.Pop);
             }
         }
 
