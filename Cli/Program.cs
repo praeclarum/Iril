@@ -23,7 +23,6 @@ namespace Cli
             var outName = "";
             var showHelp = false;
             var showVersion = false;
-            var r = GetDateTime ();
 
             //
             // Parse command line
@@ -48,10 +47,6 @@ namespace Cli
                         showVersion = true;
                         i++;
                     }
-                    else if (a == "--trial") {
-                        r = null;
-                        i++;
-                    }
                     else {
                         i++;
                     }
@@ -62,16 +57,6 @@ namespace Cli
                 }
             }
 
-            int maxFuncs = r != null ? int.MaxValue : 10;
-            if (r == null) {
-                Console.WriteLine ($"IRIL TRIAL VERSION");
-                Console.WriteLine ();
-                Console.WriteLine ($"Thanks for trying out Iril. This version is limited to compiling {maxFuncs} functions.");
-                Console.WriteLine ();
-                //Console.WriteLine ($"If you would like to purchase Iril to unlock all its features, send an email to fak@kruegersystems.com");
-                //Console.WriteLine ();
-            }
-
             if (showVersion) {
                 var version = typeof (Program).Assembly.GetName ().Version;
                 Console.WriteLine ($"Krueger Systems IRIL {version}");
@@ -80,11 +65,7 @@ namespace Cli
             }
 
             if (showHelp) {
-                Console.WriteLine ($"OVERVIEW: C to .NET assembly compiler by Frank A. Krueger");
-                if (r != null) {
-                    Console.WriteLine ();
-                    Console.WriteLine ($"REGISTERED TO: {r}");
-                }
+                Console.WriteLine ($"OVERVIEW: C/C++ to .NET assembly compiler by Frank A. Krueger");
                 Console.WriteLine ();
                 Console.WriteLine ($"USAGE: iril [options] <inputs>");
                 Console.WriteLine ();
@@ -140,7 +121,6 @@ namespace Cli
                 //
                 Info ("Compiling...");
                 var comp = new Compilation (modules, outName);
-                comp.MaxFunctions = maxFuncs;
                 comp.Compile ();
 
                 //
@@ -217,39 +197,6 @@ namespace Cli
             Console.Write ("error: ");
             Console.ResetColor ();
             Console.WriteLine (message);
-        }
-
-        static string GetDateTime ()
-        {
-            try {
-                var p = Path.Combine (Environment.GetEnvironmentVariable ("HOME"), ".irilic");
-                if (!File.Exists (p))
-                    return null;
-                var lines = File.ReadAllLines (p);
-                if (lines.Length < 2)
-                    return null;
-                var r = lines[0].Trim().Split (new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
-                if (r.Length < 3)
-                    return null;
-                var k = "Thanks for buying Iril! " + lines[0].Trim();
-                var n = r[0];
-                for (var i = 0; i < n.Length; i += 2) {
-                    k += n[i];
-                }
-                k += r[2];
-                var crypt = new System.Security.Cryptography.SHA256Managed ();
-                var hash = "";
-                var crypto = crypt.ComputeHash (Encoding.UTF8.GetBytes (k));
-                foreach (byte theByte in crypto) {
-                    hash += theByte.ToString ("x2");
-                }
-                if (hash != lines[1].Trim())
-                    return null;
-                return r[0];
-            }
-            catch {
-                return null;
-            }
         }
     }
 }
