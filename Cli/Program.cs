@@ -123,7 +123,6 @@ namespace Cli
                 //
                 Info ($"Parsing {llfiles.Count} files...");
                 var modules = llfiles.AsParallel ().Select (x => {
-                    System.Console.WriteLine(x);
                     var code = File.ReadAllText (x);
                     return Module.Parse (code, x);
                 }).ToList ();
