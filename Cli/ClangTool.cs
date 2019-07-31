@@ -13,32 +13,74 @@ namespace Cli
             ".ino"
         };
 
-        public override IEnumerable<string> Run (IEnumerable<string> inputFiles)
+        readonly HashSet<string> cppExtensions = new HashSet<string> {
+            ".cpp",
+        };
+
+        public override IEnumerable<string> Run (ToolContext context)
         {
-            var files = inputFiles.Select (Path.GetFullPath).ToList ();
+            var files = context.InputFiles.Select (Path.GetFullPath).ToList ();
             if (files.Count == 0)
                 return Enumerable.Empty<string> ();
 
-            var buildDir = Path.GetTempPath ();
+            var buildDir = Environment.CurrentDirectory;
 
             var iswin = Environment.OSVersion.Platform == PlatformID.Win32NT;
 
+            var outputAssembly = true;
+
             var args = new List<string> {
-                "-g", "-O1", "-S", "-emit-llvm", "-std=c++17", "-frtti"
+                "-g", "-O1", "-S", "-emit-llvm", "-frtti"
             };
+
+            var argsHasStd = false;
+            foreach (var e in context.ExtraArguments) {
+                switch (e) {
+                    case "-c":
+                        outputAssembly = false;
+                        args.Add ("-o");
+                        args.Add (context.OutputFile);
+                        break;
+                    case var _ when e.StartsWith("-O"):
+                        // Optimization is already set
+                        break;
+                    case var _ when e.StartsWith("-std"):
+                        argsHasStd = true;
+                        args.Add (e);
+                        break;
+                    default:
+                        args.Add (e);
+                        break;
+                }
+            }
+
+            if (!argsHasStd) {
+                if (context.InputFiles.Any(x => cppExtensions.Contains (Path.GetExtension (x))))
+                    args.Add ("-std=c++17");
+                else
+                    args.Add ("-std=c99");
+            }
+
             if (!iswin)
                 args.Add ("-fpic");
+
             args.AddRange (files);
 
             var outFiles = new List<string> ();
+
             if (Run (buildDir, "clang", args.ToArray ()) == 0) {
-                foreach (var f in files) {
-                    var outName = Path.ChangeExtension (Path.GetFileName (f), ".ll");
-                    var outPath = Path.Combine (buildDir, outName);
-                    //Console.WriteLine (outPath);
-                    outFiles.Add (outPath);
+                if (outputAssembly) {
+                    foreach (var f in files) {
+                        var outName = Path.ChangeExtension (Path.GetFileName (f), ".ll");
+                        var outPath = Path.Combine (buildDir, outName);
+                        Console.WriteLine ($"OUTLL = {outPath}");
+                        outFiles.Add (outPath);
+                    }
+                }
+                else {
                 }
             }
+
             return outFiles;
         }
 

@@ -9,7 +9,7 @@ namespace Cli
     public abstract class CommandLineTool
     {
         public abstract HashSet<string> InputExtensions { get; }
-        public abstract IEnumerable<string> Run (IEnumerable<string> inputFiles);
+        public abstract IEnumerable<string> Run (ToolContext context);
 
         protected int Run (string dir, string fileName, params string[] arguments)
         {
@@ -25,7 +25,7 @@ namespace Cli
                 }
             };
             try {
-                //Console.WriteLine ($"{proc.StartInfo.FileName} {proc.StartInfo.Arguments}");
+                // Console.WriteLine ($"{proc.StartInfo.FileName} {proc.StartInfo.Arguments} in {dir}");
                 proc.Start ();
                 proc.WaitForExit (5 * 60 * 1000);
                 //Console.WriteLine ($"== {proc.ExitCode}");
@@ -54,9 +54,16 @@ namespace Cli
 
         static string EscapeArg (string arg)
         {
-            if (arg.All (x => char.IsLetterOrDigit (x) || ('0' <= x && x < 127) || x == '-'))
+            if (arg.All (x => !char.IsWhiteSpace (x)))
                 return arg;
             return $"\"{arg}\"";
         }
+    }
+
+    public class ToolContext
+    {
+        public string[] InputFiles = Array.Empty<string>();
+        public string OutputFile = String.Empty;
+        public string[] ExtraArguments = Array.Empty<string>();
     }
 }

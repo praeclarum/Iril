@@ -11,9 +11,9 @@ namespace Cli
             ".swift",
         };
 
-        public override IEnumerable<string> Run (IEnumerable<string> inputFiles)
+        public override IEnumerable<string> Run (ToolContext context)
         {
-            var files = inputFiles.Select (Path.GetFullPath).ToList ();
+            var files = context.InputFiles.Select (Path.GetFullPath).ToList ();
             if (files.Count == 0)
                 return Enumerable.Empty<string> ();
 

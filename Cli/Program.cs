@@ -20,6 +20,7 @@ namespace Cli
             // Inputs
             //
             var files = new List<string> ();
+            var extraArgs = new List<string> ();
             var outName = "";
             var showHelp = false;
             var showVersion = false;
@@ -48,6 +49,7 @@ namespace Cli
                         i++;
                     }
                     else {
+                        extraArgs.Add (a);
                         i++;
                     }
                 }
@@ -90,10 +92,17 @@ namespace Cli
             //
             var clang = new ClangTool ();
             var cfiles = files.Where (x => clang.InputExtensions.Contains (Path.GetExtension (x)));
-            var cllfiles = clang.Run (cfiles);
+            var context = new ToolContext {
+                InputFiles = cfiles.ToArray (),
+                ExtraArguments = extraArgs.ToArray (),
+                OutputFile = outName,
+            };
+            var cllfiles = clang.Run (context);
 
-            var llfiles = files
-                          .Where (x => Path.GetExtension (x) == ".ll")
+            var llfiles = (from f in files
+                           let e = Path.GetExtension (f)
+                           where e == ".ll" || e == ".o"
+                           select f)
                           .Concat (cllfiles)
                           .ToList ();
 
@@ -101,6 +110,8 @@ namespace Cli
             // Early out
             //
             if (llfiles.Count == 0) {
+                if (context.ExtraArguments.Contains ("-c"))
+                    return 0;
                 Error ("No inputs");
                 return 1;
             }
@@ -112,6 +123,7 @@ namespace Cli
                 //
                 Info ($"Parsing {llfiles.Count} files...");
                 var modules = llfiles.AsParallel ().Select (x => {
+                    System.Console.WriteLine(x);
                     var code = File.ReadAllText (x);
                     return Module.Parse (code, x);
                 }).ToList ();
