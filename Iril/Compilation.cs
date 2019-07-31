@@ -946,8 +946,8 @@ namespace Iril
                         if (store.OpCode.Code == Code.Stsfld) {
                             var f = (FieldReference)store.Operand;
                             var td = f.FieldType.Resolve ();
-                            Debug.Assert (td.Fields.Count == c.Elements.Length);
-                            for (int i = 0; i < c.Elements.Length; i++) {
+                            var n = Math.Min (td.Fields.Count, c.Elements.Length);
+                            for (int i = 0; i < n; i++) {
                                 var e = c.Elements[i];
                                 Emit (il.Create (OpCodes.Ldsflda, f));
                                 var storee = il.Create (OpCodes.Stfld, td.Fields[i]);
@@ -957,22 +957,8 @@ namespace Iril
                         else if (store.OpCode.Code == Code.Stelem_Any && type is NamedType namedType) {
                             var td = ((TypeReference)store.Operand).Resolve ();
                             var v = GetStructTempLocal (namedType);
-                            Debug.Assert (td.Fields.Count == c.Elements.Length);
-                            for (int i = 0; i < c.Elements.Length; i++) {
-                                var e = c.Elements[i];
-                                Emit (il.Create (OpCodes.Ldloca, v));
-                                var storee = il.Create (OpCodes.Stfld, td.Fields[i]);
-                                EmitInitializer (e.Value, e.Type, gcHandleV, storee);
-                            }
-                            Emit (il.Create (OpCodes.Ldloc, v));
-                            Emit (store);
-                        }
-                        else if (store.OpCode.Code == Code.Stfld && type is NamedType namedFieldType) {
-                            var f = (FieldReference)store.Operand;
-                            var td = f.FieldType.Resolve ();
-                            var v = GetStructTempLocal (namedFieldType);
-                            Debug.Assert (td.Fields.Count == c.Elements.Length);
-                            for (int i = 0; i < c.Elements.Length; i++) {
+                            var n = Math.Min (td.Fields.Count, c.Elements.Length);
+                            for (int i = 0; i < n; i++) {
                                 var e = c.Elements[i];
                                 Emit (il.Create (OpCodes.Ldloca, v));
                                 var storee = il.Create (OpCodes.Stfld, td.Fields[i]);
@@ -982,7 +968,24 @@ namespace Iril
                             Emit (store);
                         }
                         else {
-                            throw new NotSupportedException ($"Cannot emit initializer for struct at lvalue {store}");
+                            TypeDefinition td;
+                            if (store.OpCode.Code == Code.Stfld) {
+                                var f = (FieldReference)store.Operand;
+                                td = f.FieldType.Resolve ();
+                            }
+                            else {
+                                td = ((TypeReference)store.Operand).Resolve ();
+                            }
+                            var v = GetStructTempLocal (type);
+                            var n = Math.Min (td.Fields.Count, c.Elements.Length);
+                            for (int i = 0; i < n; i++) {
+                                var e = c.Elements[i];
+                                Emit (il.Create (OpCodes.Ldloca, v));
+                                var storee = il.Create (OpCodes.Stfld, td.Fields[i]);
+                                EmitInitializer (e.Value, e.Type, gcHandleV, storee);
+                            }
+                            Emit (il.Create (OpCodes.Ldloc, v));
+                            Emit (store);
                         }
                         break;
                     default:
