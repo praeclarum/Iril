@@ -295,5 +295,33 @@ namespace Tests
                 Ax = ax.ToArray ();
             }
         }
+
+        [Test]
+        public void MicroPython ()
+        {
+            var asmFileName = "MicroPython.dll";
+            var irmods =
+                GetZippedCode ("micropython.zip")
+                .Select (x => Iril.Module.Parse (x.Code, x.Name));
+            var compilation = new Compilation (
+                irmods,
+                assemblyName: asmFileName);
+            compilation.Compile ();
+
+            var asmPath = Path.Combine (Path.GetTempPath (), asmFileName);
+            try { File.Delete (asmPath); }
+            catch { }
+            compilation.WriteAssembly (asmPath);
+
+            System.Console.WriteLine (asmPath);
+
+            AssertNoErrors (compilation);
+            CheckDisassemblyForErrors (asmPath);
+
+            var asm = Assembly.Load (File.ReadAllBytes (asmPath));
+
+            var types = asm.GetTypes ();
+            Assert.Greater (types.Length, 0);
+        }
     }
 }

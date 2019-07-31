@@ -27,11 +27,13 @@
     <None Remove="Inputs\**\*.ll" />
     <None Remove="Inputs\sqlite3.ll.zip" />
     <None Remove="Inputs\ddaskr.zip" />
+    <None Remove="Inputs\micropython.zip" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Inputs\**\*.ll" />
     <EmbeddedResource Include="Inputs\sqlite3.ll.zip" />
     <EmbeddedResource Include="Inputs\ddaskr.zip" />
+    <EmbeddedResource Include="Inputs\micropython.zip" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Iril\Iril.csproj" />
