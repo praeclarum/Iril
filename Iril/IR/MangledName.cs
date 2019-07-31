@@ -565,7 +565,6 @@ namespace Iril.IR
                         flat.Add (n);
                     }
                 }
-                return r;
             }
             public override string Identifier {
                 get {
