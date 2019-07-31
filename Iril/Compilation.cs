@@ -1407,7 +1407,21 @@ namespace Iril
             return GetClrType (irType, unsigned: unsigned);
         }
 
-        
+        static int RoundUpIntBits (int bits) {
+            if (bits > 128)
+                return 256;
+            if (bits > 64)
+                return 128;
+            if (bits > 32)
+                return 64;
+            if (bits > 16)
+                return 32;
+            if (bits > 8)
+                return 16;
+            if (bits > 1)
+                return 8;
+            return 1;
+        }
 
         public TypeReference GetClrType (LType irType, bool? unsigned = false)
         {
@@ -1420,7 +1434,7 @@ namespace Iril
                             return sysDouble;
                     }
                 case IntegerType intt:
-                    switch (intt.Bits) {
+                    switch (RoundUpIntBits (intt.Bits)) {
                         case 1:
                             return sysBoolean;
                         case 8:
