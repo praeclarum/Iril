@@ -75,8 +75,8 @@ namespace Iril
 
                 var asm = typeof (Library).Assembly;
 
-                var libcxx = Library.FromZip ("libcxx", asm.GetManifestResourceStream ("Iril.Lib.libcxx.zip"));
-                r[libcxx.Symbol] = libcxx;
+                //var libcxx = Library.FromZip ("libcxx", asm.GetManifestResourceStream ("Iril.Lib.libcxx.zip"));
+                //r[libcxx.Symbol] = libcxx;
 
                 return r;
             });

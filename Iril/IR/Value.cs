@@ -206,4 +206,16 @@ namespace Iril.IR
     {
         public static readonly VoidValue Void = new VoidValue ();
     }
+
+    public class InlineAssemblyValue : Value
+    {
+        public readonly string Assembly;
+        public readonly string Constraints;
+
+        public InlineAssemblyValue (string assembly, string constraints)
+        {
+            Assembly = assembly ?? throw new ArgumentNullException (nameof (assembly));
+            Constraints = constraints ?? throw new ArgumentNullException (nameof (constraints));
+        }
+    }
 }

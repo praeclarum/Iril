@@ -164,6 +164,11 @@ namespace Iril.IR
             { Symbol.Intern ("inrange"), Token.INRANGE },
             { Symbol.Intern ("hidden"), Token.HIDDEN },
             { Symbol.Intern ("catch"), Token.CATCH },
+            { Symbol.Intern ("appending"), Token.APPENDING },
+            { Symbol.Intern ("common"), Token.COMMON },
+            { Symbol.Intern ("section"), Token.SECTION },
+            { Symbol.Intern ("asm"), Token.ASM },
+            { Symbol.Intern ("sideeffect"), Token.SIDEEFFECT },
         };
 
         public Lexer (string llvm)

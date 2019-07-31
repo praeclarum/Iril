@@ -120,6 +120,7 @@ namespace Iril.IR
         Dereferenceable = 1 << 8,
         StructureReturn = 1 << 9,
         NoAlias         = 1 << 10,
+        Align8          = 1 << 11,
     }
 
     public class FunctionDeclaration

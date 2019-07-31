@@ -302,7 +302,12 @@ namespace Tests
             var asmFileName = "MicroPython.dll";
             var irmods =
                 GetZippedCode ("micropython.zip")
-                .Select (x => Iril.Module.Parse (x.Code, x.Name));
+                .Select (x => Iril.Module.Parse (x.Code, x.Name))
+                .ToArray ();
+            var errors = (from m in irmods from e in m.Errors select m + ": " + e).ToArray ();
+            if (errors.Length > 0) {
+                Assert.Fail ("{1} Parse Errors: {0}", string.Join (", ", errors), errors.Length);
+            }
             var compilation = new Compilation (
                 irmods,
                 assemblyName: asmFileName);

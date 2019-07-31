@@ -18,10 +18,10 @@ namespace Iril.IR
 
 %token INTEGER HEX_INTEGER FLOAT_LITERAL STRING TRUE FALSE UNDEF VOID NULL LABEL X
 %token SOURCE_FILENAME TARGET DATALAYOUT TRIPLE
-%token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL META_SYMBOL_DEF SYMBOL DISTINCT METADATA CONSTANT_BYTES
+%token GLOBAL_SYMBOL LOCAL_SYMBOL META_SYMBOL META_SYMBOL_DEF SYMBOL DISTINCT METADATA CONSTANT_BYTES SECTION
 %token TYPE HALF FLOAT DOUBLE X86_FP80 INTEGER_TYPE ZEROINITIALIZER OPAQUE
 %token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR NOALIAS ELLIPSIS GLOBAL
-%token CONSTANT PRIVATE INTERNAL EXTERNAL LINKONCE LINKONCE_ODR WEAK WEAK_ODR FASTCC SIGNEXT ZEROEXT VOLATILE RETURNED
+%token CONSTANT PRIVATE INTERNAL EXTERNAL LINKONCE LINKONCE_ODR WEAK WEAK_ODR APPENDING COMMON FASTCC SIGNEXT ZEROEXT VOLATILE RETURNED
 %token DEREFERENCEABLE AVAILABLE_EXTERNALLY PERSONALITY SRET CLEANUP
 %token NONNULL NOCAPTURE WRITEONLY READONLY READNONE HIDDEN
 %token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND UNWIND SPECULATABLE SSP UWTABLE ARGMEMONLY
@@ -38,7 +38,7 @@ namespace Iril.IR
 %token FPTOUI FPTOSI UITOFP SITOFP PTRTOINT INTTOPTR BITCAST ADDRSPACECAST
 %token ICMP EQ NE UGT UGE ULT ULE SGT SGE SLT SLE
 %token FCMP OEQ OGT OGE OLT OLE ONE ORD UEQ UNE UNO
-%token PHI SELECT CALL TAIL VA_ARG
+%token PHI SELECT CALL TAIL VA_ARG ASM SIDEEFFECT
 %token LANDINGPAD CATCH CATCHPAD CLEANUPPAD
 
 %start module
@@ -124,6 +124,10 @@ global_variable
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, null, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$3);
     }
+    | GLOBAL_SYMBOL '=' linkage global_kind type nonglobal_value ',' SECTION STRING
+    {
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, (Value)$6, isPrivate: false, isExternal: false, isConstant: (bool)$4);
+    }
     | GLOBAL_SYMBOL '=' global_kind type nonglobal_value ',' ALIGN INTEGER metadata_kvs
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$4, (Value)$5, isPrivate: false, isExternal: false, isConstant: (bool)$3);
@@ -195,6 +199,8 @@ linkage
     | LINKONCE_ODR         { $$ = true; }
     | WEAK                 { $$ = true; }
     | WEAK_ODR             { $$ = true; }
+    | APPENDING            { $$ = true; }
+    | COMMON               { $$ = true; }
     ;
     
 visibility
@@ -561,6 +567,10 @@ parameter_attribute
     | DEREFERENCEABLE '(' INTEGER ')'
     {
         $$ = ParameterAttributes.Dereferenceable;
+    }
+    | ALIGN INTEGER
+    {
+        $$ = ParameterAttributes.Align8;
     }
     ;
     
@@ -945,6 +955,13 @@ atomic_constraint
     : SEQ_CST { $$ = AtomicConstraint.SequentiallyConsistent; }
     ;
 
+inline_assembly
+    : ASM SIDEEFFECT STRING ',' STRING
+    {
+        $$ = new InlineAssemblyValue ((string)$3, (string)$5);
+    }
+    ;
+
 terminator_assignment
     : terminator_instruction
     {
@@ -1061,6 +1078,10 @@ instruction
     {
         $$ = new CallInstruction ((LType)$2, (Value)$3, (IEnumerable<Argument>)$4, false);
     }
+    | CALL parameter_attribute return_type function_pointer function_args
+    {
+        $$ = new CallInstruction ((LType)$3, (Value)$4, (IEnumerable<Argument>)$5, false);
+    }
     | CALL parameter_attribute return_type function_pointer function_args attribute_group_refs
     {
         $$ = new CallInstruction ((LType)$3, (Value)$4, (IEnumerable<Argument>)$5, false);
@@ -1096,6 +1117,10 @@ instruction
     | TAIL CALL calling_convention parameter_attributes return_type function_pointer function_args attribute_group_refs
     {
         $$ = new CallInstruction ((LType)$5, (Value)$6, (IEnumerable<Argument>)$7, true);
+    }
+    | TAIL CALL return_type inline_assembly function_args attribute_group_refs
+    {
+        $$ = new CallInstruction ((LType)$3, (Value)$4, (IEnumerable<Argument>)$5, true);
     }
     | EXTRACTELEMENT typed_value ',' typed_value
     {
