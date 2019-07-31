@@ -169,6 +169,7 @@ namespace Iril.IR
             { Symbol.Intern ("section"), Token.SECTION },
             { Symbol.Intern ("asm"), Token.ASM },
             { Symbol.Intern ("sideeffect"), Token.SIDEEFFECT },
+            { Symbol.Intern ("byval"), Token.BYVAL },
         };
 
         public Lexer (string llvm)

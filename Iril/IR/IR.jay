@@ -23,7 +23,7 @@ namespace Iril.IR
 %token DEFINE DECLARE UNNAMED_ADDR LOCAL_UNNAMED_ADDR NOALIAS ELLIPSIS GLOBAL
 %token CONSTANT PRIVATE INTERNAL EXTERNAL LINKONCE LINKONCE_ODR WEAK WEAK_ODR APPENDING COMMON FASTCC SIGNEXT ZEROEXT VOLATILE RETURNED
 %token DEREFERENCEABLE AVAILABLE_EXTERNALLY PERSONALITY SRET CLEANUP
-%token NONNULL NOCAPTURE WRITEONLY READONLY READNONE HIDDEN
+%token NONNULL NOCAPTURE WRITEONLY READONLY READNONE HIDDEN BYVAL
 %token ATTRIBUTE_GROUP_REF ATTRIBUTES NORECURSE NOUNWIND UNWIND SPECULATABLE SSP UWTABLE ARGMEMONLY
 %token SEQ_CST DSO_LOCAL DSO_PREEMPTABLE
 %token RET BR SWITCH INDIRECTBR INVOKE RESUME CATCHSWITCH CATCHRET CLEANUPRET UNREACHABLE
@@ -564,6 +564,7 @@ parameter_attribute
     | RETURNED  { $$ = ParameterAttributes.Returned; }
     | SRET      { $$ = ParameterAttributes.StructureReturn; }
     | NOALIAS   { $$ = ParameterAttributes.NoAlias; }
+    | BYVAL     { $$ = ParameterAttributes.Byval; }
     | DEREFERENCEABLE '(' INTEGER ')'
     {
         $$ = ParameterAttributes.Dereferenceable;
@@ -645,6 +646,10 @@ nonglobal_value
     {
         $$ = new GetElementPointerValue ((LType)$4, (TypedValue)$6, (List<TypedValue>)$8);
     }
+    | GETELEMENTPTR '(' type ',' typed_value ',' element_indices ')'
+    {
+        $$ = new GetElementPointerValue ((LType)$3, (TypedValue)$5, (List<TypedValue>)$7);
+    }
     | BITCAST '(' typed_value TO type ')'
     {
         $$ = new BitcastValue ((TypedValue)$3, (LType)$5);
@@ -664,6 +669,10 @@ nonglobal_value
     | '{' typed_values '}'
     {
         $$ = new StructureConstant ((List<TypedValue>)$2);
+    }
+    | '<' '{' typed_values '}' '>'
+    {
+        $$ = new StructureConstant ((List<TypedValue>)$3);
     }
     ;
     

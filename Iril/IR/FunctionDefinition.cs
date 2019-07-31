@@ -121,6 +121,7 @@ namespace Iril.IR
         StructureReturn = 1 << 9,
         NoAlias         = 1 << 10,
         Align8          = 1 << 11,
+        Byval           = 1 << 12,
     }
 
     public class FunctionDeclaration
