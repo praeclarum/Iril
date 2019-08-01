@@ -130,7 +130,7 @@ namespace Iril
                     }
                     else
                     {
-                        switch (((IntegerType)type).Bits)
+                        switch (Compilation.RoundUpIntBits (((IntegerType)type).Bits))
                         {
                             case 8:
                                 Emit(il.Create(OpCodes.Ldc_I4, ((int)i.Value) & 0xFF));
@@ -150,8 +150,7 @@ namespace Iril
                     }
                     break;
                 case IR.IntegerConstant i:
-                    switch (((IntegerType)type).Bits)
-                    {
+                    switch (Compilation.RoundUpIntBits (((IntegerType)type).Bits)) {
                         case 8:
                             Emit(il.Create(OpCodes.Ldc_I4, ((int)i.Value) & 0xFF));
                             break;
@@ -181,7 +180,7 @@ namespace Iril
                     break;
                 case IR.PtrtointValue i:
                     EmitTypedValue(i.Value);
-                    switch (((IntegerType)i.Type).Bits)
+                    switch (Compilation.RoundUpIntBits (((IntegerType)i.Type).Bits))
                     {
                         case 8:
                             Emit(il.Create(OpCodes.Conv_I1));
@@ -303,7 +302,10 @@ namespace Iril
                          && index.Value is IR.IntegerConstant iconst)
                 {
                     var cst = compilation.GetClrType(t).Resolve();
-                    var field = cst.Fields[(int)iconst.Value];
+                    var fieldIndex = (int)iconst.Value;
+                    if (fieldIndex < 0 || fieldIndex >= cst.Fields.Count)
+                        throw new IndexOutOfRangeException ($"Field #{fieldIndex} does not exist in {cst.FullName} ({pointer}[{string.Join(", ", (object[])indices)}])");
+                    var field = cst.Fields[fieldIndex];
                     Emit(il.Create(OpCodes.Ldflda, field));
                     Emit(il.Create(OpCodes.Conv_U));
                     var iindex = iconst.Int32Value;

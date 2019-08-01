@@ -879,7 +879,22 @@ namespace Iril
                             Emit (store);
                         }
                         break;
-                    case IR.ZeroConstant c when type is Types.ArrayType art: {
+                    case IR.ZeroConstant _ when type is Types.ArrayType art: {
+                            var size = (int)art.Length;
+                            var et = art.ElementType;
+                            var cet = compilation.GetClrType (et);
+                            Emit (il.Create (OpCodes.Ldc_I4, size));
+                            Emit (il.Create (OpCodes.Newarr, cet));
+                            Emit (OpCodes.Ldc_I4_3);
+                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
+                            Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
+                            Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
+                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
+                            Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
+                            Emit (store);
+                        }
+                        break;
+                    case IR.UndefinedConstant _ when type is Types.ArrayType art: {
                             var size = (int)art.Length;
                             var et = art.ElementType;
                             var cet = compilation.GetClrType (et);
@@ -1219,6 +1234,7 @@ namespace Iril
                         compiledFunctionCount++;
                         var fc = new FunctionCompiler (this, m);
                         fc.CompileFunction ();
+                        Messages.AddRange (fc.Messages);
                     }
                     catch (Exception ex) {
                         ErrorMessage (m.IRModule.SourceFilename, $"Failed to compile function `{IR.MangledName.Demangle (m.Symbol)}` ({m.Symbol}): {ex.Message}", ex);
@@ -1410,7 +1426,7 @@ namespace Iril
             return GetClrType (irType, unsigned: unsigned);
         }
 
-        static int RoundUpIntBits (int bits) {
+        public static int RoundUpIntBits (int bits) {
             if (bits > 128)
                 return 256;
             if (bits > 64)

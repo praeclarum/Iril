@@ -71,7 +71,7 @@ namespace Iril.IR
                         return a;
                 }
             }
-            throw new KeyNotFoundException ($"Undeclared local {local}");
+            throw new KeyNotFoundException ($"Undeclared local {local} in `{Symbol}`");
         }
 
         public Assignment FindAssignment (LocalValue local)

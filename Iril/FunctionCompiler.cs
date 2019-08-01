@@ -38,6 +38,8 @@ namespace Iril
         readonly SymbolTable<LandingPad> landingPads = new SymbolTable<LandingPad> ();
         readonly SymbolTable<bool> isLandingPad = new SymbolTable<bool> ();
 
+        public List<Message> Messages { get; } = new List<Message> ();
+
         bool shouldTrace = true;
 
         public FunctionCompiler(Compilation compilation, DefinedFunction function)
@@ -1468,7 +1470,10 @@ namespace Iril
                 {
 
                     var td = compilation.GetClrType(gepPointerType.ElementType).Resolve();
-                    var field = td.Fields[indexConst.Int32Value];
+                    var fieldIndex = indexConst.Int32Value;
+                    if (fieldIndex < 0 || fieldIndex >= td.Fields.Count)
+                        throw new IndexOutOfRangeException ($"Field #{fieldIndex} does not exist in {td.FullName} ({store})");
+                    var field = td.Fields[fieldIndex];
 
                     EmitTypedValue(gep.Pointer);
                     EmitTypedValue(store.Value);
@@ -1535,7 +1540,10 @@ namespace Iril
                 {
 
                     var td = compilation.GetClrType(gepPointerType.ElementType).Resolve();
-                    var field = td.Fields[indexConst.Int32Value];
+                    var fieldIndex = indexConst.Int32Value;
+                    if (fieldIndex < 0 || fieldIndex >= td.Fields.Count)
+                        throw new IndexOutOfRangeException ($"Field #{fieldIndex} does not exist in {td.FullName} ({load})");
+                    var field = td.Fields[fieldIndex];
 
                     EmitTypedValue(gep.Pointer);
                     Emit(il.Create(OpCodes.Ldfld, field));
@@ -1700,8 +1708,8 @@ namespace Iril
         {
             if (condition is IR.LocalValue local && ShouldInline(local.Symbol))
             {
-                var a = function.IRDefinition.GetAssignment(local);
-                if (a.Instruction is IR.IcmpInstruction icmp && !(icmp.Type is VectorType))
+                var a = function.IRDefinition.FindAssignment(local);
+                if (a?.Instruction is IR.IcmpInstruction icmp && !(icmp.Type is VectorType))
                 {
                     var op = OpCodes.Brtrue;
                     switch (icmp.Condition)
@@ -1868,102 +1876,92 @@ namespace Iril
 
         void EmitCall(IR.CallInstruction call)
         {
-            if (call.Pointer is IR.GlobalValue gv)
-            {
-                switch (gv.Symbol.Text)
-                {
+            if (call.Pointer is IR.GlobalValue gv) {
+                switch (gv.Symbol.Text) {
                     case "@llvm.lifetime.start.p0i8":
                     case "@llvm.lifetime.end.p0i8":
                     case "@llvm.dbg.declare":
                     case "@llvm.dbg.value":
                         return;
                     case "@llvm.ceil.f64":
-                        EmitValue(call.Arguments[0].Value, call.Arguments[0].Type);
-                        Emit(il.Create(OpCodes.Call, compilation.sysMathCeilD));
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathCeilD));
                         return;
                     case "@llvm.ceil.v2f64" when call.Arguments[0].Type is VectorType ceilVt:
-                        EmitVectorFunc(call.Arguments[0].Value, ceilVt, compilation.sysMathCeilD);
+                        EmitVectorFunc (call.Arguments[0].Value, ceilVt, compilation.sysMathCeilD);
                         return;
                     case "@llvm.fabs.f64":
-                        EmitValue(call.Arguments[0].Value, call.Arguments[0].Type);
-                        Emit(il.Create(OpCodes.Call, compilation.sysMathAbsD));
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathAbsD));
                         return;
                     case "@llvm.sqrt.f64":
-                        EmitValue(call.Arguments[0].Value, call.Arguments[0].Type);
-                        Emit(il.Create(OpCodes.Call, compilation.sysMathSqrtD));
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathSqrtD));
                         return;
                     case "@llvm.pow.f64":
-                        EmitValue(call.Arguments[0].Value, call.Arguments[0].Type);
-                        EmitValue(call.Arguments[1].Value, call.Arguments[1].Type);
-                        Emit(il.Create(OpCodes.Call, compilation.sysMathPowD));
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathPowD));
                         return;
-                    case "@llvm.objectsize.i32.p0i8" when call.Arguments.Length >= 3:
-                        {
+                    case "@llvm.objectsize.i32.p0i8" when call.Arguments.Length >= 3: {
                             var min = 0;
-                            if (call.Arguments[1].Value is IR.Constant osizeConst)
-                            {
+                            if (call.Arguments[1].Value is IR.Constant osizeConst) {
                                 min = osizeConst.Int32Value;
                             }
-                            if (min == 0)
-                            {
-                                Emit(il.Create(OpCodes.Ldc_I4, -1));
+                            if (min == 0) {
+                                Emit (il.Create (OpCodes.Ldc_I4, -1));
                             }
-                            else
-                            {
-                                Emit(il.Create(OpCodes.Ldc_I4, 0));
+                            else {
+                                Emit (il.Create (OpCodes.Ldc_I4, 0));
                             }
                         }
                         return;
-                    case "@llvm.objectsize.i64.p0i8" when call.Arguments.Length >= 3:
-                        {
+                    case "@llvm.objectsize.i64.p0i8" when call.Arguments.Length >= 3: {
                             var min = 0;
-                            if (call.Arguments[1].Value is IR.Constant osizeConst)
-                            {
+                            if (call.Arguments[1].Value is IR.Constant osizeConst) {
                                 min = osizeConst.Int32Value;
                             }
-                            if (min == 0)
-                            {
-                                Emit(il.Create(OpCodes.Ldc_I8, -1L));
+                            if (min == 0) {
+                                Emit (il.Create (OpCodes.Ldc_I8, -1L));
                             }
-                            else
-                            {
-                                Emit(il.Create(OpCodes.Ldc_I8, 0L));
+                            else {
+                                Emit (il.Create (OpCodes.Ldc_I8, 0L));
                             }
                         }
                         return;
                     // declare void @llvm.memset.p0i8.i32(i8* <dest>, i8 <val>,
                     //                                    i32<len>, i1<isvolatile>)
                     case "@llvm.memset.p0i8.i32" when call.Arguments.Length >= 3:
-                        EmitValue(call.Arguments[0].Value, call.Arguments[0].Type);
-                        EmitValue(call.Arguments[1].Value, call.Arguments[1].Type);
-                        EmitValue(call.Arguments[2].Value, call.Arguments[2].Type);
-                        Emit(il.Create(OpCodes.Initblk));
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        EmitValue (call.Arguments[2].Value, call.Arguments[2].Type);
+                        Emit (il.Create (OpCodes.Initblk));
                         return;
                     // declare void @llvm.memset.p0i8.i64 (i8 * < dest >, i8<val>,
                     //                                     i64<len>, i1<isvolatile>)
                     case "@llvm.memset.p0i8.i64" when call.Arguments.Length >= 3:
-                        EmitValue(call.Arguments[0].Value, call.Arguments[0].Type);
-                        EmitValue(call.Arguments[1].Value, call.Arguments[1].Type);
-                        EmitValue(call.Arguments[2].Value, call.Arguments[2].Type);
-                        Emit(il.Create(OpCodes.Conv_U4));
-                        Emit(il.Create(OpCodes.Initblk));
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        EmitValue (call.Arguments[2].Value, call.Arguments[2].Type);
+                        Emit (il.Create (OpCodes.Conv_U4));
+                        Emit (il.Create (OpCodes.Initblk));
                         return;
                     // declare void @llvm.memcpy.p0i8.p0i8.i32(i8* <dest>, i8* <src>,
                     //                                         i32 <len>, i1 <isvolatile>)
                     case "@llvm.memcpy.p0i8.p0i8.i32" when call.Arguments.Length >= 3:
-                        EmitValue(call.Arguments[0].Value, call.Arguments[0].Type);
-                        EmitValue(call.Arguments[1].Value, call.Arguments[1].Type);
-                        EmitValue(call.Arguments[2].Value, call.Arguments[2].Type);
-                        Emit(il.Create(OpCodes.Cpblk));
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        EmitValue (call.Arguments[2].Value, call.Arguments[2].Type);
+                        Emit (il.Create (OpCodes.Cpblk));
                         return;
                     // declare void @llvm.memcpy.p0i8.p0i8.i64(i8* <dest>, i8* <src>,
                     //                                         i64 <len>, i1 <isvolatile>)
                     case "@llvm.memcpy.p0i8.p0i8.i64" when call.Arguments.Length >= 3:
-                        EmitValue(call.Arguments[0].Value, call.Arguments[0].Type);
-                        EmitValue(call.Arguments[1].Value, call.Arguments[1].Type);
-                        EmitValue(call.Arguments[2].Value, call.Arguments[2].Type);
-                        Emit(il.Create(OpCodes.Conv_U4));
-                        Emit(il.Create(OpCodes.Cpblk));
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        EmitValue (call.Arguments[2].Value, call.Arguments[2].Type);
+                        Emit (il.Create (OpCodes.Conv_U4));
+                        Emit (il.Create (OpCodes.Cpblk));
                         return;
                     // declare void @llvm.memmove.p0i8.p0i8.i64(i8* <dest>, i8* <src>,
                     //                                         i64 <len>, i1 <isvolatile>)
@@ -1984,42 +1982,36 @@ namespace Iril
                         Emit (il.Create (OpCodes.Pop));
                         return;
                     default:
-                        if (compilation.TryGetFunction(module, gv.Symbol, out var m))
-                        {
+                        if (compilation.TryGetFunction (module, gv.Symbol, out var m)) {
 
                             var ps = m.ILDefinition.Parameters;
                             var nps = ps.Count;
                             var hasVarArgs =
                                 nps > 0
                                 && ps[nps - 1].ParameterType.IsArray
-                                && ps[nps - 1].ParameterType.GetElementType().FullName == "System.Object";
+                                && ps[nps - 1].ParameterType.GetElementType ().FullName == "System.Object";
                             if (hasVarArgs)
                                 nps--;
-                            if (call.Arguments.Length < nps)
-                            {
-                                throw new InvalidOperationException($"Too few arguments to {function.IRDefinition.Symbol}");
+                            if (call.Arguments.Length < nps) {
+                                throw new InvalidOperationException ($"Too few arguments to {function.IRDefinition.Symbol}");
                             }
 
-                            for (var i = 0; i < nps; i++)
-                            {
+                            for (var i = 0; i < nps; i++) {
                                 var a = call.Arguments[i];
-                                EmitValue(a.Value, a.Type);
+                                EmitValue (a.Value, a.Type);
                             }
-                            if (hasVarArgs)
-                            {
-                                EmitVarArgs(call.Arguments, nps);
+                            if (hasVarArgs) {
+                                EmitVarArgs (call.Arguments, nps);
                             }
 
-                            Emit(il.Create(OpCodes.Call, m.ILDefinition));
+                            Emit (il.Create (OpCodes.Call, m.ILDefinition));
 
                             // LLVM allows for return type mismatches with void
-                            if (m.ILDefinition.ReturnType.FullName == "System.Void" && !(call.ReturnType is VoidType))
-                            {
-                                EmitZeroValue(call.ReturnType);
+                            if (m.ILDefinition.ReturnType.FullName == "System.Void" && !(call.ReturnType is VoidType)) {
+                                EmitZeroValue (call.ReturnType);
                             }
-                            else if (m.ILDefinition.ReturnType.FullName != "System.Void" && (call.ReturnType is VoidType))
-                            {
-                                Emit(OpCodes.Pop);
+                            else if (m.ILDefinition.ReturnType.FullName != "System.Void" && (call.ReturnType is VoidType)) {
+                                Emit (OpCodes.Pop);
                             }
 
                             return;
@@ -2027,17 +2019,14 @@ namespace Iril
                         break;
                 }
             }
-            else if (call.Pointer is IR.LocalValue lv)
-            {
+            else if (call.Pointer is IR.LocalValue lv) {
                 LType ltype;
-                if (function.ParamSyms.TryGetValue(lv.Symbol, out var p))
-                {
-                    ltype = function.IRDefinition.Parameters.First(x => x.Symbol == lv.Symbol).ParameterType;
+                if (function.ParamSyms.TryGetValue (lv.Symbol, out var p)) {
+                    ltype = function.IRDefinition.Parameters.First (x => x.Symbol == lv.Symbol).ParameterType;
                 }
-                else
-                {
-                    var lva = function.IRDefinition.GetAssignment(lv);
-                    ltype = lva.Instruction.ResultType(function.IRModule);
+                else {
+                    var lva = function.IRDefinition.GetAssignment (lv);
+                    ltype = lva.Instruction.ResultType (function.IRModule);
                 }
                 var ft = (FunctionType)((Types.PointerType)ltype).ElementType;
                 var ps = ft.ParameterTypes;
@@ -2045,21 +2034,24 @@ namespace Iril
                 var hasVarArgs = nps > 0 && (ps[nps - 1] is VarArgsType);
                 if (hasVarArgs)
                     nps--;
-                if (call.Arguments.Length < nps)
-                {
-                    throw new InvalidOperationException($"Too few arguments to {function.IRDefinition.Symbol}");
+                if (call.Arguments.Length < nps) {
+                    throw new InvalidOperationException ($"Too few arguments to {function.IRDefinition.Symbol}");
                 }
-                for (var i = 0; i < nps; i++)
-                {
+                for (var i = 0; i < nps; i++) {
                     var a = call.Arguments[i];
-                    EmitValue(a.Value, a.Type);
+                    EmitValue (a.Value, a.Type);
                 }
-                if (hasVarArgs)
-                {
-                    EmitVarArgs(call.Arguments, nps);
+                if (hasVarArgs) {
+                    EmitVarArgs (call.Arguments, nps);
                 }
-                EmitValue(lv, ltype);
-                Emit(il.Create(OpCodes.Calli, CreateCallSite(ft)));
+                EmitValue (lv, ltype);
+                Emit (il.Create (OpCodes.Calli, CreateCallSite (ft)));
+                return;
+            }
+            else if (call.Pointer is IR.InlineAssemblyValue asm) {
+                var msg = new Message (MessageType.Warning, $"Native assembly not supported in `{function.Symbol}`");
+                Messages.Add (msg);
+                msg.FilePath = module.SourceFilename;
                 return;
             }
             throw new NotSupportedException($"Cannot call `{call.Pointer}`");
