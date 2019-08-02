@@ -10,7 +10,7 @@ namespace Iril
 {
     abstract class Emitter
     {
-        public const int ShouldTrace = 2;
+        public const int ShouldTrace = 0;
 
         // Input
         protected readonly Compilation compilation;
@@ -322,6 +322,9 @@ namespace Iril
                 }
                 else if (t is Types.ArrayType artt)
                 {
+                    if (i > 0) {
+                        Emit (il.Create (OpCodes.Ldind_I));
+                    }
                     var esize = artt.ElementType.GetByteSize(module);
                     EmitValue(index.Value, index.Type);
                     EmitValue(new IR.IntegerConstant(esize), index.Type);
