@@ -130,8 +130,9 @@ namespace Iril
                 function.ReferenceCount++;
 
                 // Syscall dependencies
-                if (symbol.Text == "@printf" || symbol.Text == "@vprintf") {
-                    externalMethodDefs["@vfprintf"].ReferenceCount++;
+                var deps = syscalls.GetDependencies (symbol);
+                foreach (var d in deps) {
+                    externalMethodDefs[d].ReferenceCount++;
                 }
             }
             return r;

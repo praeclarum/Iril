@@ -181,7 +181,7 @@ namespace Cli
                 comp.WriteAssembly (outName);
 
                 if (errors.Count > 0) {
-                    Info ($"{errors.Count} errors");
+                    Info ($"{errors.Count(x => x.Type == MessageType.Error)} errors, {errors.Count (x => x.Type == MessageType.Warning)} warnings");
                 }
 
                 return modules.Any (m => m.HasErrors) ? 3 : 0;

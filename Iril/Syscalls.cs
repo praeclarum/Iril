@@ -43,6 +43,37 @@ namespace Iril
             EmitMemsetPattern (8);
             EmitMemsetPattern (16);
             EmitStrlen ();
+            EmitMemchr ();
+            EmitMemcmp ();
+            EmitMemcpy ();
+            EmitMemcpyChecked ();
+            EmitMemmove ();
+            EmitMemmoveChecked ();
+            EmitMemset ();
+            EmitMemsetChecked ();
+        }
+
+        static readonly string[] printfDeps = { "@vfprintf" };
+        static readonly string[] memcpyChkDeps = { "@memcpy" };
+        static readonly string[] memmoveChkDeps = { "@memmove" };
+        static readonly string[] memsetChkDeps = { "@memset" };
+
+        public string[] GetDependencies (Symbol symbol)
+        {
+            switch (symbol.Text) {
+                case "@printf":
+                    return printfDeps;
+                case "@vprintf":
+                    return printfDeps;
+                case "@__memcpy_chk":
+                    return memcpyChkDeps;
+                case "@__memmove_chk":
+                    return memmoveChkDeps;
+                case "@__memset_chk":
+                    return memsetChkDeps;
+                default:
+                    return Array.Empty<string> ();
+            }
         }
 
         MethodDefinition NewMethod (Symbol symbol, LType returnType, params (string, LType)[] parameters)
@@ -145,7 +176,7 @@ namespace Iril
             il.Append (il.Create (OpCodes.Ret));
             b.Optimize ();
         }
-        
+
         void EmitNew ()
         {
             var m = NewMethod ("@_Znwm", Types.PointerType.I8Pointer, ("size", IntegerType.I64));
@@ -421,6 +452,362 @@ namespace Iril
             il.Append (il.Create (OpCodes.Ldc_I4, 1));
             il.Append (il.Create (OpCodes.Div));
             il.Append (il.Create (OpCodes.Conv_I8));
+            il.Append (il.Create (OpCodes.Ret));
+
+            b.Optimize ();
+        }
+
+        void EmitMemmoveChecked ()
+        {
+            var m = NewMethod ("@__memmove_chk", Types.PointerType.I8Pointer,
+                               ("dest", Types.PointerType.I8Pointer),
+                               ("src", Types.PointerType.I8Pointer),
+                               ("len", Types.IntegerType.I64),
+                               ("destlen", Types.IntegerType.I64));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+
+            var ilf = il.Create (OpCodes.Ldarg_0);
+            il.Append (il.Create (OpCodes.Ldarg_3));
+            il.Append (il.Create (OpCodes.Ldarg_2));
+            il.Append (il.Create (OpCodes.Bge, ilf));
+            il.Append (il.Create (OpCodes.Ldstr, "Buffer overflow"));
+            il.Append (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
+            il.Append (il.Create (OpCodes.Throw));
+
+            il.Append (ilf);
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Ldarg_2));
+            il.Append (il.Create (OpCodes.Call, Calls["@memmove"]));
+
+            il.Append (il.Create (OpCodes.Ret));
+
+            b.Optimize ();
+        }
+
+        void EmitMemmove ()
+        {
+            var m = NewMethod ("@memmove", Types.PointerType.I8Pointer,
+                               ("dest", Types.PointerType.I8Pointer),
+                               ("src", Types.PointerType.I8Pointer),
+                               ("len", Types.IntegerType.I64));
+            var v0 = new VariableDefinition (compilation.sysBytePtr);
+            var v1 = new VariableDefinition (compilation.sysBytePtr);
+            var v2 = new VariableDefinition (compilation.sysBytePtr);
+            var b = m.Body;
+            b.Variables.Add (v0);
+            b.Variables.Add (v1);
+            b.Variables.Add (v2);
+            var il = b.GetILProcessor ();
+
+            var len = 2;
+
+            var ilf = il.Create (OpCodes.Ldarg_0);
+
+            var il48 = il.Create (OpCodes.Ldarg_2);
+            il.Append (ilf);
+            il.Append (il.Create (OpCodes.Stloc_0));
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Stloc_1));
+            il.Append (il.Create (OpCodes.Ldloc_0));
+            il.Append (il.Create (OpCodes.Stloc_2));
+            il.Append (il.Create (OpCodes.Ldloc_1));
+            il.Append (il.Create (OpCodes.Ldloc_0));
+            il.Append (il.Create (OpCodes.Bge_Un, il48));
+
+            var il31 = il.Create (OpCodes.Ldarg_2);
+            il.Append (il.Create (OpCodes.Ldloc_0));
+            il.Append (il.Create (OpCodes.Ldarg_2));
+            il.Append (il.Create (OpCodes.Conv_I));
+            il.Append (il.Create (OpCodes.Add));
+            il.Append (il.Create (OpCodes.Stloc_0));
+            il.Append (il.Create (OpCodes.Ldloc_1));
+            il.Append (il.Create (OpCodes.Ldarg_2));
+            il.Append (il.Create (OpCodes.Conv_I));
+            il.Append (il.Create (OpCodes.Add));
+            il.Append (il.Create (OpCodes.Stloc_1));
+            il.Append (il.Create (OpCodes.Br, il31));
+
+            var il25 = il.Create (OpCodes.Ldloc_0);
+            il.Append (il25);
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Sub));
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Stloc_0));
+            il.Append (il.Create (OpCodes.Ldloc_1));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Sub));
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Stloc_1));
+            il.Append (il.Create (OpCodes.Ldind_U1));
+            il.Append (il.Create (OpCodes.Stind_I1));
+
+            il.Append (il31);
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Conv_I8));
+            il.Append (il.Create (OpCodes.Sub));
+            il.Append (il.Create (OpCodes.Starg, len));
+            il.Append (il.Create (OpCodes.Brtrue, il25));
+
+            var il51 = il.Create (OpCodes.Ldloc_2);
+            il.Append (il.Create (OpCodes.Br, il51));
+
+            var il3c = il.Create (OpCodes.Ldloc_0);
+            il.Append (il3c);
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Add));
+            il.Append (il.Create (OpCodes.Stloc_0));
+            il.Append (il.Create (OpCodes.Ldloc_1));
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Add));
+            il.Append (il.Create (OpCodes.Stloc_1));
+            il.Append (il.Create (OpCodes.Ldind_U1));
+            il.Append (il.Create (OpCodes.Stind_I1));
+            il.Append (il48);
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Conv_I8));
+            il.Append (il.Create (OpCodes.Sub));
+            il.Append (il.Create (OpCodes.Starg, len));
+            il.Append (il.Create (OpCodes.Brtrue, il3c));
+
+            il.Append (il51);
+            il.Append (il.Create (OpCodes.Ret));
+
+            b.Optimize ();
+        }
+
+        void EmitMemchr ()
+        {
+            var m = NewMethod ("@memchr", Types.PointerType.I8Pointer,
+                               ("src", Types.PointerType.I8Pointer),
+                               ("c", Types.PointerType.I8Pointer),
+                               ("len", Types.IntegerType.I64));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+
+            var il11 = il.Create (OpCodes.Ldarg_2);
+            il.Append (il.Create (OpCodes.Br, il11));
+
+            var il2 = il.Create (OpCodes.Ldarg_0);
+            il.Append (il2);
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Add));
+            il.Append (il.Create (OpCodes.Starg, 0));
+            il.Append (il.Create (OpCodes.Ldind_U1));
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Conv_U1));
+            il.Append (il.Create (OpCodes.Bne_Un, il11));
+
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Sub));
+            il.Append (il.Create (OpCodes.Ret));
+
+            il.Append (il11);
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Conv_I8));
+            il.Append (il.Create (OpCodes.Sub));
+            il.Append (il.Create (OpCodes.Starg, 2));
+            il.Append (il.Create (OpCodes.Brtrue, il2));
+
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Conv_U));
+            il.Append (il.Create (OpCodes.Ret));
+
+            b.Optimize ();
+        }
+
+        void EmitMemsetChecked ()
+        {
+            var m = NewMethod ("@__memset_chk", Types.PointerType.I8Pointer,
+                               ("dstpp", Types.PointerType.I8Pointer),
+                               ("c", Types.IntegerType.I32),
+                               ("len", Types.IntegerType.I64),
+                               ("dstlen", Types.IntegerType.I64));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+
+            var ilf = il.Create (OpCodes.Ldarg_0);
+            il.Append (il.Create (OpCodes.Ldarg_3));
+            il.Append (il.Create (OpCodes.Ldarg_2));
+            il.Append (il.Create (OpCodes.Bge, ilf));
+            il.Append (il.Create (OpCodes.Ldstr, "Buffer overflow"));
+            il.Append (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
+            il.Append (il.Create (OpCodes.Throw));
+
+            il.Append (ilf);
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Ldarg_2));
+            il.Append (il.Create (OpCodes.Call, Calls["@memset"]));
+
+            il.Append (il.Create (OpCodes.Ret));
+
+            b.Optimize ();
+        }
+
+        void EmitMemset ()
+        {
+            var m = NewMethod ("@memset", Types.PointerType.I8Pointer,
+                               ("src", Types.PointerType.I8Pointer),
+                               ("c", Types.IntegerType.I32),
+                               ("len", Types.IntegerType.I64));
+            var v0 = new VariableDefinition (compilation.sysBytePtr);
+            var v1 = new VariableDefinition (compilation.sysBytePtr);
+            var b = m.Body;
+            b.Variables.Add (v0);
+            b.Variables.Add (v1);
+            var il = b.GetILProcessor ();
+
+            var il11 = il.Create (OpCodes.Ldloc_0);
+
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Stloc_0));
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Ldarg_2));
+            il.Append (il.Create (OpCodes.Conv_I));
+            il.Append (il.Create (OpCodes.Add));
+            il.Append (il.Create (OpCodes.Stloc_1));
+            il.Append (il.Create (OpCodes.Br, il11));
+
+            var il9 = il.Create (OpCodes.Ldloc_0);
+            il.Append (il9);
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Add));
+            il.Append (il.Create (OpCodes.Stloc_0));
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Conv_U1));
+            il.Append (il.Create (OpCodes.Stind_I1));
+            il.Append (il11);
+            il.Append (il.Create (OpCodes.Ldloc_1));
+            il.Append (il.Create (OpCodes.Blt_Un, il9));
+
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Ret));
+
+            b.Optimize ();
+        }
+
+        void EmitMemcpyChecked ()
+        {
+            var m = NewMethod ("@__memcpy_chk", Types.PointerType.I8Pointer,
+                               ("dstpp", Types.PointerType.I8Pointer),
+                               ("srcpp", Types.PointerType.I8Pointer),
+                               ("len", Types.IntegerType.I64),
+                               ("dstlen", Types.IntegerType.I64));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+
+            var ilf = il.Create (OpCodes.Ldarg_0);
+            il.Append (il.Create (OpCodes.Ldarg_3));
+            il.Append (il.Create (OpCodes.Ldarg_2));
+            il.Append (il.Create (OpCodes.Bge, ilf));
+            il.Append (il.Create (OpCodes.Ldstr, "Buffer overflow"));
+            il.Append (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
+            il.Append (il.Create (OpCodes.Throw));
+
+            il.Append (ilf);
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Ldarg_2));
+            il.Append (il.Create (OpCodes.Call, Calls["@memcpy"]));
+
+            il.Append (il.Create (OpCodes.Ret));
+
+            b.Optimize ();
+        }
+
+        void EmitMemcpy ()
+        {
+            var m = NewMethod ("@memcpy", Types.PointerType.I8Pointer,
+                               ("dst", Types.PointerType.I8Pointer),
+                               ("src", Types.PointerType.I8Pointer),
+                               ("len", Types.IntegerType.I64));
+            var v0 = new VariableDefinition (compilation.sysBytePtr);
+            var b = m.Body;
+            b.Variables.Add (v0);
+            var il = b.GetILProcessor ();
+
+            var il12 = il.Create (OpCodes.Ldarg_2);
+
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Stloc_0));
+            il.Append (il.Create (OpCodes.Br, il12));
+
+            var il4 = il.Create (OpCodes.Ldarg_0);
+            il.Append (il4);
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Add));
+            il.Append (il.Create (OpCodes.Starg, 0));
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Add));
+            il.Append (il.Create (OpCodes.Starg, 1));
+            il.Append (il.Create (OpCodes.Ldind_U1));
+            il.Append (il.Create (OpCodes.Stind_I1));
+            il.Append (il12);
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Conv_I8));
+            il.Append (il.Create (OpCodes.Sub));
+            il.Append (il.Create (OpCodes.Starg, 2));
+            il.Append (il.Create (OpCodes.Brtrue, il4));
+
+            il.Append (il.Create (OpCodes.Ldloc_0));
+            il.Append (il.Create (OpCodes.Ret));
+
+            b.Optimize ();
+        }
+
+        void EmitMemcmp ()
+        {
+            var m = NewMethod ("@memcmp", Types.IntegerType.I32,
+                               ("s1", Types.PointerType.I8Pointer),
+                               ("s2", Types.PointerType.I8Pointer),
+                               ("len", Types.IntegerType.I64));
+            var v0 = new VariableDefinition (compilation.sysInt32);
+            var b = m.Body;
+            b.Variables.Add (v0);
+            var il = b.GetILProcessor ();
+
+            var il1e = il.Create (OpCodes.Ldloc_0);
+            var il2 = il.Create (OpCodes.Ldarg_2);
+
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Stloc_0));
+            il.Append (il2);
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Conv_I8));
+            il.Append (il.Create (OpCodes.Sub));
+            il.Append (il.Create (OpCodes.Starg, 2));
+            il.Append (il.Create (OpCodes.Brfalse, il1e));
+
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Add));
+            il.Append (il.Create (OpCodes.Starg, 0));
+            il.Append (il.Create (OpCodes.Ldind_U1));
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Add));
+            il.Append (il.Create (OpCodes.Starg, 1));
+            il.Append (il.Create (OpCodes.Ldind_U1));
+            il.Append (il.Create (OpCodes.Sub));
+            il.Append (il.Create (OpCodes.Dup));
+            il.Append (il.Create (OpCodes.Stloc_0));
+            il.Append (il.Create (OpCodes.Brfalse, il2));
+
+            il.Append (il1e);
             il.Append (il.Create (OpCodes.Ret));
 
             b.Optimize ();

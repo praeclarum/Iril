@@ -47,6 +47,8 @@ namespace Iril
         {
             this.function = function;
             liveliness = new LivelinessTable(function);
+
+            UMulOverflowResultTypeI64 = new Lazy<TypeDefinition> (() => GetUMulOverflowResultType (Types.IntegerType.I64));
         }
 
         readonly SymbolTable<int> localCounts = new SymbolTable<int> ();
@@ -1874,6 +1876,14 @@ namespace Iril
         readonly List<(CecilInstruction TryStart, CecilInstruction TryLast, CecilInstruction CatchLast)> ehs =
             new List<(CecilInstruction TryStart, CecilInstruction TryLast, CecilInstruction CatchLast)> ();
 
+        readonly Lazy<TypeDefinition> UMulOverflowResultTypeI64;
+
+        TypeDefinition GetUMulOverflowResultType (LType valueType)
+        {
+            var irType = new LiteralStructureType (new LType[] { valueType, Types.IntegerType.I1 });
+            return compilation.GetClrType (irType).Resolve ();
+        }
+
         void EmitCall(IR.CallInstruction call)
         {
             if (call.Pointer is IR.GlobalValue gv) {
@@ -1980,6 +1990,22 @@ namespace Iril
                     case "@llvm.stackrestore":
                         compilation.WarningMessage (module.SourceFilename, $"Stack restore is not supported in `{MangledName.Demangle (function.Symbol)}`");
                         Emit (il.Create (OpCodes.Pop));
+                        return;
+                    case "@llvm.va_start":
+                        compilation.WarningMessage (module.SourceFilename, $"va_start not supported in `{MangledName.Demangle (function.Symbol)}`");
+                        Emit (il.Create (OpCodes.Pop));
+                        return;
+                    case "@llvm.va_end":
+                        compilation.WarningMessage (module.SourceFilename, $"va_end not supported in `{MangledName.Demangle (function.Symbol)}`");
+                        Emit (il.Create (OpCodes.Pop));
+                        return;
+                    case "@llvm.umul.with.overflow.i64":
+                        Emit (il.Create (OpCodes.Pop));
+                        Emit (il.Create (OpCodes.Pop));
+                        Emit (il.Create (OpCodes.Mul_Ovf_Un)); {
+                            var st = UMulOverflowResultTypeI64.Value;
+                        }
+                        throw new NotImplementedException ();
                         return;
                     default:
                         if (compilation.TryGetFunction (module, gv.Symbol, out var m)) {
