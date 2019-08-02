@@ -218,7 +218,7 @@ namespace Iril
                     {
 
                         var irtype = a.Instruction.ResultType(function.IRModule);
-                        var ctype = compilation.GetClrType(irtype);
+                        var ctype = compilation.GetClrType(irtype, module: this.module);
                         var local = GetFreeVariable(symbol, ctype);
                         locals[a.Result] = local;
                         //var name = "local" + symbol.Text.Substring (1);
@@ -240,7 +240,7 @@ namespace Iril
                     if (a.HasResult && a.Instruction is IR.PhiInstruction phi)
                     {
                         var irtype = a.Instruction.ResultType(function.IRModule);
-                        var ctype = compilation.GetClrType(irtype);
+                        var ctype = compilation.GetClrType(irtype, module: this.module);
                         var local = GetFreeVariable(symbol, ctype);
                         //var local = new VariableDefinition (ctype);
                         //body.Variables.Add (local);
@@ -1515,7 +1515,7 @@ namespace Iril
                     && gepPointerType.ElementType.Resolve(function.IRModule) is LiteralStructureType structType)
                 {
 
-                    var td = compilation.GetClrType(gepPointerType.ElementType).Resolve();
+                    var td = compilation.GetClrType(gepPointerType.ElementType, module: module).Resolve();
                     var fieldIndex = indexConst.Int32Value;
                     if (fieldIndex < 0 || fieldIndex >= td.Fields.Count)
                         throw new IndexOutOfRangeException ($"Field #{fieldIndex} does not exist in {td.FullName} ({store})");
@@ -1530,7 +1530,7 @@ namespace Iril
 
             EmitTypedValue(store.Pointer);
             EmitTypedValue(store.Value);
-            var et = compilation.GetClrType(store.Value.Type);
+            var et = compilation.GetClrType(store.Value.Type, module: module);
             if (store.Value.Type is IntegerType intt)
             {
                 switch (intt.Bits)
@@ -1585,7 +1585,7 @@ namespace Iril
                     && gepPointerType.ElementType.Resolve(function.IRModule) is LiteralStructureType structType)
                 {
 
-                    var td = compilation.GetClrType(gepPointerType.ElementType).Resolve();
+                    var td = compilation.GetClrType(gepPointerType.ElementType, module: module).Resolve();
                     var fieldIndex = indexConst.Int32Value;
                     if (fieldIndex < 0 || fieldIndex >= td.Fields.Count)
                         throw new IndexOutOfRangeException ($"Field #{fieldIndex} does not exist in {td.FullName} ({load})");
@@ -1599,7 +1599,7 @@ namespace Iril
 
             EmitTypedValue(load.Pointer);
 
-            var et = compilation.GetClrType(load.Type);
+            var et = compilation.GetClrType(load.Type, module: module);
             if (load.Type is IntegerType intt)
             {
                 switch (intt.Bits)
@@ -1925,7 +1925,7 @@ namespace Iril
         TypeDefinition GetUMulOverflowResultType (LType valueType)
         {
             var irType = new LiteralStructureType (new LType[] { valueType, Types.IntegerType.I1 });
-            return compilation.GetClrType (irType).Resolve ();
+            return compilation.GetClrType (irType, module: module).Resolve ();
         }
 
         void EmitCall(IR.CallInstruction call)
@@ -2219,15 +2219,15 @@ namespace Iril
 
         CallSite CreateCallSite(FunctionType ft)
         {
-            var c = new CallSite(compilation.GetClrType(ft.ReturnType));
+            var c = new CallSite(compilation.GetClrType(ft.ReturnType, module: module));
             foreach (var p in ft.ParameterTypes)
             {
-                var pd = new ParameterDefinition(compilation.GetClrType(p));
+                var pd = new ParameterDefinition(compilation.GetClrType(p, module: module));
                 c.Parameters.Add(pd);
             }
             return c;
         }
 
-        SimdVector GetVectorType(VectorType vt) => compilation.GetVectorType(vt);
+        SimdVector GetVectorType(VectorType vt) => compilation.GetVectorType(vt, module: module);
     }
 }

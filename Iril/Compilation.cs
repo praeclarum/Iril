@@ -96,11 +96,14 @@ namespace Iril
         public MethodReference sysPtrToStringAuto;
         TypeReference sysDebugger;
         public MethodReference sysDebuggerBreak;
+        TypeReference sysTextWriter;
+        public MethodReference sysTextWriterFlush;
         TypeReference sysConsole;
         public MethodReference sysConsoleWrite;
         public MethodReference sysConsoleWriteChar;
         public MethodReference sysConsoleWriteObj;
         public MethodReference sysConsoleWriteLine;
+        public MethodReference sysConsoleGetOut;
         TypeReference sysEncoding;
         public MethodReference sysAscii;
         public MethodReference sysAsciiGetBytes;
@@ -318,11 +321,14 @@ namespace Iril
             sysGCHandleAddrOfPinnedObject = ImportMethod (sysGCHandle, sysIntPtr, "AddrOfPinnedObject");
             sysDebugger = Import ("System.Diagnostics.Debugger");
             sysDebuggerBreak = ImportMethod (sysDebugger, sysVoid, "Break");
+            sysTextWriter = Import ("System.IO.TextWriter");
+            sysTextWriterFlush = ImportMethod (sysTextWriter, sysVoid, "Flush");
             sysConsole = Import ("System.Console");
             sysConsoleWrite = ImportMethod (sysConsole, sysVoid, "Write", sysString);
             sysConsoleWriteChar = ImportMethod (sysConsole, sysVoid, "Write", sysChar);
             sysConsoleWriteObj = ImportMethod (sysConsole, sysVoid, "Write", sysObj);
             sysConsoleWriteLine = ImportMethod (sysConsole, sysVoid, "WriteLine", sysString);
+            sysConsoleGetOut = ImportMethod (sysConsole, sysTextWriter, "get_Out");
             sysSingleIsNaN = ImportMethod (sysSingle, sysBoolean, "IsNaN", sysSingle);
             sysDoubleIsNaN = ImportMethod (sysDouble, sysBoolean, "IsNaN", sysDouble);
             sysException = Import ("System.Exception");
@@ -542,6 +548,11 @@ namespace Iril
             }
         }
 
+        bool IsAnonymousTypeName (Symbol symbol)
+        {
+            return symbol.Text.IndexOf (".anon", StringComparison.Ordinal) > 0;
+        }
+
         void FindStructures ()
         {
             var externals = new HashSet<Symbol> ();
@@ -549,33 +560,27 @@ namespace Iril
             foreach (var m in Modules) {
                 foreach (var iskv in m.IdentifiedStructures) {
                     var sym = iskv.Key;
-                    var isExternal = sym.Text.IndexOf(".anon", StringComparison.Ordinal) < 0;
 
-                    if (isExternal) {
+                    if (!IsAnonymousTypeName (sym)) {
                         if (externals.Contains (sym))
                             continue;
                         externals.Add (sym);
-                    }
 
-                    var tname = new IR.MangledName (sym, prefixWithTypeKind: !isExternal);
-                    var s = iskv.Value;
-                    var nn = new NameNode {
-                        Name = tname.Identifier,
-                        Symbol = tname.Symbol,
-                        Module = m,
-                        Structure = s
-                    };
+                        var tname = new IR.MangledName (sym, prefixWithTypeKind: false);
+                        var s = iskv.Value;
+                        var nn = new NameNode {
+                            Name = tname.Identifier,
+                            Symbol = tname.Symbol,
+                            Module = m,
+                            Structure = s
+                        };
 
-                    var a = tname.Ancestry;
-                    if (a.Length == 0) {
-                        if (isExternal) {
+                        var a = tname.Ancestry;
+                        if (a.Length == 0) {
                             a = new[] { namespac };
                         }
-                        else {
-                            a = new[] { namespac, new IR.MangledName(m.Symbol).Identifier };
-                        }
+                        AddNameNode (nn, a);
                     }
-                    AddNameNode (nn, a);
                 }
             }
         }
@@ -701,7 +706,7 @@ namespace Iril
                     try {
                         var gname = new IR.MangledName (symbol);
 
-                        var gtype = GetClrType (g.Type);
+                        var gtype = GetClrType (g.Type, module: m);
                         var field = new FieldDefinition (
                             gname.Identifier,
                             FieldAttributes.Static | (FieldAttributes.Public), gtype);
@@ -756,7 +761,7 @@ namespace Iril
 
                         var gname = new IR.MangledName (symbol);
 
-                        var gtype = GetClrType (g.Type);
+                        var gtype = GetClrType (g.Type, module: m);
                         var field = new FieldDefinition (
                             gname.Identifier,
                             FieldAttributes.Static | (FieldAttributes.Public), gtype);
@@ -851,12 +856,19 @@ namespace Iril
                 });
 
                 foreach (var (g, f) in needsInit) {
-                    //if (ShouldTrace) {
-                    //    Emit (il.Create (OpCodes.Ldstr, $"Init Field: {f}"));
-                    //    Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
-                    //}
-                    var store = il.Create (OpCodes.Stsfld, f);
-                    EmitInitializer (g.Initializer, g.Type, gcHandleV, store);
+                    try {
+                        if (ShouldTrace) {
+                            Emit (il.Create (OpCodes.Ldstr, $"Init Field: {f}"));
+                            Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
+                            Emit (il.Create (OpCodes.Call, compilation.sysConsoleGetOut));
+                            Emit (il.Create (OpCodes.Callvirt, compilation.sysTextWriterFlush));
+                        }
+                        var store = il.Create (OpCodes.Stsfld, f);
+                        EmitInitializer (g.Initializer, g.Type, gcHandleV, store);
+                    }
+                    catch (Exception ex) {
+                        compilation.ErrorMessage ("", $"Failed to init global `{g.Symbol}`", ex);
+                    }
                 }
 
                 Emit (OpCodes.Ret);
@@ -871,7 +883,7 @@ namespace Iril
                     case IR.ArrayConstant c: {
                             var size = c.Elements.Length;
                             var et = c.Elements[0].Type;
-                            var cet = compilation.GetClrType (et);
+                            var cet = compilation.GetClrType (et, module: module);
                             var ocet = cet;
                             if (cet.IsPointer) {
                                 ocet = compilation.sysIntPtr;
@@ -899,7 +911,7 @@ namespace Iril
                     case IR.ZeroConstant _ when type is Types.ArrayType art: {
                             var size = (int)art.Length;
                             var et = art.ElementType;
-                            var cet = compilation.GetClrType (et);
+                            var cet = compilation.GetClrType (et, module: module);
                             var ocet = cet;
                             if (cet.IsPointer) {
                                 ocet = compilation.sysIntPtr;
@@ -918,7 +930,7 @@ namespace Iril
                     case IR.UndefinedConstant _ when type is Types.ArrayType art: {
                             var size = (int)art.Length;
                             var et = art.ElementType;
-                            var cet = compilation.GetClrType (et);
+                            var cet = compilation.GetClrType (et, module: module);
                             var ocet = cet;
                             if (cet.IsPointer) {
                                 ocet = compilation.sysIntPtr;
@@ -1108,7 +1120,7 @@ namespace Iril
                     var mident = node.Name;
                     var dbgMeth = functionDebugs[sym];
                     var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Static;
-                    var md = new MethodDefinition (mident, mattrs, GetClrType (f.ReturnType));
+                    var md = new MethodDefinition (mident, mattrs, GetClrType (f.ReturnType, module: m));
 
                     //
                     // Create parameters
@@ -1170,6 +1182,7 @@ namespace Iril
                 }
                 else if (node.FunctionDecl != null) {
                     var sym = node.FunctionDecl.Symbol;
+                    var m = node.Module;
 
                     if (!externalMethodDefs.ContainsKey (sym)) {
 
@@ -1177,7 +1190,7 @@ namespace Iril
                         var mident = node.Name;
 
                         var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Static;
-                        var md = new MethodDefinition (mident, mattrs, GetClrType (f.ReturnType));
+                        var md = new MethodDefinition (mident, mattrs, GetClrType (f.ReturnType, module: m));
 
                         //
                         // Create parameters
@@ -1186,7 +1199,7 @@ namespace Iril
                         for (var i = 0; i < f.Parameters.Length; i++) {
                             var fp = f.Parameters[i];
                             var pname = "p" + i;
-                            var pt = GetClrType (fp.ParameterType);
+                            var pt = GetClrType (fp.ParameterType, module: m);
                             var p = new ParameterDefinition (pname, ParameterAttributes.None, pt);
                             md.Parameters.Add (p);
                             paramSyms[fp.Symbol] = p;
@@ -1448,7 +1461,7 @@ namespace Iril
                 }
             }
 
-            return GetClrType (irType, unsigned: unsigned);
+            return GetClrType (irType, module: module, unsigned: unsigned);
         }
 
         public static int RoundUpIntBits (int bits) {
@@ -1467,8 +1480,11 @@ namespace Iril
             return 1;
         }
 
-        public TypeReference GetClrType (LType irType, bool? unsigned = false, Module module = null)
+        public TypeReference GetClrType (LType irType, Module module, bool? unsigned = false)
         {
+            if (module == null)
+                throw new ArgumentNullException (nameof (module));
+
             switch (irType) {
                 case FloatType floatt:
                     switch (floatt.Bits) {
@@ -1501,15 +1517,21 @@ namespace Iril
                 case FunctionType ft:
                     return sysVoidPtr;
                 case NamedType nt:
-                    if (module != null && moduleStructs.TryGetValue (module.Symbol, out var structs)) {
-                        if (structs.TryGetValue (nt.Symbol, out var lntSym))
-                            return lntSym.Item2;
+                    if (IsAnonymousTypeName (nt.Symbol)) {
+                        var st = (LiteralStructureType)module.IdentifiedStructures[nt.Symbol];
+                        return GetAnonymousStructType (st, module: module).ClrType;
                     }
-                    if (globalStructs.TryGetValue (nt.Symbol, out var gntSym))
-                        return gntSym.Item2;
-                    throw new Exception ($"Cannot find `{nt.Symbol}` from module `{module}`");
+                    else {
+                        if (module != null && moduleStructs.TryGetValue (module.Symbol, out var structs)) {
+                            if (structs.TryGetValue (nt.Symbol, out var lntSym))
+                                return lntSym.Item2;
+                        }
+                        if (globalStructs.TryGetValue (nt.Symbol, out var gntSym))
+                            return gntSym.Item2;
+                        throw new Exception ($"Cannot find `{nt.Symbol}` from module `{module}`");
+                    }
                 case LiteralStructureType st:
-                    return GetAnonymousStructType (st).ClrType;
+                    return GetAnonymousStructType (st, module: module).ClrType;
                 case VectorType vt:
                     return GetVectorType (vt, module: module).ClrType;
                 case VoidType vdt:
@@ -1521,9 +1543,13 @@ namespace Iril
             }
         }
 
-        public AnonymousStruct GetAnonymousStructType (LiteralStructureType st)
+        public AnonymousStruct GetAnonymousStructType (LiteralStructureType st, Module module)
         {
-            var key = st.Elements.Select (x => GetClrType (x)).ToArray ();
+            if (module is null) {
+                throw new ArgumentNullException (nameof (module));
+            }
+
+            var key = st.Elements.Select (x => GetClrType (x, module: module)).ToArray ();
             if (astructTypes.TryGetValue (key, out var vct)) {
                 return vct;
             }
@@ -1532,10 +1558,11 @@ namespace Iril
 
         AnonymousStruct AddAnonymousStruct (TypeReference[] key, LiteralStructureType st)
         {
-            var tname = $"AnonymousStruct{key.Length}_{string.Join("_", key.Select(x => x.Name))}";
+            var tname = $"Struct{key.Length}_{string.Join("_", key.Select(x => x.Name))}";
 
-            var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.NestedPublic;
-            var td = new TypeDefinition ("", tname, tattrs, sysVal);
+            var ns = namespac + ".AnonymousTypes";
+            var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.Public;
+            var td = new TypeDefinition (ns, tname, tattrs, sysVal);
             for (var i = 0; i < key.Length; i++) {
                 var f = new FieldDefinition ("F" + i, FieldAttributes.Public, key[i]);
                 td.Fields.Add (f);
@@ -1547,24 +1574,23 @@ namespace Iril
                 ElementFields = td.Fields.Select (x => (FieldReference)x).ToArray (),
             };
 
-            var ptd = dataType.Value;
-            ptd.NestedTypes.Add (td);
+            mod.Types.Add (td);
             astructTypes[key] = r;
 
             return r;
         }
 
-        public SimdVector GetVectorType (VectorType vt, Module module = null)
+        public SimdVector GetVectorType (VectorType vt, Module module)
         {
             var et = GetClrType (vt.ElementType, module: module);
             var key = (vt.Length, et.FullName);
             if (vectorTypes.TryGetValue (key, out var vct)) {
                 return vct;
             }
-            return AddVectorType (key, vt, et);
+            return AddVectorType (key, vt, et, module);
         }
 
-        SimdVector AddVectorType ((int Length, string TypeFullName) key, VectorType irType, TypeReference elementType)
+        SimdVector AddVectorType ((int Length, string TypeFullName) key, VectorType irType, TypeReference elementType, Module module)
         {
             var tname = $"Vector{key.Length}{elementType.Name}";
 
@@ -1615,7 +1641,7 @@ namespace Iril
                 ("ToInt64", OpCodes.Conv_I8, new VectorType (irType.Length, IntegerType.I64)),
             };
             foreach (var (name, opcode, vt) in unopMethods) {
-                var cvt = GetClrType (vt);
+                var cvt = GetClrType (vt, module: module);
                 var cvtCtor = cvt.Resolve ().Methods.First (x => x.Name == ".ctor" && x.Parameters.Count > 0);
                 var mop = new MethodDefinition (name, MethodAttributes.Public | MethodAttributes.Static, cvt);
                 mop.Parameters.Add (new ParameterDefinition ("a", ParameterAttributes.None, td));
@@ -1637,7 +1663,7 @@ namespace Iril
             }
             MethodReference cmpctor = null;
             if (elementType.FullName != "System.Boolean") {
-                var cmpt = GetClrType (new VectorType (irType.Length, IntegerType.I1));
+                var cmpt = GetClrType (new VectorType (irType.Length, IntegerType.I1), module: module);
                 cmpctor = cmpt.Resolve ().Methods.First (x => x.Name == ".ctor" && x.Parameters.Count > 0);
             }
             var opMethods = new (string, MethodReference, OpCode[])[] {
@@ -1681,7 +1707,7 @@ namespace Iril
 
             var select = new MethodDefinition ("Select", MethodAttributes.Public | MethodAttributes.Static, ctor.DeclaringType);
             {
-                var btd = GetClrType (new VectorType (key.Length, Types.IntegerType.I1)).Resolve ();
+                var btd = GetClrType (new VectorType (key.Length, Types.IntegerType.I1), module: module).Resolve ();
                 select.Parameters.Add (new ParameterDefinition ("s", ParameterAttributes.None, btd));
                 select.Parameters.Add (new ParameterDefinition ("a", ParameterAttributes.None, td));
                 select.Parameters.Add (new ParameterDefinition ("b", ParameterAttributes.None, td));

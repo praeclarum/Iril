@@ -9,7 +9,7 @@ namespace Iril
         //public LType ElementType;
         public TypeReference[] ElementClrTypes;
 
-        public TypeReference ClrType;
+        public TypeDefinition ClrType;
 
         public FieldReference[] ElementFields;
 

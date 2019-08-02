@@ -11,6 +11,7 @@ namespace Iril
     {
         readonly Compilation compilation;
         readonly TypeDefinition syscallsType;
+        readonly Module module = new Module ();
 
         public readonly SymbolTable<MethodDefinition> Calls =
             new SymbolTable<MethodDefinition> ();
@@ -83,9 +84,9 @@ namespace Iril
             var md = new MethodDefinition (
                 new IR.MangledName (symbol).Identifier,
                 mattrs,
-                compilation.GetClrType (returnType));
+                compilation.GetClrType (returnType, module: this.module));
             foreach (var p in parameters) {
-                var pd = new ParameterDefinition (p.Item1, ParameterAttributes.None, compilation.GetClrType (p.Item2));
+                var pd = new ParameterDefinition (p.Item1, ParameterAttributes.None, compilation.GetClrType (p.Item2, module: this.module));
                 if (p.Item2 is VarArgsType) {
                     pd.CustomAttributes.Add (new CustomAttribute (compilation.sysParamsAttrCtor));
                 }
@@ -217,7 +218,7 @@ namespace Iril
             var m = NewMethod ("@vfprintf", Types.IntegerType.I32, ("stream", Types.PointerType.I8Pointer), ("format", Types.PointerType.I8Pointer), ("arguments", VarArgsType.VarArgs));
             var b = m.Body;
             var il = b.GetILProcessor ();
-            var p = new VariableDefinition (compilation.GetClrType (Types.PointerType.I8Pointer));
+            var p = new VariableDefinition (compilation.GetClrType (Types.PointerType.I8Pointer, module: this.module));
             var i = new VariableDefinition (compilation.sysInt32);
             b.Variables.Add (p);
             b.Variables.Add (i);
@@ -395,7 +396,7 @@ namespace Iril
             var b = m.Body;
             var il = b.GetILProcessor ();
 
-            b.Variables.Add (new VariableDefinition (compilation.GetClrType (Types.PointerType.I8Pointer)));
+            b.Variables.Add (new VariableDefinition (compilation.GetClrType (Types.PointerType.I8Pointer, module: module)));
             b.Variables.Add (new VariableDefinition (compilation.sysUInt32));
 
             il.Append (il.Create (OpCodes.Ldarg_0));

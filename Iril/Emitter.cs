@@ -10,7 +10,7 @@ namespace Iril
 {
     abstract class Emitter
     {
-        public const bool ShouldTrace = false;
+        public const bool ShouldTrace = true;
 
         // Input
         protected readonly Compilation compilation;
@@ -101,7 +101,7 @@ namespace Iril
                     }
                     else
                     {
-                        throw new NotSupportedException($"Undeclared global variable `{IR.MangledName.Demangle (g.Symbol)}` ({g.Symbol})");
+                        throw new NotSupportedException($"Undeclared global variable `{IR.MangledName.Demangle (g.Symbol)}` ({g.Symbol}) referenced in {module}");
                     }
                     break;
                 case IR.HexIntegerConstant i:
@@ -209,7 +209,7 @@ namespace Iril
                         EmitValue(c.Value, c.Type);
                     }
                     {
-                        var vt = compilation.GetVectorType((VectorType)type);
+                        var vt = compilation.GetVectorType((VectorType)type, module: module);
                         Emit(il.Create(OpCodes.Newobj, vt.Ctor));
                     }
                     break;
@@ -238,7 +238,7 @@ namespace Iril
         {
             switch (value) {
                 case IR.UndefinedConstant uc when type is VectorType vt: {
-                        var v = GetVectorTempVariable (compilation.GetVectorType (vt), value, 0);
+                        var v = GetVectorTempVariable (compilation.GetVectorType (vt, module: module), value, 0);
                         Emit (il.Create (OpCodes.Ldloca, v));
                     }
                     break;
@@ -253,7 +253,7 @@ namespace Iril
                     }
                     break;
                 case IR.LocalValue lv when type is VectorType vt: {
-                        var v = GetVectorTempVariable (compilation.GetVectorType (vt), value, 0);
+                        var v = GetVectorTempVariable (compilation.GetVectorType (vt, module: module), value, 0);
                         EmitValue (value, type);
                         Emit (il.Create (OpCodes.Stloc, v));
                         Emit (il.Create (OpCodes.Ldloca, v));
@@ -303,7 +303,7 @@ namespace Iril
                          && t.Resolve(module) is Types.LiteralStructureType st
                          && index.Value is IR.IntegerConstant iconst)
                 {
-                    var cst = compilation.GetClrType(t).Resolve();
+                    var cst = compilation.GetClrType(t, module).Resolve();
                     var fieldIndex = (int)iconst.Value;
                     if (fieldIndex < 0 || fieldIndex >= cst.Fields.Count)
                         throw new IndexOutOfRangeException ($"Field #{fieldIndex} does not exist in {cst.FullName} ({pointer}[{string.Join(", ", (object[])indices)}])");
@@ -399,7 +399,7 @@ namespace Iril
                 var index = (IR.Constant)indices[i];
                 if (t.Resolve (module) is Types.LiteralStructureType st) {
                     var iindex = index.Int32Value;
-                    var cst = compilation.GetClrType (st).Resolve ();
+                    var cst = compilation.GetClrType (st, module).Resolve ();
                     if (0 <= iindex && iindex < st.Elements.Length) {
                         var field = cst.Fields[iindex];
                         Emit (il.Create (OpCodes.Ldfld, field));
@@ -417,7 +417,7 @@ namespace Iril
 
         protected void EmitInsertElement (IR.TypedValue vectorValue, IR.TypedValue elementValue, IR.TypedValue index)
         {
-            var vt = compilation.GetVectorType ((VectorType)vectorValue.Type);
+            var vt = compilation.GetVectorType ((VectorType)vectorValue.Type, module: module);
             
             EmitTypedLValue (vectorValue);
             Emit (OpCodes.Dup);
@@ -442,7 +442,7 @@ namespace Iril
                 var index = (IR.Constant)indices[i];
                 if (t.Resolve (module) is Types.LiteralStructureType st) {
                     var iindex = index.Int32Value;
-                    var cst = compilation.GetClrType (st).Resolve ();
+                    var cst = compilation.GetClrType (st, module).Resolve ();
                     if (0 <= iindex && iindex < st.Elements.Length) {
                         var field = cst.Fields[iindex];
                         seti = il.Create (OpCodes.Stfld, field);
@@ -461,7 +461,7 @@ namespace Iril
                 Emit (OpCodes.Dup);
                 EmitTypedValue (value);
                 Emit (seti);
-                Emit (il.Create (OpCodes.Ldobj, compilation.GetClrType(aggregateValue.Type)));
+                Emit (il.Create (OpCodes.Ldobj, compilation.GetClrType(aggregateValue.Type, module: this.module)));
             }
             else {
                 compilation.ErrorMessage (module.SourceFilename, $"No insertvalue indices");
@@ -472,7 +472,7 @@ namespace Iril
         protected void EmitZeroValue(LType type)
         {
             if (type is VectorType vt) {
-                var v = compilation.GetVectorType (vt);
+                var v = compilation.GetVectorType (vt, module: module);
                 for (var i = 0; i < vt.Length; i++) {
                     EmitZeroValue (vt.ElementType);
                 }
@@ -502,7 +502,7 @@ namespace Iril
             }
             else if (type is NamedType namedType
                      && type.Resolve (module) is Types.LiteralStructureType st) {
-                var td = compilation.GetClrType (type).Resolve ();
+                var td = compilation.GetClrType (type, module).Resolve ();
                 var v = GetStructTempLocal (namedType);
                 Emit (il.Create (OpCodes.Ldloca, v));
                 Emit (il.Create (OpCodes.Initobj, td));
@@ -563,7 +563,7 @@ namespace Iril
         {
             if (structTempLocals.TryGetValue (type.Symbol, out var v))
                 return v;
-            var t = compilation.GetClrType (type);
+            var t = compilation.GetClrType (type, module: this.module);
             v = new VariableDefinition (t);
             body.Variables.Add (v);
             structTempLocals[type.Symbol] = v;
@@ -572,10 +572,10 @@ namespace Iril
 
         protected VariableDefinition GetStructTempLocal (LiteralStructureType type)
         {
-            var key = type.Elements.Select (x => compilation.GetClrType (x)).ToArray ();
+            var key = type.Elements.Select (x => compilation.GetClrType (x, module: this.module)).ToArray ();
             if (astructTempLocals.TryGetValue (key, out var v))
                 return v;
-            var t = compilation.GetClrType (type);
+            var t = compilation.GetClrType (type, module: this.module);
             v = new VariableDefinition (t);
             body.Variables.Add (v);
             astructTempLocals[key] = v;
@@ -589,7 +589,7 @@ namespace Iril
                 Emit (il.Create (OpCodes.Box, compilation.sysIntPtr));
             }
             else {
-                Emit (il.Create (OpCodes.Box, compilation.GetClrType (type)));
+                Emit (il.Create (OpCodes.Box, compilation.GetClrType (type, module: this.module)));
             }
         }
     }
