@@ -857,7 +857,7 @@ namespace Iril
 
                 foreach (var (g, f) in needsInit) {
                     try {
-                        if (ShouldTrace) {
+                        if (ShouldTrace >= 3) {
                             Emit (il.Create (OpCodes.Ldstr, $"Init Field: {f}"));
                             Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
                             Emit (il.Create (OpCodes.Call, compilation.sysConsoleGetOut));
@@ -969,7 +969,7 @@ namespace Iril
                                 }
                             }
                             var bytes = chars.ToArray ();
-                            var isAscii = bytes.All (x => x < 128);
+                            var isAscii = bytes.All (x => (x == '\n' || x == '\r' || x == '\0') || (x >= ' ' && x < 128));
                             var size = bytes.Length;
                             if (isAscii) {
                                 var str = System.Text.Encoding.ASCII.GetString (bytes);

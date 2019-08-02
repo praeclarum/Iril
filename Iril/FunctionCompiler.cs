@@ -270,7 +270,7 @@ namespace Iril
             //
             // Trace
             //
-            if (ShouldTrace) {
+            if (ShouldTrace >= 1) {
                 Emit (il.Create (OpCodes.Ldc_I4, 32));
                 Emit (il.Create (OpCodes.Newobj, compilation.sysStackTraceCtor));
                 Emit (il.Create (OpCodes.Callvirt, compilation.sysStackTraceGetFrameCount));
@@ -493,7 +493,7 @@ namespace Iril
             //
             // Block Trace
             //
-            if (ShouldTrace) {
+            if (ShouldTrace >= 2) {
                 Emit (il.Create (OpCodes.Ldc_I4, 32));
                 Emit (il.Create (OpCodes.Newobj, compilation.sysStackTraceCtor));
                 Emit (il.Create (OpCodes.Callvirt, compilation.sysStackTraceGetFrameCount));
@@ -961,7 +961,7 @@ namespace Iril
                     break;
                 case IR.RetInstruction ret:
                     EmitTypedValue(ret.Value);
-                    if (ShouldTrace && !(ret.Value.Type is VoidType)) {
+                    if (ShouldTrace >= 1 && !(ret.Value.Type is VoidType)) {
                         Emit (il.Create (OpCodes.Ldc_I4, 32));
                         Emit (il.Create (OpCodes.Newobj, compilation.sysStackTraceCtor));
                         Emit (il.Create (OpCodes.Callvirt, compilation.sysStackTraceGetFrameCount));
