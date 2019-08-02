@@ -42,6 +42,7 @@ namespace Iril
         TypeReference sysVoidPtr;
         TypeReference sysVoidPtrPtr;
         public TypeReference sysObj;
+        public MethodReference sysObjToString;
         public TypeReference sysObjArray;
         TypeReference sysVal;
         TypeReference sysBoolean;
@@ -301,6 +302,7 @@ namespace Iril
             sysVoidPtr = sysVoid.MakePointerType ();
             sysVoidPtrPtr = sysVoidPtr.MakePointerType ();
             sysString = Import ("System.String");
+            sysObjToString = ImportMethod (sysObj, sysString, "ToString");
             sysChar = Import ("System.Char");
             sysBytePtr = sysByte.MakePointerType ();
             sysByteArray = sysByte.MakeArrayType ();

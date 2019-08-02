@@ -265,13 +265,43 @@ namespace Iril
             //
             FindLandingPads ();
 
+            prev = null;
+
+            //
+            // Trace
+            //
+            if (ShouldTrace) {
+                Emit (il.Create (OpCodes.Ldc_I4, 32));
+                Emit (il.Create (OpCodes.Newobj, compilation.sysStackTraceCtor));
+                Emit (il.Create (OpCodes.Callvirt, compilation.sysStackTraceGetFrameCount));
+                Emit (il.Create (OpCodes.Ldc_I4, 4));
+                Emit (il.Create (OpCodes.Mul));
+                Emit (il.Create (OpCodes.Newobj, compilation.sysStringCharCountCtor));
+                Emit (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol}("));
+                Emit (il.Create (OpCodes.Call, compilation.sysStringConcat));
+                Emit (il.Create (OpCodes.Call, compilation.sysConsoleWrite));
+
+                var head = "";
+                for (var i = 0; i < function.IRDefinition.Parameters.Length; i++) {
+                    var p = function.IRDefinition.Parameters[i];
+                    Emit (il.Create (OpCodes.Ldstr, head));
+                    Emit (il.Create (OpCodes.Call, compilation.sysConsoleWrite));
+                    Emit (il.Create (OpCodes.Ldarg, i));
+                    EmitBox (p.ParameterType);
+                    Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteObj));
+                    head = ", ";
+                }
+
+                Emit (il.Create (OpCodes.Ldstr, $")"));
+                Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
+            }
+
             //
             // Create target instructions for each block
             //
             var emitBlocks = (from b in f.Blocks
                               where !(isLandingPad.ContainsKey (b.Symbol) && isLandingPad[b.Symbol])
                               select b).ToList ();
-            prev = null;
             foreach (var b in emitBlocks) {
                 EmitBlockFirstInstruction (b, mainContext);
             }
@@ -471,7 +501,7 @@ namespace Iril
                 Emit (il.Create (OpCodes.Mul));
                 Emit (il.Create (OpCodes.Newobj, compilation.sysStringCharCountCtor));
 
-                Emit (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol} -- {b.Symbol}"));
+                Emit (il.Create (OpCodes.Ldstr, $"- {b.Symbol}"));
 
                 Emit (il.Create (OpCodes.Call, compilation.sysStringConcat));
 
@@ -931,7 +961,23 @@ namespace Iril
                     break;
                 case IR.RetInstruction ret:
                     EmitTypedValue(ret.Value);
-                    Emit(il.Create(OpCodes.Ret));
+                    if (ShouldTrace && !(ret.Value.Type is VoidType)) {
+                        Emit (il.Create (OpCodes.Ldc_I4, 32));
+                        Emit (il.Create (OpCodes.Newobj, compilation.sysStackTraceCtor));
+                        Emit (il.Create (OpCodes.Callvirt, compilation.sysStackTraceGetFrameCount));
+                        Emit (il.Create (OpCodes.Ldc_I4, 4));
+                        Emit (il.Create (OpCodes.Mul));
+                        Emit (il.Create (OpCodes.Newobj, compilation.sysStringCharCountCtor));
+                        Emit (il.Create (OpCodes.Call, compilation.sysConsoleWrite));
+                        Emit (il.Create (OpCodes.Ldstr, "= "));
+                        Emit (il.Create (OpCodes.Call, compilation.sysConsoleWrite));
+                        Emit (il.Create (OpCodes.Dup));
+                        EmitBox (ret.Value.Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteObj));
+                        Emit (il.Create (OpCodes.Ldstr, ""));
+                        Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
+                    }
+                    Emit (il.Create(OpCodes.Ret));
                     break;
                 case IR.SdivInstruction sdiv:
                     if (sdiv.Type is Types.VectorType)
@@ -2091,16 +2137,9 @@ namespace Iril
                 var a = arguments[numFixedArgs + i];
                 Emit(il.Create(OpCodes.Ldc_I4, i));
                 EmitValue(a.Value, a.Type);
-                if (a.Type is Types.PointerType)
-                {
-                    Emit(il.Create(OpCodes.Call, compilation.sysIntPtrFromPointer));
-                    Emit(il.Create(OpCodes.Box, compilation.sysIntPtr));
-                }
-                else
-                {
-                    EmitBox(a.Type);
-                }
-                Emit(il.Create(OpCodes.Stelem_Any, compilation.sysObj));
+                
+                EmitBox (a.Type);
+                Emit (il.Create(OpCodes.Stelem_Any, compilation.sysObj));
             }
         }
 

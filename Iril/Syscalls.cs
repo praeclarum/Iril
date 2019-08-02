@@ -35,6 +35,7 @@ namespace Iril
             EmitThrow ();
             EmitVFPrintf ();
             EmitPrintf ();
+            EmitFPrintf ();
             EmitVPrintf ();
             EmitPutchar ();
             EmitPuts ();
@@ -276,6 +277,20 @@ namespace Iril
             il.Append (il.Create (OpCodes.Conv_U));
             il.Append (il.Create (OpCodes.Ldarg_0));
             il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Call, Calls["@vfprintf"]));
+            il.Append (il.Create (OpCodes.Ret));
+            b.Optimize ();
+        }
+
+        void EmitFPrintf ()
+        {
+            var m = NewMethod ("@fprintf", Types.IntegerType.I32, ("file", Types.PointerType.I8Pointer), ("format", Types.PointerType.I8Pointer), ("arguments", VarArgsType.VarArgs));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Conv_U));
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Ldarg_2));
             il.Append (il.Create (OpCodes.Call, Calls["@vfprintf"]));
             il.Append (il.Create (OpCodes.Ret));
             b.Optimize ();

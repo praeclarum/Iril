@@ -10,7 +10,7 @@ namespace Iril
 {
     abstract class Emitter
     {
-        public const bool ShouldTrace = true;
+        public const bool ShouldTrace = false;
 
         // Input
         protected readonly Compilation compilation;
@@ -584,7 +584,13 @@ namespace Iril
 
         protected void EmitBox (LType type)
         {
-            Emit (il.Create (OpCodes.Box, compilation.GetClrType (type)));
+            if (type is Types.PointerType) {
+                Emit (il.Create (OpCodes.Call, compilation.sysIntPtrFromPointer));
+                Emit (il.Create (OpCodes.Box, compilation.sysIntPtr));
+            }
+            else {
+                Emit (il.Create (OpCodes.Box, compilation.GetClrType (type)));
+            }
         }
     }
 }
