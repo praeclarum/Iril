@@ -40,8 +40,6 @@ namespace Iril
 
         public List<Message> Messages { get; } = new List<Message> ();
 
-        bool shouldTrace = false;
-
         public FunctionCompiler(Compilation compilation, DefinedFunction function)
             : base(compilation, function.IRModule, function.ILDefinition)
         {
@@ -465,7 +463,7 @@ namespace Iril
             //
             // Block Trace
             //
-            if (shouldTrace) {
+            if (ShouldTrace) {
                 Emit (il.Create (OpCodes.Ldc_I4, 32));
                 Emit (il.Create (OpCodes.Newobj, compilation.sysStackTraceCtor));
                 Emit (il.Create (OpCodes.Callvirt, compilation.sysStackTraceGetFrameCount));

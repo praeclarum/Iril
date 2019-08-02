@@ -603,24 +603,24 @@ namespace Iril
             if (node.IsFunction) {
             }
             else {
-                var isNamespace = node.Structure == null && parentType == null;
-                if (isNamespace) {
-                    isNamespace = node.Children.All (x => !x.IsFunction);
-                }
+                var isNamespace =
+                    node.Structure == null
+                    && parentType == null
+                    && node.Children.All (x => !x.IsFunction);
 
                 if (isNamespace) {
                     var newNamespace = namesp.Length > 0 ? namesp + "." + node.Name : node.Name;
                     foreach (var c in node.Children) {
-                        CompileStructures (newNamespace, parentType, c, todo);
+                        CompileStructures (newNamespace, null, c, todo);
                     }
                 }
                 else {
                     if (node.Structure != null || node.Children.Count > 0) {
                         TypeDefinition td;
-                        LiteralStructureType lst;
                         var ns = parentType == null ? namesp : null;
                         var vis = parentType == null ? TypeAttributes.Public : TypeAttributes.NestedPublic;
                         if (node.Structure != null) {
+                            LiteralStructureType lst;
                             var tattrs = TypeAttributes.BeforeFieldInit | vis | TypeAttributes.Sealed | TypeAttributes.SequentialLayout;
                             if (node.Structure is LiteralStructureType l) {
                                 td = new TypeDefinition (ns, node.Name, tattrs, sysVal);
@@ -656,7 +656,7 @@ namespace Iril
                         //Console.WriteLine ("EMIT " + td);
 
                         foreach (var c in node.Children) {
-                            CompileStructures (namesp, td, c, todo);
+                            CompileStructures (ns, td, c, todo);
                         }
                     }
                 }
@@ -849,6 +849,10 @@ namespace Iril
                 });
 
                 foreach (var (g, f) in needsInit) {
+                    //if (ShouldTrace) {
+                    //    Emit (il.Create (OpCodes.Ldstr, $"Init Field: {f}"));
+                    //    Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
+                    //}
                     var store = il.Create (OpCodes.Stsfld, f);
                     EmitInitializer (g.Initializer, g.Type, gcHandleV, store);
                 }
@@ -866,13 +870,17 @@ namespace Iril
                             var size = c.Elements.Length;
                             var et = c.Elements[0].Type;
                             var cet = compilation.GetClrType (et);
+                            var ocet = cet;
+                            if (cet.IsPointer) {
+                                ocet = compilation.sysIntPtr;
+                            }
                             Emit (il.Create (OpCodes.Ldc_I4, size));
-                            Emit (il.Create (OpCodes.Newarr, cet));
+                            Emit (il.Create (OpCodes.Newarr, ocet));
                             Emit (il.Create (OpCodes.Dup));
                             for (int i = 0; i < c.Elements.Length; i++) {
                                 var e = c.Elements[i];
                                 Emit (il.Create (OpCodes.Ldc_I4, i));
-                                var storee = il.Create (OpCodes.Stelem_Any, cet);
+                                var storee = il.Create (OpCodes.Stelem_Any, ocet);
                                 EmitInitializer (e.Value, e.Type, gcHandleV, storee);
                                 Emit (il.Create (OpCodes.Dup));
                             }
@@ -890,8 +898,12 @@ namespace Iril
                             var size = (int)art.Length;
                             var et = art.ElementType;
                             var cet = compilation.GetClrType (et);
+                            var ocet = cet;
+                            if (cet.IsPointer) {
+                                ocet = compilation.sysIntPtr;
+                            }
                             Emit (il.Create (OpCodes.Ldc_I4, size));
-                            Emit (il.Create (OpCodes.Newarr, cet));
+                            Emit (il.Create (OpCodes.Newarr, ocet));
                             Emit (OpCodes.Ldc_I4_3);
                             Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
                             Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
@@ -905,8 +917,12 @@ namespace Iril
                             var size = (int)art.Length;
                             var et = art.ElementType;
                             var cet = compilation.GetClrType (et);
+                            var ocet = cet;
+                            if (cet.IsPointer) {
+                                ocet = compilation.sysIntPtr;
+                            }
                             Emit (il.Create (OpCodes.Ldc_I4, size));
-                            Emit (il.Create (OpCodes.Newarr, cet));
+                            Emit (il.Create (OpCodes.Newarr, ocet));
                             Emit (OpCodes.Ldc_I4_3);
                             Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
                             Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
