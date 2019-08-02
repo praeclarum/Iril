@@ -894,8 +894,15 @@ namespace Iril
                             for (int i = 0; i < c.Elements.Length; i++) {
                                 var e = c.Elements[i];
                                 Emit (il.Create (OpCodes.Ldc_I4, i));
-                                var storee = il.Create (OpCodes.Stelem_Any, ocet);
-                                EmitInitializer (e.Value, e.Type, gcHandleV, storee);
+                                if (cet.IsPointer) {
+                                    var converte = il.Create (OpCodes.Call, compilation.sysIntPtrFromPointer);                                    ;
+                                    EmitInitializer (e.Value, e.Type, gcHandleV, converte);
+                                    Emit (il.Create (OpCodes.Stelem_Any, ocet));
+                                }
+                                else {
+                                    var storee = il.Create (OpCodes.Stelem_Any, ocet);
+                                    EmitInitializer (e.Value, e.Type, gcHandleV, storee);
+                                }
                                 Emit (il.Create (OpCodes.Dup));
                             }
                             Emit (il.Create (OpCodes.Pop));
