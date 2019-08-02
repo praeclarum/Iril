@@ -18,7 +18,7 @@ namespace Iril.IR
 
         readonly List<object> subs = new List<object> ();
 
-        public MangledName (Symbol symbol)
+        public MangledName (Symbol symbol, bool prefixWithTypeKind = false)
         {
             Symbol = symbol;
             var text = Symbol.Text;
@@ -54,6 +54,10 @@ namespace Iril.IR
                 var cparts = itext.Split (new[] { ':' }, StringSplitOptions.RemoveEmptyEntries).Select(SanitizeIdentifier).ToArray ();
                 Demangled = itext;
                 Identifier = cparts[cparts.Length-1];
+                if (prefixWithTypeKind) {
+                    var ttext = text.Substring (1 + rrem, d - 1 - rrem);
+                    Identifier = ttext + Identifier;
+                }
                 Ancestry = cparts.Take(cparts.Length - 1).ToArray ();
                 //Console.WriteLine (text);
                 //Console.WriteLine ($"  AN: {string.Join (" >> ", Ancestry)}");

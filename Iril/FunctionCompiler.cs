@@ -40,7 +40,7 @@ namespace Iril
 
         public List<Message> Messages { get; } = new List<Message> ();
 
-        bool shouldTrace = true;
+        bool shouldTrace = false;
 
         public FunctionCompiler(Compilation compilation, DefinedFunction function)
             : base(compilation, function.IRModule, function.ILDefinition)
@@ -1996,7 +1996,6 @@ namespace Iril
                         Emit (il.Create (OpCodes.Pop));
                         return;
                     case "@llvm.va_end":
-                        compilation.WarningMessage (module.SourceFilename, $"va_end not supported in `{MangledName.Demangle (function.Symbol)}`");
                         Emit (il.Create (OpCodes.Pop));
                         return;
                     case "@llvm.umul.with.overflow.i64":

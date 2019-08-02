@@ -51,6 +51,8 @@ namespace Iril
 
         public bool HasErrors => Errors.Count > 0;
 
+        public override string ToString () => Symbol.ToString ();
+
         public static Module Parse (string llvm, string filename = "")
         {
             var module = new Module ();

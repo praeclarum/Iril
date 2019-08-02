@@ -28,8 +28,10 @@ namespace Iril
 
         const string pidTypeName = "<PrivateImplementationDetails>";
 
-        readonly SymbolTable<(LiteralStructureType, TypeDefinition)> structs =
+        readonly SymbolTable<(LiteralStructureType, TypeDefinition)> globalStructs =
             new SymbolTable<(LiteralStructureType, TypeDefinition)> ();
+        readonly SymbolTable<SymbolTable<(LiteralStructureType, TypeDefinition)>> moduleStructs =
+            new SymbolTable<SymbolTable<(LiteralStructureType, TypeDefinition)>> ();
 
         AssemblyDefinition sysAsm;
         TypeReference sysVoid;
@@ -538,8 +540,6 @@ namespace Iril
             }
         }
 
-        SymbolTable<NameNode> structureNodes = new SymbolTable<NameNode> ();
-
         void FindStructures ()
         {
             var externals = new HashSet<Symbol> ();
@@ -547,7 +547,7 @@ namespace Iril
             foreach (var m in Modules) {
                 foreach (var iskv in m.IdentifiedStructures) {
                     var sym = iskv.Key;
-                    var isExternal = true;// sym.Text.IndexOf(".anon", StringComparison.Ordinal) < 0;
+                    var isExternal = sym.Text.IndexOf(".anon", StringComparison.Ordinal) < 0;
 
                     if (isExternal) {
                         if (externals.Contains (sym))
@@ -555,7 +555,7 @@ namespace Iril
                         externals.Add (sym);
                     }
 
-                    var tname = new IR.MangledName (sym);
+                    var tname = new IR.MangledName (sym, prefixWithTypeKind: !isExternal);
                     var s = iskv.Value;
                     var nn = new NameNode {
                         Name = tname.Identifier,
@@ -563,8 +563,6 @@ namespace Iril
                         Module = m,
                         Structure = s
                     };
-
-                    structureNodes[sym] = nn;
 
                     var a = tname.Ancestry;
                     if (a.Length == 0) {
@@ -592,7 +590,7 @@ namespace Iril
                 var fields =
                     from e in l.Elements.Zip(Enumerable.Range(0, l.Elements.Length), (e, i) => (e, i))
                     let fn = "F" + e.i
-                    select new FieldDefinition (fn, FieldAttributes.Public, GetClrType (e.e));
+                    select new FieldDefinition (fn, FieldAttributes.Public, GetClrType (e.e, module: m));
 
                 foreach (var f in fields) {
                     td.Fields.Add (f);
@@ -619,22 +617,30 @@ namespace Iril
                 else {
                     if (node.Structure != null || node.Children.Count > 0) {
                         TypeDefinition td;
+                        LiteralStructureType lst;
                         var ns = parentType == null ? namesp : null;
                         var vis = parentType == null ? TypeAttributes.Public : TypeAttributes.NestedPublic;
                         if (node.Structure != null) {
                             var tattrs = TypeAttributes.BeforeFieldInit | vis | TypeAttributes.Sealed | TypeAttributes.SequentialLayout;
                             if (node.Structure is LiteralStructureType l) {
                                 td = new TypeDefinition (ns, node.Name, tattrs, sysVal);
-                                structs[node.Symbol] = (l, td);
+                                lst = l;                                
                                 todo.Add ((node.Module, l, td));
                             }
                             else if (node.Structure is OpaqueStructureType) {
                                 td = new TypeDefinition (ns, node.Name, tattrs, sysVal);
-                                structs[node.Symbol] = (null, td);
+                                lst = null;
                             }
                             else {
                                 throw new NotSupportedException ($"Cannot compile {node.Structure}");
                             }
+
+                            globalStructs[node.Symbol] = (lst, td);
+                            if (!moduleStructs.TryGetValue (node.Module.Symbol, out var mstructs)) {
+                                mstructs = new SymbolTable<(LiteralStructureType, TypeDefinition)> ();
+                                moduleStructs.Add (node.Module.Symbol, mstructs);
+                            }
+                            mstructs[node.Symbol] = (lst, td);
                         }
                         else {
                             var tattrs = TypeAttributes.BeforeFieldInit | vis | TypeAttributes.Abstract | TypeAttributes.Sealed;
@@ -1381,7 +1387,7 @@ namespace Iril
 
         void AddDebugInfoToStruct (Symbol symbol, SymbolTable<object> debugInfo, Module module)
         {
-            var td = structs[symbol].Item2;
+            var td = globalStructs[symbol].Item2;
             if (debugInfo.TryGetValue (Symbol.BaseType, out var o) && o is MetaSymbol) {
                 if (module.Metadata.TryGetValue ((Symbol)o, out o) && o is SymbolTable<object>) {
                     var typedefDbg = (SymbolTable<object>)o;
@@ -1443,7 +1449,7 @@ namespace Iril
             return 1;
         }
 
-        public TypeReference GetClrType (LType irType, bool? unsigned = false)
+        public TypeReference GetClrType (LType irType, bool? unsigned = false, Module module = null)
         {
             switch (irType) {
                 case FloatType floatt:
@@ -1469,22 +1475,25 @@ namespace Iril
                             throw new NotSupportedException ($"{intt.Bits}-bit integers not supported");
                     }
                 case Types.ArrayType art:
-                    return GetClrType (art.ElementType).MakePointerType ();
+                    return GetClrType (art.ElementType, module: module).MakePointerType ();
                 case Types.PointerType pt when pt.ElementType is LiteralStructureType ls && ls.Elements.Length == 0:
                     return sysVoidPtr;
                 case Types.PointerType pt:
-                    return GetClrType (pt.ElementType).MakePointerType ();
+                    return GetClrType (pt.ElementType, module: module).MakePointerType ();
                 case FunctionType ft:
                     return sysVoidPtr;
                 case NamedType nt:
-                    if (structs.TryGetValue (nt.Symbol, out var ntSym))
-                        return ntSym.Item2;
-                    else
-                        throw new Exception ($"Cannot find {nt.Symbol}");
+                    if (module != null && moduleStructs.TryGetValue (module.Symbol, out var structs)) {
+                        if (structs.TryGetValue (nt.Symbol, out var lntSym))
+                            return lntSym.Item2;
+                    }
+                    if (globalStructs.TryGetValue (nt.Symbol, out var gntSym))
+                        return gntSym.Item2;
+                    throw new Exception ($"Cannot find `{nt.Symbol}` from module `{module}`");
                 case LiteralStructureType st:
                     return GetAnonymousStructType (st).ClrType;
                 case VectorType vt:
-                    return GetVectorType (vt).ClrType;
+                    return GetVectorType (vt, module: module).ClrType;
                 case VoidType vdt:
                     return sysVoid;
                 case VarArgsType vat:
@@ -1527,9 +1536,9 @@ namespace Iril
             return r;
         }
 
-        public SimdVector GetVectorType (VectorType vt)
+        public SimdVector GetVectorType (VectorType vt, Module module = null)
         {
-            var et = GetClrType (vt.ElementType);
+            var et = GetClrType (vt.ElementType, module: module);
             var key = (vt.Length, et.FullName);
             if (vectorTypes.TryGetValue (key, out var vct)) {
                 return vct;
