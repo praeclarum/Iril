@@ -470,7 +470,7 @@ namespace Iril
             var ilf = il.Create (OpCodes.Ldarg_0);
             il.Append (il.Create (OpCodes.Ldarg_3));
             il.Append (il.Create (OpCodes.Ldarg_2));
-            il.Append (il.Create (OpCodes.Bge, ilf));
+            il.Append (il.Create (OpCodes.Bge_Un, ilf));
             il.Append (il.Create (OpCodes.Ldstr, "Buffer overflow"));
             il.Append (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
             il.Append (il.Create (OpCodes.Throw));
@@ -636,7 +636,7 @@ namespace Iril
             var ilf = il.Create (OpCodes.Ldarg_0);
             il.Append (il.Create (OpCodes.Ldarg_3));
             il.Append (il.Create (OpCodes.Ldarg_2));
-            il.Append (il.Create (OpCodes.Bge, ilf));
+            il.Append (il.Create (OpCodes.Bge_Un, ilf));
             il.Append (il.Create (OpCodes.Ldstr, "Buffer overflow"));
             il.Append (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
             il.Append (il.Create (OpCodes.Throw));
@@ -707,7 +707,7 @@ namespace Iril
             var ilf = il.Create (OpCodes.Ldarg_0);
             il.Append (il.Create (OpCodes.Ldarg_3));
             il.Append (il.Create (OpCodes.Ldarg_2));
-            il.Append (il.Create (OpCodes.Bge, ilf));
+            il.Append (il.Create (OpCodes.Bge_Un, ilf));
             il.Append (il.Create (OpCodes.Ldstr, "Buffer overflow"));
             il.Append (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
             il.Append (il.Create (OpCodes.Throw));
