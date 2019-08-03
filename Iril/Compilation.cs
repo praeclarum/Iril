@@ -34,7 +34,7 @@ namespace Iril
             new SymbolTable<SymbolTable<(LiteralStructureType, TypeDefinition)>> ();
 
         AssemblyDefinition sysAsm;
-        TypeReference sysVoid;
+        public TypeReference sysVoid;
         TypeReference sysArray;
         TypeReference sysRuntimeFieldHandle;
         TypeReference sysRuntimeHelpers;
@@ -46,9 +46,9 @@ namespace Iril
         public TypeReference sysObjArray;
         TypeReference sysVal;
         TypeReference sysBoolean;
-        TypeReference sysByte;
+        public TypeReference sysByte;
         public TypeReference sysBytePtr;
-        TypeReference sysByteArray;
+        public TypeReference sysByteArray;
         TypeReference sysInt16;
         public TypeReference sysInt32;
         public TypeReference sysUInt32;
@@ -94,8 +94,13 @@ namespace Iril
         public MethodReference sysReAllocHGlobal;
         public MethodReference sysFreeHGlobal;
         public MethodReference sysPtrToStringAuto;
+        public MethodReference sysMarshalCopyIntToArray;
+        public MethodReference sysMarshalCopyArrayToInt;
         TypeReference sysDebugger;
         public MethodReference sysDebuggerBreak;
+        public TypeReference sysStream;
+        public MethodReference sysStreamWrite;
+        public MethodReference sysStreamRead;
         TypeReference sysTextWriter;
         public MethodReference sysTextWriterFlush;
         TypeReference sysConsole;
@@ -104,6 +109,8 @@ namespace Iril
         public MethodReference sysConsoleWriteObj;
         public MethodReference sysConsoleWriteLine;
         public MethodReference sysConsoleGetOut;
+        public MethodReference sysConsoleOpenStandardInput;
+        public MethodReference sysConsoleOpenStandardOutput;
         TypeReference sysEncoding;
         public MethodReference sysAscii;
         public MethodReference sysAsciiGetBytes;
@@ -321,6 +328,9 @@ namespace Iril
             sysGCHandleAddrOfPinnedObject = ImportMethod (sysGCHandle, sysIntPtr, "AddrOfPinnedObject");
             sysDebugger = Import ("System.Diagnostics.Debugger");
             sysDebuggerBreak = ImportMethod (sysDebugger, sysVoid, "Break");
+            sysStream = Import ("System.IO.Stream");
+            sysStreamRead = ImportMethod (sysStream, sysInt32, "Read", sysByteArray, sysInt32, sysInt32);
+            sysStreamWrite = ImportMethod (sysStream, sysVoid, "Write", sysByteArray, sysInt32, sysInt32);
             sysTextWriter = Import ("System.IO.TextWriter");
             sysTextWriterFlush = ImportMethod (sysTextWriter, sysVoid, "Flush");
             sysConsole = Import ("System.Console");
@@ -328,6 +338,8 @@ namespace Iril
             sysConsoleWriteChar = ImportMethod (sysConsole, sysVoid, "Write", sysChar);
             sysConsoleWriteObj = ImportMethod (sysConsole, sysVoid, "Write", sysObj);
             sysConsoleWriteLine = ImportMethod (sysConsole, sysVoid, "WriteLine", sysString);
+            sysConsoleOpenStandardInput = ImportMethod (sysConsole, sysStream, "OpenStandardInput");
+            sysConsoleOpenStandardOutput = ImportMethod (sysConsole, sysStream, "OpenStandardOutput");
             sysConsoleGetOut = ImportMethod (sysConsole, sysTextWriter, "get_Out");
             sysSingleIsNaN = ImportMethod (sysSingle, sysBoolean, "IsNaN", sysSingle);
             sysDoubleIsNaN = ImportMethod (sysDouble, sysBoolean, "IsNaN", sysDouble);
@@ -355,6 +367,8 @@ namespace Iril
             sysReAllocHGlobal = ImportMethod (sysMarshal, sysIntPtr, "ReAllocHGlobal", sysIntPtr, sysIntPtr);
             sysFreeHGlobal = ImportMethod (sysMarshal, sysVoid, "FreeHGlobal", sysIntPtr);
             sysPtrToStringAuto = ImportMethod (sysMarshal, sysString, "PtrToStringAuto", sysIntPtr);
+            sysMarshalCopyIntToArray = ImportMethod (sysMarshal, sysVoid, "Copy", sysIntPtr, sysByteArray, sysInt32, sysInt32);
+            sysMarshalCopyArrayToInt = ImportMethod (sysMarshal, sysVoid, "Copy", sysByteArray, sysInt32, sysIntPtr, sysInt32);
             sysParamsAttr = Import (typeof(ParamArrayAttribute).FullName);
             sysParamsAttrCtor = ImportMethod (sysParamsAttr, sysVoid, ".ctor");
             sysEncoding = Import ("System.Text.Encoding");

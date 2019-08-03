@@ -53,6 +53,10 @@ namespace Iril
             EmitMemmoveChecked ();
             EmitMemset ();
             EmitMemsetChecked ();
+            EmitStandardStreams ();
+            EmitUnixRead ("@\"\\01_read\"");
+            EmitUnixWrite ("@\"\\01_write\"");
+            EmitStaticCtor ();
         }
 
         static readonly string[] printfDeps = { "@vfprintf" };
@@ -642,7 +646,7 @@ namespace Iril
         void EmitMemsetChecked ()
         {
             var m = NewMethod ("@__memset_chk", Types.PointerType.I8Pointer,
-                               ("dstpp", Types.PointerType.I8Pointer),
+                               ("b", Types.PointerType.I8Pointer),
                                ("c", Types.IntegerType.I32),
                                ("len", Types.IntegerType.I64),
                                ("dstlen", Types.IntegerType.I64));
@@ -670,7 +674,7 @@ namespace Iril
         void EmitMemset ()
         {
             var m = NewMethod ("@memset", Types.PointerType.I8Pointer,
-                               ("src", Types.PointerType.I8Pointer),
+                               ("b", Types.PointerType.I8Pointer),
                                ("c", Types.IntegerType.I32),
                                ("len", Types.IntegerType.I64));
             var v0 = new VariableDefinition (compilation.sysBytePtr);
@@ -824,6 +828,114 @@ namespace Iril
             il.Append (il.Create (OpCodes.Brfalse, il2));
 
             il.Append (il1e);
+            il.Append (il.Create (OpCodes.Ret));
+
+            b.Optimize ();
+        }
+
+        FieldDefinition stdin;
+        FieldDefinition stdout;
+
+        void EmitStandardStreams ()
+        {
+            var fattrs = FieldAttributes.Static;
+            stdin = new FieldDefinition ("stdin", fattrs, compilation.sysStream);
+            stdout = new FieldDefinition ("stdout", fattrs, compilation.sysStream);
+            syscallsType.Fields.Add (stdin);
+            syscallsType.Fields.Add (stdout);
+        }
+
+        void EmitStaticCtor ()
+        {
+            var mattrs = MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName;
+            var md = new MethodDefinition (".cctor", mattrs, compilation.sysVoid);
+            syscallsType.Methods.Add (md);
+            var b = new MethodBody (md);
+            var il = b.GetILProcessor ();
+
+            il.Append (il.Create (OpCodes.Call, compilation.sysConsoleOpenStandardInput));
+            il.Append (il.Create (OpCodes.Stsfld, stdin));
+            il.Append (il.Create (OpCodes.Call, compilation.sysConsoleOpenStandardOutput));
+            il.Append (il.Create (OpCodes.Stsfld, stdout));
+            il.Append (il.Create (OpCodes.Ret));
+
+            b.Optimize ();
+            md.Body = b;
+        }
+
+        void EmitUnixRead (string symbol)
+        {
+            var m = NewMethod (symbol, Types.IntegerType.I64,
+                               ("fildes", Types.IntegerType.I32),
+                               ("buf", Types.PointerType.I8Pointer),
+                               ("nbyte", Types.IntegerType.I64));
+            var v0 = new VariableDefinition (compilation.sysInt32);
+            var v1 = new VariableDefinition (compilation.sysByteArray);
+            var b = m.Body;
+            b.Variables.Add (v0);
+            b.Variables.Add (v1);
+            var il = b.GetILProcessor ();
+
+            il.Append (il.Create (OpCodes.Ldarg_2));
+            il.Append (il.Create (OpCodes.Conv_I4));
+            il.Append (il.Create (OpCodes.Stloc_0));
+            il.Append (il.Create (OpCodes.Ldloc_0));
+            il.Append (il.Create (OpCodes.Newarr, compilation.sysByte));
+            il.Append (il.Create (OpCodes.Stloc_1));
+
+
+            il.Append (il.Create (OpCodes.Ldsfld, stdin));
+            il.Append (il.Create (OpCodes.Ldloc_1));
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Ldloc_0));
+            il.Append (il.Create (OpCodes.Callvirt, compilation.sysStreamRead));
+            il.Append (il.Create (OpCodes.Stloc_0));
+
+
+            il.Append (il.Create (OpCodes.Ldloc_1));
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Call, compilation.sysIntPtrFromPointer));
+            il.Append (il.Create (OpCodes.Ldloc_0));
+            il.Append (il.Create (OpCodes.Call, compilation.sysMarshalCopyArrayToInt));
+            il.Append (il.Create (OpCodes.Ldloc_0));
+            il.Append (il.Create (OpCodes.Conv_I8));
+            il.Append (il.Create (OpCodes.Ret));
+
+            b.Optimize ();
+        }
+
+        void EmitUnixWrite (string symbol)
+        {
+            var m = NewMethod (symbol, Types.IntegerType.I64,
+                               ("fildes", Types.IntegerType.I32),
+                               ("buf", Types.PointerType.I8Pointer),
+                               ("nbyte", Types.IntegerType.I64));
+            var v0 = new VariableDefinition (compilation.sysInt32);
+            var v1 = new VariableDefinition (compilation.sysByteArray);
+            var b = m.Body;
+            b.Variables.Add (v0);
+            b.Variables.Add (v1);
+            var il = b.GetILProcessor ();
+
+            il.Append (il.Create (OpCodes.Ldarg_2));
+            il.Append (il.Create (OpCodes.Conv_I4));
+            il.Append (il.Create (OpCodes.Stloc_0));
+            il.Append (il.Create (OpCodes.Ldloc_0));
+            il.Append (il.Create (OpCodes.Newarr, compilation.sysByte));
+            il.Append (il.Create (OpCodes.Stloc_1));
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Call, compilation.sysIntPtrFromPointer));
+            il.Append (il.Create (OpCodes.Ldloc_1));
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Ldloc_0));
+            il.Append (il.Create (OpCodes.Call, compilation.sysMarshalCopyIntToArray));
+            il.Append (il.Create (OpCodes.Ldsfld, stdout));
+            il.Append (il.Create (OpCodes.Ldloc_1));
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Ldloc_0));
+            il.Append (il.Create (OpCodes.Callvirt, compilation.sysStreamWrite));
+            il.Append (il.Create (OpCodes.Ldarg_2));
             il.Append (il.Create (OpCodes.Ret));
 
             b.Optimize ();
