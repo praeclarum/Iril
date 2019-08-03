@@ -338,8 +338,8 @@ namespace Iril
             sysConsoleWriteChar = ImportMethod (sysConsole, sysVoid, "Write", sysChar);
             sysConsoleWriteObj = ImportMethod (sysConsole, sysVoid, "Write", sysObj);
             sysConsoleWriteLine = ImportMethod (sysConsole, sysVoid, "WriteLine", sysString);
-            sysConsoleOpenStandardInput = ImportMethod (sysConsole, sysStream, "OpenStandardInput");
-            sysConsoleOpenStandardOutput = ImportMethod (sysConsole, sysStream, "OpenStandardOutput");
+            sysConsoleOpenStandardInput = ImportMethod (sysConsole, sysStream, "OpenStandardInput", sysInt32);
+            sysConsoleOpenStandardOutput = ImportMethod (sysConsole, sysStream, "OpenStandardOutput", sysInt32);
             sysConsoleGetOut = ImportMethod (sysConsole, sysTextWriter, "get_Out");
             sysSingleIsNaN = ImportMethod (sysSingle, sysBoolean, "IsNaN", sysSingle);
             sysDoubleIsNaN = ImportMethod (sysDouble, sysBoolean, "IsNaN", sysDouble);

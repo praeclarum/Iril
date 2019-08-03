@@ -853,8 +853,10 @@ namespace Iril
             var b = new MethodBody (md);
             var il = b.GetILProcessor ();
 
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
             il.Append (il.Create (OpCodes.Call, compilation.sysConsoleOpenStandardInput));
             il.Append (il.Create (OpCodes.Stsfld, stdin));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
             il.Append (il.Create (OpCodes.Call, compilation.sysConsoleOpenStandardOutput));
             il.Append (il.Create (OpCodes.Stsfld, stdout));
             il.Append (il.Create (OpCodes.Ret));

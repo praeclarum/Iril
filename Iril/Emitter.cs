@@ -5,12 +5,13 @@ using Iril.Types;
 using CecilInstruction = Mono.Cecil.Cil.Instruction;
 using System.Linq;
 using System.Collections.Generic;
+using Iril.IR;
 
 namespace Iril
 {
     abstract class Emitter
     {
-        public const int ShouldTrace = 0;
+        public const int ShouldTrace = 2;
 
         // Input
         protected readonly Compilation compilation;
@@ -326,18 +327,26 @@ namespace Iril
                         Emit (il.Create (OpCodes.Ldind_I));
                     }
                     var esize = artt.ElementType.GetByteSize(module);
-                    EmitValue(index.Value, index.Type);
-                    EmitValue(new IR.IntegerConstant(esize), index.Type);
-                    Emit(il.Create(OpCodes.Mul));
-                    Emit(il.Create(OpCodes.Conv_U));
-                    Emit(il.Create(OpCodes.Add));
+                    if (index.Value is Constant ic) {
+                        var offset = (int)esize * ic.Int32Value;
+                        if (offset > 0) {
+                            Emit (il.Create (OpCodes.Ldc_I4, offset));
+                            Emit (il.Create (OpCodes.Conv_U));
+                            Emit (il.Create (OpCodes.Add));
+                        }
+                    }
+                    else {
+                        EmitValue (index.Value, index.Type);
+                        EmitValue (new IR.IntegerConstant (esize), index.Type);
+                        Emit (il.Create (OpCodes.Mul));
+                        Emit (il.Create (OpCodes.Conv_U));
+                        Emit (il.Create (OpCodes.Add));
+                    }
                     t = artt.ElementType;
                 }
                 else
                 {
-                    if (i + 1 < n) {
-                        throw new InvalidOperationException("Cannot get pointer to " + t);
-                    }
+                    throw new InvalidOperationException("Cannot get pointer to element of " + t);
                 }
             }
         }
