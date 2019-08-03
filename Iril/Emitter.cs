@@ -323,9 +323,6 @@ namespace Iril
                 }
                 else if (t is Types.ArrayType artt)
                 {
-                    if (i > 0) {
-                        Emit (il.Create (OpCodes.Ldind_I));
-                    }
                     var esize = artt.ElementType.GetByteSize(module);
                     if (index.Value is Constant ic) {
                         var offset = (int)esize * ic.Int32Value;

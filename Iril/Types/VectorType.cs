@@ -19,5 +19,17 @@ namespace Iril.Types
         }
 
         public override long GetByteSize (Module module) => Length * ElementType.GetByteSize (module);
+
+        public override int GetAlignment (Module module) => (int)GetByteSize (module);
+
+        public override bool StructurallyEquals (LType other) =>
+            other is VectorType a
+            && Length == a.Length
+            && ElementType.StructurallyEquals (a.ElementType);
+
+        public override int GetStructuralHashCode () =>
+            890
+            + Length.GetHashCode ()
+            + ElementType.GetStructuralHashCode ();
     }
 }

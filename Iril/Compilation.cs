@@ -127,8 +127,8 @@ namespace Iril
         readonly Dictionary<(int, string), SimdVector> vectorTypes =
             new Dictionary<(int, string), SimdVector> ();
 
-        readonly Dictionary<TypeReference[], AnonymousStruct> astructTypes =
-            new Dictionary<TypeReference[], AnonymousStruct> (AnonymousStruct.TypesEquality);
+        readonly Dictionary<LType[], AnonymousStruct> astructTypes =
+            new Dictionary<LType[], AnonymousStruct> (AnonymousStruct.LTypesEquality);
 
         readonly SymbolTable<DefinedFunction> externalMethodDefs =
             new SymbolTable<DefinedFunction> ();
@@ -608,14 +608,32 @@ namespace Iril
             }
 
             foreach (var (m, l, td) in todo) {
-                var fields =
-                    from e in l.Elements.Zip(Enumerable.Range(0, l.Elements.Length), (e, i) => (e, i))
-                    let fn = "F" + e.i
-                    select new FieldDefinition (fn, FieldAttributes.Public, GetClrType (e.e, module: m));
-
-                foreach (var f in fields) {
-                    td.Fields.Add (f);
+                var n = l.Elements.Length;
+                var offset = 0;
+                td.IsExplicitLayout = true;
+                for (var i = 0; i < n; i++) {
+                    var e = l.Elements[i];
+                    var fn = GetFieldPrefix (e) + i;
+                    long byteSize;
+                    TypeReference fieldType;
+                    if (e is Types.ArrayType arrt) {
+                        var ee = arrt.ElementType;
+                        var len = arrt.Length;
+                        byteSize = ee.GetByteSize (m) * len;
+                        fieldType = GetClrType (ee, module: m);
+                    }
+                    else {
+                        byteSize = e.GetByteSize (m);
+                        fieldType = GetClrType (e, module: m);
+                    }
+                    var field = new FieldDefinition (fn, FieldAttributes.Public, fieldType);
+                    offset = Align (offset, e, (int)byteSize, m);
+                    field.Offset = offset;
+                    td.Fields.Add (field);
+                    offset += (int)byteSize;
                 }
+                td.ClassSize = offset;
+                td.PackingSize = (short)m.PointerByteSize;
             }
         }
 
@@ -1570,35 +1588,110 @@ namespace Iril
                 throw new ArgumentNullException (nameof (module));
             }
 
-            var key = st.Elements.Select (x => GetClrType (x, module: module)).ToArray ();
+            var key = st.Elements.Select (x => x.Resolve (module: module)).ToArray ();
             if (astructTypes.TryGetValue (key, out var vct)) {
                 return vct;
             }
-            return AddAnonymousStruct (key, st);
+            return AddAnonymousStruct (st.Elements, key, st, module);
         }
 
-        AnonymousStruct AddAnonymousStruct (TypeReference[] key, LiteralStructureType st)
+        AnonymousStruct AddAnonymousStruct (LType[] elements, LType[] resolvedElements, LiteralStructureType st, Module module)
         {
-            var tname = $"Struct{key.Length}_{string.Join("_", key.Select(x => x.Name))}";
+            var n = elements.Length;
+            var tname = $"Struct{n}_{string.Join("_", resolvedElements.Select(GetLTypeClrIdentifier))}";
 
             var ns = namespac + ".AnonymousTypes";
             var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.Public;
             var td = new TypeDefinition (ns, tname, tattrs, sysVal);
-            for (var i = 0; i < key.Length; i++) {
-                var f = new FieldDefinition ("F" + i, FieldAttributes.Public, key[i]);
+            td.IsExplicitLayout = true;
+            var elementsClrTypes = new List<TypeReference> (n);
+            var offset = 0;
+            for (var i = 0; i < n; i++) {
+                int size;
+                TypeReference clrType;
+                if (resolvedElements[i] is Types.ArrayType arrt) {
+                    var e = arrt.ElementType;
+                    size = (int)(e.GetByteSize (module: module) * arrt.Length);
+                    clrType = GetClrType (e, module: module);
+                }
+                else {
+                    size = (int)resolvedElements[i].GetByteSize(module: module);
+                    clrType = GetClrType (resolvedElements[i], module: module);
+                }
+                elementsClrTypes.Add (clrType);
+                string pre = GetFieldPrefix (resolvedElements[i]);
+                var f = new FieldDefinition (pre + i, FieldAttributes.Public, clrType);
+                offset = Align (offset, resolvedElements[i], (int)size, module: module);
+                f.Offset = offset;
                 td.Fields.Add (f);
+                offset += size;
             }
+            td.ClassSize = offset;
+            td.PackingSize = (short)module.PointerByteSize;
 
             var r = new AnonymousStruct {
-                ElementClrTypes = key,
+                ElementClrTypes = elementsClrTypes.ToArray (),
                 ClrType = td,
                 ElementFields = td.Fields.Select (x => (FieldReference)x).ToArray (),
             };
 
             mod.Types.Add (td);
-            astructTypes[key] = r;
+            astructTypes[resolvedElements] = r;
 
             return r;
+        }
+
+        static string GetFieldPrefix (LType lType)
+        {
+            switch (lType) {
+                case Types.ArrayType t:
+                    return GetFieldPrefix (t.ElementType) + "Array";
+                case Types.FunctionType _:
+                    return "Function";
+                case Types.PointerType t:
+                    return GetFieldPrefix (t.ElementType) + "Pointer";
+                case Types.IntegerType t when t.Bits == 8:
+                    return "Byte";
+                case Types.IntegerType t:
+                    return "Integer";
+                case Types.FloatType t:
+                    return "Float";
+                case Types.NamedType _:
+                case Types.StructureType _:
+                    return "Struct";
+                default:
+                    return "F";
+            }
+        }
+
+        static int Align (int offset, LType dataType, int dataTypeByteSize, Module module)
+        {
+            int alignment = dataType.GetAlignment (module);
+            while ((offset % alignment) != 0)
+                offset++;
+            return offset;
+        }
+
+        static string GetLTypeClrIdentifier (LType type)
+        {
+            switch (type) {
+                case Types.NamedType t:
+                    return IR.MangledName.Demangle (t.Symbol);
+                case Types.FloatType t:
+                    return t.Symbol.Text;
+                case Types.IntegerType t:
+                    return t.Symbol.Text;
+                case Types.FunctionType t:
+                    return "f" + t.ParameterTypes.Length + GetLTypeClrIdentifier (t.ReturnType) + string.Join ("_", t.ParameterTypes.Select (GetLTypeClrIdentifier));
+                case Types.LiteralStructureType t:
+                    return "s" + string.Join ("_", t.Elements.Select (GetLTypeClrIdentifier));
+                case Types.PointerType t:
+                    return GetLTypeClrIdentifier (t.ElementType) + "p";
+                case Types.ArrayType t:
+                    return "a" + t.Length + GetLTypeClrIdentifier (t.ElementType);
+                default:
+                    return type.ToString ();
+            }
         }
 
         public SimdVector GetVectorType (VectorType vt, Module module)
