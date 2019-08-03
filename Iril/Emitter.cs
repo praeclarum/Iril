@@ -11,7 +11,7 @@ namespace Iril
 {
     abstract class Emitter
     {
-        public const int ShouldTrace = 2;
+        public const int ShouldTrace = 3;
 
         // Input
         protected readonly Compilation compilation;
@@ -28,7 +28,9 @@ namespace Iril
 
         readonly Dictionary<(string, int), VariableDefinition> vectorTemps = new Dictionary<(string, int), VariableDefinition> ();
         readonly SymbolTable<VariableDefinition> structTempLocals = new SymbolTable<VariableDefinition> ();
-        readonly Dictionary<TypeReference[], VariableDefinition> astructTempLocals = new Dictionary<TypeReference[], VariableDefinition> (AnonymousStruct.TypesEquality);
+        readonly Dictionary<string, VariableDefinition> trTempLocals = new Dictionary<string, VariableDefinition> ();
+        readonly Dictionary<LType[], VariableDefinition> astructTempLocals =
+            new Dictionary<LType[], VariableDefinition> (AnonymousStruct.LTypesEquality);
 
         protected Emitter(Compilation compilation, Module module, MethodDefinition methodDefinition)
         {
@@ -292,9 +294,11 @@ namespace Iril
                         }
                         else
                         {
-                            EmitValue(index.Value, index.Type);
-                            EmitValue(new IR.IntegerConstant(esize), index.Type);
-                            Emit(il.Create(OpCodes.Mul));
+                            EmitValue (index.Value, index.Type);
+                            if (esize != 1) {
+                                EmitValue (new IR.IntegerConstant (esize), index.Type);
+                                Emit (il.Create (OpCodes.Mul));
+                            }
                         }
                         Emit(il.Create(OpCodes.Conv_U));
                         Emit(il.Create(OpCodes.Add));
@@ -334,8 +338,10 @@ namespace Iril
                     }
                     else {
                         EmitValue (index.Value, index.Type);
-                        EmitValue (new IR.IntegerConstant (esize), index.Type);
-                        Emit (il.Create (OpCodes.Mul));
+                        if (esize != 1) {
+                            EmitValue (new IR.IntegerConstant (esize), index.Type);
+                            Emit (il.Create (OpCodes.Mul));
+                        }
                         Emit (il.Create (OpCodes.Conv_U));
                         Emit (il.Create (OpCodes.Add));
                     }
@@ -581,13 +587,24 @@ namespace Iril
 
         protected VariableDefinition GetStructTempLocal (LiteralStructureType type)
         {
-            var key = type.Elements.Select (x => compilation.GetClrType (x, module: this.module)).ToArray ();
+            var key = type.Elements;
             if (astructTempLocals.TryGetValue (key, out var v))
                 return v;
             var t = compilation.GetClrType (type, module: this.module);
             v = new VariableDefinition (t);
             body.Variables.Add (v);
             astructTempLocals[key] = v;
+            return v;
+        }
+
+        protected VariableDefinition GetStructTempLocal (TypeReference type)
+        {
+            var key = type.FullName;
+            if (trTempLocals.TryGetValue (key, out var v))
+                return v;
+            v = new VariableDefinition (type);
+            body.Variables.Add (v);
+            trTempLocals[key] = v;
             return v;
         }
 

@@ -890,7 +890,7 @@ namespace Iril
                 foreach (var (g, f) in needsInit) {
                     try {
                         if (ShouldTrace >= 3) {
-                            Emit (il.Create (OpCodes.Ldstr, $"Init Field: {f}"));
+                            Emit (il.Create (OpCodes.Ldstr, $"Init Field: {f.DeclaringType}::{f.Name}"));
                             Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
                             Emit (il.Create (OpCodes.Call, compilation.sysConsoleGetOut));
                             Emit (il.Create (OpCodes.Callvirt, compilation.sysTextWriterFlush));
@@ -909,42 +909,96 @@ namespace Iril
                 method.Body = body;
             }
 
+            readonly Dictionary<string, List<VariableDefinition>> pinnedRefs = new Dictionary<string, List<VariableDefinition>> ();
+
+            VariableDefinition GetPinnedRef (TypeReference typeReference)
+            {
+                var key = typeReference.FullName;
+                if (!pinnedRefs.TryGetValue (key, out var vars)) {
+                    vars = new List<VariableDefinition> ();
+                    pinnedRefs.Add (key, vars);
+                }
+                if (vars.Count > 0) {
+                    var ev = vars[vars.Count - 1];
+                    vars.RemoveAt (vars.Count - 1);
+                    return ev;
+                }
+                var nv = new VariableDefinition (typeReference.MakePinnedType ());
+                body.Variables.Add (nv);
+                return nv;
+            }
+
+            void ReleasePinnedRef (TypeReference typeReference, VariableDefinition variable)
+            {
+                Emit (il.Create (OpCodes.Ldc_I4_0));
+                Emit (il.Create (OpCodes.Conv_U));
+                Emit (il.Create (OpCodes.Stloc, variable));
+                pinnedRefs[typeReference.FullName].Add (variable);
+            }
+
             void EmitInitializer (IR.Value initializer, LType type, Lazy<VariableDefinition> gcHandleV, Instruction store)
             {
                 switch (initializer) {
                     case IR.ArrayConstant c: {
+                            Console.WriteLine ("EMIT ARRAY TO " + store);
                             var size = c.Elements.Length;
                             var et = c.Elements[0].Type;
                             var cet = compilation.GetClrType (et, module: module);
-                            var ocet = cet;
-                            if (cet.IsPointer) {
-                                ocet = compilation.sysIntPtr;
-                            }
-                            Emit (il.Create (OpCodes.Ldc_I4, size));
-                            Emit (il.Create (OpCodes.Newarr, ocet));
-                            Emit (il.Create (OpCodes.Dup));
-                            for (int i = 0; i < c.Elements.Length; i++) {
-                                var e = c.Elements[i];
-                                Emit (il.Create (OpCodes.Ldc_I4, i));
-                                if (cet.IsPointer) {
-                                    var converte = il.Create (OpCodes.Call, compilation.sysIntPtrFromPointer);                                    ;
-                                    EmitInitializer (e.Value, e.Type, gcHandleV, converte);
-                                    Emit (il.Create (OpCodes.Stelem_Any, ocet));
-                                }
-                                else {
-                                    var storee = il.Create (OpCodes.Stelem_Any, ocet);
+                            if (store.OpCode == OpCodes.Stfld) {
+                                var operand = (FieldReference)store.Operand;
+                                Emit (il.Create (OpCodes.Ldflda, operand));
+                                var locRefType = operand.FieldType.MakePointerType ();
+                                var locRef = GetPinnedRef (locRefType);
+                                Emit (il.Create (OpCodes.Stloc, locRef));
+                                Emit (il.Create (OpCodes.Ldloc, locRef));
+                                Emit (il.Create (OpCodes.Conv_U));
+                                for (int i = 0; i < c.Elements.Length; i++) {
+                                    if (i + 1 < c.Elements.Length) {
+                                        Emit (il.Create (OpCodes.Dup));
+                                    }
+                                    Emit (il.Create (OpCodes.Ldc_I4, i));
+                                    Emit (il.Create (OpCodes.Conv_I));
+                                    Emit (il.Create (OpCodes.Sizeof, cet));
+                                    Emit (il.Create (OpCodes.Mul));
+                                    Emit (il.Create (OpCodes.Add));
+                                    var e = c.Elements[i];
+                                    var storee = il.Create (OpCodes.Stobj, cet);
                                     EmitInitializer (e.Value, e.Type, gcHandleV, storee);
                                 }
-                                Emit (il.Create (OpCodes.Dup));
+                                ReleasePinnedRef (locRefType, locRef);
                             }
-                            Emit (il.Create (OpCodes.Pop));
-                            Emit (OpCodes.Ldc_I4_3);
-                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
-                            Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
-                            Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
-                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
-                            Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
-                            Emit (store);
+                            else {
+                                var ocet = cet;
+                                if (cet.IsPointer) {
+                                    ocet = compilation.sysIntPtr;
+                                }
+                                Emit (il.Create (OpCodes.Ldc_I4, size));
+                                Emit (il.Create (OpCodes.Ldc_I4, size));
+                                Emit (il.Create (OpCodes.Newarr, ocet));
+                                Emit (il.Create (OpCodes.Dup));
+                                for (int i = 0; i < c.Elements.Length; i++) {
+                                    var e = c.Elements[i];
+                                    Emit (il.Create (OpCodes.Ldc_I4, i));
+                                    if (cet.IsPointer) {
+                                        var converte = il.Create (OpCodes.Call, compilation.sysIntPtrFromPointer);
+                                        EmitInitializer (e.Value, e.Type, gcHandleV, converte);
+                                        Emit (il.Create (OpCodes.Stelem_Any, ocet));
+                                    }
+                                    else {
+                                        var storee = il.Create (OpCodes.Stelem_Any, ocet);
+                                        EmitInitializer (e.Value, e.Type, gcHandleV, storee);
+                                    }
+                                    Emit (il.Create (OpCodes.Dup));
+                                }
+                                Emit (il.Create (OpCodes.Pop));
+                                Emit (OpCodes.Ldc_I4_3);
+                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
+                                Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
+                                Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
+                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
+                                Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
+                                Emit (store);
+                            }
                         }
                         break;
                     case IR.ZeroConstant _ when type is Types.ArrayType art: {
@@ -1067,10 +1121,12 @@ namespace Iril
                             else {
                                 td = ((TypeReference)store.Operand).Resolve ();
                             }
-                            var v = GetStructTempLocal (type);
+                            var v = GetStructTempLocal (td);
                             var n = Math.Min (td.Fields.Count, c.Elements.Length);
                             for (int i = 0; i < n; i++) {
                                 var e = c.Elements[i];
+                                Emit (il.Create (OpCodes.Ldstr, $"Init field #{i}: {e.Type} = {e.Value}   (for type {type})"));
+                                Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
                                 Emit (il.Create (OpCodes.Ldloca, v));
                                 var storee = il.Create (OpCodes.Stfld, td.Fields[i]);
                                 EmitInitializer (e.Value, e.Type, gcHandleV, storee);
@@ -1682,9 +1738,9 @@ namespace Iril
                 case Types.IntegerType t:
                     return t.Symbol.Text;
                 case Types.FunctionType t:
-                    return "f" + t.ParameterTypes.Length + GetLTypeClrIdentifier (t.ReturnType) + string.Join ("_", t.ParameterTypes.Select (GetLTypeClrIdentifier));
+                    return "f" + t.ParameterTypes.Length + GetLTypeClrIdentifier (t.ReturnType) + string.Join ("", t.ParameterTypes.Select (GetLTypeClrIdentifier));
                 case Types.LiteralStructureType t:
-                    return "s" + string.Join ("_", t.Elements.Select (GetLTypeClrIdentifier));
+                    return "s" + string.Join ("", t.Elements.Select (GetLTypeClrIdentifier));
                 case Types.PointerType t:
                     return GetLTypeClrIdentifier (t.ElementType) + "p";
                 case Types.ArrayType t:

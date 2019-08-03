@@ -1533,7 +1533,7 @@ namespace Iril
             var et = compilation.GetClrType(store.Value.Type, module: module);
             if (store.Value.Type is IntegerType intt)
             {
-                switch (intt.Bits)
+                switch (Compilation.RoundUpIntBits (intt.Bits))
                 {
                     case 8:
                         Emit(il.Create(OpCodes.Stind_I1));
@@ -1602,7 +1602,7 @@ namespace Iril
             var et = compilation.GetClrType(load.Type, module: module);
             if (load.Type is IntegerType intt)
             {
-                switch (intt.Bits)
+                switch (Compilation.RoundUpIntBits (intt.Bits))
                 {
                     case 8:
                         Emit(il.Create(OpCodes.Ldind_I1));
