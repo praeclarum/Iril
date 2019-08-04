@@ -1676,6 +1676,9 @@ namespace Iril
                     {
                         Emit(il.Create(OpCodes.Sub));
                     }
+                    if (!(sw.Value.Type is IntegerType intt && intt.Bits == 32)) {
+                        Emit (il.Create (OpCodes.Conv_U4));
+                    }
                     Emit(il.Create(OpCodes.Switch, labels));
                     rem.RemoveRange(0, endIndex);
                 }
