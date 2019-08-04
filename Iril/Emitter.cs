@@ -11,7 +11,7 @@ namespace Iril
 {
     abstract class Emitter
     {
-        public const int ShouldTrace = 3;
+        public const int ShouldTrace = 0;
 
         // Input
         protected readonly Compilation compilation;

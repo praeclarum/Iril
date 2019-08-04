@@ -91,6 +91,7 @@ namespace Iril
         public MethodReference sysIntPtrFromPointer;
         TypeReference sysMarshal;
         public MethodReference sysAllocHGlobal;
+        public MethodReference sysAllocHGlobalInt;
         public MethodReference sysReAllocHGlobal;
         public MethodReference sysFreeHGlobal;
         public MethodReference sysPtrToStringAuto;
@@ -364,6 +365,7 @@ namespace Iril
             sysPointerFromIntPtr = ImportMethod (sysIntPtr, sysVoidPtr, "op_Explicit", sysIntPtr);
             sysMarshal = Import ("System.Runtime.InteropServices.Marshal");
             sysAllocHGlobal = ImportMethod (sysMarshal, sysIntPtr, "AllocHGlobal", sysIntPtr);
+            sysAllocHGlobalInt = ImportMethod (sysMarshal, sysIntPtr, "AllocHGlobal", sysInt32);
             sysReAllocHGlobal = ImportMethod (sysMarshal, sysIntPtr, "ReAllocHGlobal", sysIntPtr, sysIntPtr);
             sysFreeHGlobal = ImportMethod (sysMarshal, sysVoid, "FreeHGlobal", sysIntPtr);
             sysPtrToStringAuto = ImportMethod (sysMarshal, sysString, "PtrToStringAuto", sysIntPtr);
@@ -837,7 +839,8 @@ namespace Iril
 
         void EmitGlobalInitializers (Module m, TypeDefinition moduleGlobalsType, List<(IR.GlobalVariable, FieldDefinition)> needsInit)
         {
-            var cctor = new MethodDefinition (".cctor", MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName, sysVoid);
+            var mattrs = MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName;
+            var cctor = new MethodDefinition (".cctor", mattrs, sysVoid);
             moduleGlobalsType.Methods.Add (cctor);
             var compiler = new GlobalInitializersCompiler (this, m, cctor);
             compiler.Compile (needsInit);
@@ -872,9 +875,33 @@ namespace Iril
             return fd;
         }
 
-        class GlobalInitializersCompiler : Emitter
+        class GlobalInitializersCompiler : InnerGlobalInitializersCompiler
         {
             public GlobalInitializersCompiler (Compilation compilation, Module module, MethodDefinition methodDefinition)
+                : base (compilation, module, methodDefinition)
+            {
+            }
+
+            // Uncomment to make a new function for each field (helps in debugging)
+            //public new void Compile (List<(IR.GlobalVariable, FieldDefinition)> needsInit)
+            //{
+            //    foreach (var (g, f) in needsInit) {
+            //        var mattrs = MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig;
+            //        var cctor = new MethodDefinition ("__init" + f.Name, mattrs, compilation.sysVoid);
+            //        method.DeclaringType.Methods.Add (cctor);
+            //        var compiler = new InnerGlobalInitializersCompiler (compilation, module, cctor);
+            //        compiler.Compile (new List<(IR.GlobalVariable, FieldDefinition)> { (g, f) });
+            //        Emit (il.Create (OpCodes.Call, cctor));
+            //    }
+            //    Emit (OpCodes.Ret);
+            //    body.Optimize ();
+            //    method.Body = body;
+            //}
+        }
+
+        class InnerGlobalInitializersCompiler : Emitter
+        {
+            public InnerGlobalInitializersCompiler (Compilation compilation, Module module, MethodDefinition methodDefinition)
                 : base (compilation, module, methodDefinition)
             {
             }
@@ -906,6 +933,7 @@ namespace Iril
                 Emit (OpCodes.Ret);
 
                 body.Optimize ();
+                body.InitLocals = true;
                 method.Body = body;
             }
 
@@ -940,7 +968,7 @@ namespace Iril
             {
                 switch (initializer) {
                     case IR.ArrayConstant c: {
-                            Console.WriteLine ("EMIT ARRAY TO " + store);
+                            //Console.WriteLine ("EMIT ARRAY TO " + store);
                             var size = c.Elements.Length;
                             var et = c.Elements[0].Type;
                             var cet = compilation.GetClrType (et, module: module);
@@ -966,6 +994,26 @@ namespace Iril
                                     EmitInitializer (e.Value, e.Type, gcHandleV, storee);
                                 }
                                 ReleasePinnedRef (locRefType, locRef);
+                            }
+                            else if (store.OpCode == OpCodes.Stsfld) {
+                                var field = (FieldReference)store.Operand;
+                                Emit (il.Create (OpCodes.Ldc_I4, c.Elements.Length));
+                                Emit (il.Create (OpCodes.Sizeof, cet));
+                                Emit (il.Create (OpCodes.Mul));
+                                Emit (il.Create (OpCodes.Call, compilation.sysAllocHGlobalInt));
+                                Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
+                                Emit (store);
+                                for (int i = 0; i < c.Elements.Length; i++) {
+                                    Emit (il.Create (OpCodes.Ldsfld, field));
+                                    Emit (il.Create (OpCodes.Ldc_I4, i));
+                                    Emit (il.Create (OpCodes.Conv_I));
+                                    Emit (il.Create (OpCodes.Sizeof, cet));
+                                    Emit (il.Create (OpCodes.Mul));
+                                    Emit (il.Create (OpCodes.Add));
+                                    var e = c.Elements[i];
+                                    var storee = il.Create (OpCodes.Stobj, cet);
+                                    EmitInitializer (e.Value, e.Type, gcHandleV, storee);
+                                }
                             }
                             else {
                                 var ocet = cet;
@@ -1125,8 +1173,10 @@ namespace Iril
                             var n = Math.Min (td.Fields.Count, c.Elements.Length);
                             for (int i = 0; i < n; i++) {
                                 var e = c.Elements[i];
-                                Emit (il.Create (OpCodes.Ldstr, $"Init field #{i}: {e.Type} = {e.Value}   (for type {type})"));
-                                Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
+                                if (ShouldTrace >= 3) {
+                                    Emit (il.Create (OpCodes.Ldstr, $"Init field #{i}: {e.Type} = {e.Value}   (for type {type})"));
+                                    Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
+                                }
                                 Emit (il.Create (OpCodes.Ldloca, v));
                                 var storee = il.Create (OpCodes.Stfld, td.Fields[i]);
                                 EmitInitializer (e.Value, e.Type, gcHandleV, storee);
