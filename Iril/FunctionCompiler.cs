@@ -316,6 +316,7 @@ namespace Iril
                 EmitBlockAssignments (b, nextBlock, mainContext);
             }
 
+            body.InitLocals = true;
             body.Optimize ();
 
             //
