@@ -158,9 +158,11 @@ namespace Iril
                     switch (Compilation.RoundUpIntBits (((IntegerType)type).Bits)) {
                         case 8:
                             Emit(il.Create(OpCodes.Ldc_I4, ((int)i.Value) & 0xFF));
+                            Emit (il.Create (OpCodes.Conv_I1));
                             break;
                         case 16:
                             Emit(il.Create(OpCodes.Ldc_I4, ((int)i.Value) & 0xFFFF));
+                            Emit (il.Create (OpCodes.Conv_I2));
                             break;
                         case 32:
                             Emit(il.Create(OpCodes.Ldc_I4, (int)i.Value));
@@ -494,13 +496,23 @@ namespace Iril
                 Emit (il.Create (OpCodes.Newobj, v.Ctor));
             }
             else if (type is Types.IntegerType intt) {
-                switch (intt.Bits) {
-                    default:
+                switch (Compilation.RoundUpIntBits (intt.Bits)) {
+                    case 8:
+                        Emit (il.Create (OpCodes.Ldc_I4_0));
+                        Emit (il.Create (OpCodes.Conv_I1));
+                        break;
+                    case 16:
+                        Emit (il.Create (OpCodes.Ldc_I4_0));
+                        Emit (il.Create (OpCodes.Conv_I2));
+                        break;
+                    case 32:
                         Emit (il.Create (OpCodes.Ldc_I4_0));
                         break;
                     case 64:
                         Emit (il.Create (OpCodes.Ldc_I8, 0L));
                         break;
+                    default:
+                        throw new NotSupportedException ($"Cannot emit 0 for integer type `{type}`");
                 }
             }
             else if (type is Types.PointerType ptr) {

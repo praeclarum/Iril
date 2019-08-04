@@ -1620,9 +1620,7 @@ namespace Iril
                 return 32;
             if (bits > 8)
                 return 16;
-            if (bits > 1)
-                return 8;
-            return 1;
+            return 8;
         }
 
         public TypeReference GetClrType (LType irType, Module module, bool? unsigned = false)

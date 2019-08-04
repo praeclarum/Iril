@@ -785,8 +785,8 @@ namespace Iril
                     EmitTypedValue(fpext.Value);
                     switch (fpext.Type)
                     {
-                        case Types.FloatType intt:
-                            switch (intt.Bits)
+                        case Types.FloatType fltt:
+                            switch (fltt.Bits)
                             {
                                 case 32:
                                     Emit(il.Create(OpCodes.Conv_R4));
@@ -805,9 +805,8 @@ namespace Iril
                     switch (fptosi.Type)
                     {
                         case Types.IntegerType intt:
-                            switch (intt.Bits)
+                            switch (Compilation.RoundUpIntBits (intt.Bits))
                             {
-                                case 1:
                                 case 8:
                                     Emit(il.Create(OpCodes.Conv_I1));
                                     break;
@@ -831,9 +830,8 @@ namespace Iril
                     switch (fptoui.Type)
                     {
                         case Types.IntegerType intt:
-                            switch (intt.Bits)
+                            switch (Compilation.RoundUpIntBits (intt.Bits))
                             {
-                                case 1:
                                 case 8:
                                     Emit(il.Create(OpCodes.Conv_U1));
                                     break;
@@ -936,9 +934,7 @@ namespace Iril
                     switch (zext.Type)
                     {
                         case Types.IntegerType intt:
-                            switch (intt.Bits)
-                            {
-                                case 1:
+                            switch (Compilation.RoundUpIntBits (intt.Bits)) {
                                 case 8:
                                     Emit(il.Create(OpCodes.Conv_I1));
                                     break;
@@ -1002,9 +998,7 @@ namespace Iril
                                 Emit(il.Create(OpCodes.Ldc_I4_M1));
                                 Emit(il.Create(OpCodes.Mul));
                             }
-                            switch (intt.Bits)
-                            {
-                                case 1:
+                            switch (Compilation.RoundUpIntBits (intt.Bits)) {
                                 case 8:
                                     Emit(il.Create(OpCodes.Conv_I1));
                                     break;
@@ -1157,9 +1151,7 @@ namespace Iril
                     switch (trunc.Type)
                     {
                         case Types.IntegerType intt:
-                            switch (intt.Bits)
-                            {
-                                case 1:
+                            switch (Compilation.RoundUpIntBits (intt.Bits)) {
                                 case 8:
                                     Emit(il.Create(OpCodes.Conv_I1));
                                     break;
@@ -1248,9 +1240,7 @@ namespace Iril
                     switch (zext.Type)
                     {
                         case Types.IntegerType intt:
-                            switch (intt.Bits)
-                            {
-                                case 1:
+                            switch (Compilation.RoundUpIntBits (intt.Bits)) {
                                 case 8:
                                     Emit(il.Create(OpCodes.Conv_U1));
                                     break;
