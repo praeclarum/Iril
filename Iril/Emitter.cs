@@ -523,12 +523,19 @@ namespace Iril
                 Emit (il.Create (OpCodes.Initobj, td));
                 Emit (il.Create (OpCodes.Ldloc, v));
             }
+            else if (type is Types.LiteralStructureType lst) {
+                var td = compilation.GetClrType (type, module).Resolve ();
+                var v = GetStructTempLocal (lst);
+                Emit (il.Create (OpCodes.Ldloca, v));
+                Emit (il.Create (OpCodes.Initobj, td));
+                Emit (il.Create (OpCodes.Ldloc, v));
+            }
             else if (type is FunctionType) {
                 Emit (il.Create (OpCodes.Ldc_I4_0));
                 Emit (il.Create (OpCodes.Conv_U));
             }
             else {
-                throw new NotSupportedException ("Cannot get zero for " + type);
+                throw new NotSupportedException ($"Cannot get zero for {type} ({type.GetType().Name})");
             }
         }
 
