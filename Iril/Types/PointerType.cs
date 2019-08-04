@@ -1,4 +1,5 @@
 ﻿using System;
+using Mono.Cecil;
 
 namespace Iril.Types
 {
@@ -19,5 +20,15 @@ namespace Iril.Types
         public override string ToString () => $"{ElementType}*";
 
         public override long GetByteSize (Module module) => module.PointerByteSize;
+
+        public override int GetAlignment (Module module) => module.PointerByteSize;
+
+        public override bool StructurallyEquals (LType other) =>
+            other is PointerType a
+            && ElementType.StructurallyEquals (a.ElementType);
+
+        public override int GetStructuralHashCode () =>
+            789
+            + ElementType.GetStructuralHashCode ();
     }
 }

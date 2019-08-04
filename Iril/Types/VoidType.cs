@@ -11,6 +11,14 @@ namespace Iril.Types
 
         public override string ToString () => "void";
 
-        public override long GetByteSize (Module module) => 0;
+        public override long GetByteSize (Module module) => module.PointerByteSize;
+
+        public override int GetAlignment (Module module) => module.PointerByteSize;
+
+        public override bool StructurallyEquals (LType other) =>
+            other is VoidType;
+
+        public override int GetStructuralHashCode () =>
+            901;
     }
 }

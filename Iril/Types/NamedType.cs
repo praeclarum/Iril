@@ -21,5 +21,15 @@ namespace Iril.Types
         }
 
         public override long GetByteSize (Module module) => Resolve (module).GetByteSize (module);
+
+        public override int GetAlignment (Module module) => Resolve (module).GetAlignment (module);
+
+        public override bool StructurallyEquals (LType other) =>
+            other is NamedType a
+            && Symbol == a.Symbol;
+
+        public override int GetStructuralHashCode () =>
+            678
+            + Symbol.GetHashCode ();
     }
 }

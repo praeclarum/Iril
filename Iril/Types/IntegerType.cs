@@ -24,6 +24,8 @@ namespace Iril.Types
 
         public override long GetByteSize (Module module) => Bits < 8 ? 1 : Bits / 8;
 
+        public override int GetAlignment (Module module) => Bits < 8 ? 1 : Bits / 8;
+
         public static IntegerType Parse (string text, int startIndex, int length)
         {
             var i = startIndex + 1;
@@ -55,5 +57,13 @@ namespace Iril.Types
             var bits = int.Parse (bitText);
             return new IntegerType (bits);
         }
+
+        public override bool StructurallyEquals (LType other) =>
+            other is IntegerType a
+            && Bits == a.Bits;
+
+        public override int GetStructuralHashCode () =>
+            345
+            + Bits.GetHashCode ();
     }
 }

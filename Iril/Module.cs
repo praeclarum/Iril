@@ -26,7 +26,7 @@ namespace Iril
         /// </summary>
         public string TargetDatalayout = "";
 
-        public long PointerByteSize = 8;
+        public int PointerByteSize = 8;
 
         /// <summary>
         /// A series of identifiers delimited by the minus sign character

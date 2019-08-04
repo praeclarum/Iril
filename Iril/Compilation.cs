@@ -91,6 +91,7 @@ namespace Iril
         public MethodReference sysIntPtrFromPointer;
         TypeReference sysMarshal;
         public MethodReference sysAllocHGlobal;
+        public MethodReference sysAllocHGlobalInt;
         public MethodReference sysReAllocHGlobal;
         public MethodReference sysFreeHGlobal;
         public MethodReference sysPtrToStringAuto;
@@ -127,8 +128,8 @@ namespace Iril
         readonly Dictionary<(int, string), SimdVector> vectorTypes =
             new Dictionary<(int, string), SimdVector> ();
 
-        readonly Dictionary<TypeReference[], AnonymousStruct> astructTypes =
-            new Dictionary<TypeReference[], AnonymousStruct> (AnonymousStruct.TypesEquality);
+        readonly Dictionary<LType[], AnonymousStruct> astructTypes =
+            new Dictionary<LType[], AnonymousStruct> (AnonymousStruct.LTypesEquality);
 
         readonly SymbolTable<DefinedFunction> externalMethodDefs =
             new SymbolTable<DefinedFunction> ();
@@ -364,6 +365,7 @@ namespace Iril
             sysPointerFromIntPtr = ImportMethod (sysIntPtr, sysVoidPtr, "op_Explicit", sysIntPtr);
             sysMarshal = Import ("System.Runtime.InteropServices.Marshal");
             sysAllocHGlobal = ImportMethod (sysMarshal, sysIntPtr, "AllocHGlobal", sysIntPtr);
+            sysAllocHGlobalInt = ImportMethod (sysMarshal, sysIntPtr, "AllocHGlobal", sysInt32);
             sysReAllocHGlobal = ImportMethod (sysMarshal, sysIntPtr, "ReAllocHGlobal", sysIntPtr, sysIntPtr);
             sysFreeHGlobal = ImportMethod (sysMarshal, sysVoid, "FreeHGlobal", sysIntPtr);
             sysPtrToStringAuto = ImportMethod (sysMarshal, sysString, "PtrToStringAuto", sysIntPtr);
@@ -608,14 +610,32 @@ namespace Iril
             }
 
             foreach (var (m, l, td) in todo) {
-                var fields =
-                    from e in l.Elements.Zip(Enumerable.Range(0, l.Elements.Length), (e, i) => (e, i))
-                    let fn = "F" + e.i
-                    select new FieldDefinition (fn, FieldAttributes.Public, GetClrType (e.e, module: m));
-
-                foreach (var f in fields) {
-                    td.Fields.Add (f);
+                var n = l.Elements.Length;
+                var offset = 0;
+                td.IsExplicitLayout = true;
+                for (var i = 0; i < n; i++) {
+                    var e = l.Elements[i];
+                    var fn = GetFieldPrefix (e) + i;
+                    long byteSize;
+                    TypeReference fieldType;
+                    if (e is Types.ArrayType arrt) {
+                        var ee = arrt.ElementType;
+                        var len = arrt.Length;
+                        byteSize = ee.GetByteSize (m) * len;
+                        fieldType = GetClrType (ee, module: m);
+                    }
+                    else {
+                        byteSize = e.GetByteSize (m);
+                        fieldType = GetClrType (e, module: m);
+                    }
+                    var field = new FieldDefinition (fn, FieldAttributes.Public, fieldType);
+                    offset = Align (offset, e, (int)byteSize, m);
+                    field.Offset = offset;
+                    td.Fields.Add (field);
+                    offset += (int)byteSize;
                 }
+                td.ClassSize = offset;
+                td.PackingSize = (short)m.PointerByteSize;
             }
         }
 
@@ -819,7 +839,8 @@ namespace Iril
 
         void EmitGlobalInitializers (Module m, TypeDefinition moduleGlobalsType, List<(IR.GlobalVariable, FieldDefinition)> needsInit)
         {
-            var cctor = new MethodDefinition (".cctor", MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName, sysVoid);
+            var mattrs = MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName;
+            var cctor = new MethodDefinition (".cctor", mattrs, sysVoid);
             moduleGlobalsType.Methods.Add (cctor);
             var compiler = new GlobalInitializersCompiler (this, m, cctor);
             compiler.Compile (needsInit);
@@ -854,9 +875,33 @@ namespace Iril
             return fd;
         }
 
-        class GlobalInitializersCompiler : Emitter
+        class GlobalInitializersCompiler : InnerGlobalInitializersCompiler
         {
             public GlobalInitializersCompiler (Compilation compilation, Module module, MethodDefinition methodDefinition)
+                : base (compilation, module, methodDefinition)
+            {
+            }
+
+            // Uncomment to make a new function for each field (helps in debugging)
+            //public new void Compile (List<(IR.GlobalVariable, FieldDefinition)> needsInit)
+            //{
+            //    foreach (var (g, f) in needsInit) {
+            //        var mattrs = MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig;
+            //        var cctor = new MethodDefinition ("__init" + f.Name, mattrs, compilation.sysVoid);
+            //        method.DeclaringType.Methods.Add (cctor);
+            //        var compiler = new InnerGlobalInitializersCompiler (compilation, module, cctor);
+            //        compiler.Compile (new List<(IR.GlobalVariable, FieldDefinition)> { (g, f) });
+            //        Emit (il.Create (OpCodes.Call, cctor));
+            //    }
+            //    Emit (OpCodes.Ret);
+            //    body.Optimize ();
+            //    method.Body = body;
+            //}
+        }
+
+        class InnerGlobalInitializersCompiler : Emitter
+        {
+            public InnerGlobalInitializersCompiler (Compilation compilation, Module module, MethodDefinition methodDefinition)
                 : base (compilation, module, methodDefinition)
             {
             }
@@ -872,7 +917,7 @@ namespace Iril
                 foreach (var (g, f) in needsInit) {
                     try {
                         if (ShouldTrace >= 3) {
-                            Emit (il.Create (OpCodes.Ldstr, $"Init Field: {f}"));
+                            Emit (il.Create (OpCodes.Ldstr, $"Init Field: {f.DeclaringType}::{f.Name}"));
                             Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
                             Emit (il.Create (OpCodes.Call, compilation.sysConsoleGetOut));
                             Emit (il.Create (OpCodes.Callvirt, compilation.sysTextWriterFlush));
@@ -888,45 +933,120 @@ namespace Iril
                 Emit (OpCodes.Ret);
 
                 body.Optimize ();
+                body.InitLocals = true;
                 method.Body = body;
+            }
+
+            readonly Dictionary<string, List<VariableDefinition>> pinnedRefs = new Dictionary<string, List<VariableDefinition>> ();
+
+            VariableDefinition GetPinnedRef (TypeReference typeReference)
+            {
+                var key = typeReference.FullName;
+                if (!pinnedRefs.TryGetValue (key, out var vars)) {
+                    vars = new List<VariableDefinition> ();
+                    pinnedRefs.Add (key, vars);
+                }
+                if (vars.Count > 0) {
+                    var ev = vars[vars.Count - 1];
+                    vars.RemoveAt (vars.Count - 1);
+                    return ev;
+                }
+                var nv = new VariableDefinition (typeReference.MakePinnedType ());
+                body.Variables.Add (nv);
+                return nv;
+            }
+
+            void ReleasePinnedRef (TypeReference typeReference, VariableDefinition variable)
+            {
+                Emit (il.Create (OpCodes.Ldc_I4_0));
+                Emit (il.Create (OpCodes.Conv_U));
+                Emit (il.Create (OpCodes.Stloc, variable));
+                pinnedRefs[typeReference.FullName].Add (variable);
             }
 
             void EmitInitializer (IR.Value initializer, LType type, Lazy<VariableDefinition> gcHandleV, Instruction store)
             {
                 switch (initializer) {
                     case IR.ArrayConstant c: {
+                            //Console.WriteLine ("EMIT ARRAY TO " + store);
                             var size = c.Elements.Length;
                             var et = c.Elements[0].Type;
                             var cet = compilation.GetClrType (et, module: module);
-                            var ocet = cet;
-                            if (cet.IsPointer) {
-                                ocet = compilation.sysIntPtr;
-                            }
-                            Emit (il.Create (OpCodes.Ldc_I4, size));
-                            Emit (il.Create (OpCodes.Newarr, ocet));
-                            Emit (il.Create (OpCodes.Dup));
-                            for (int i = 0; i < c.Elements.Length; i++) {
-                                var e = c.Elements[i];
-                                Emit (il.Create (OpCodes.Ldc_I4, i));
-                                if (cet.IsPointer) {
-                                    var converte = il.Create (OpCodes.Call, compilation.sysIntPtrFromPointer);                                    ;
-                                    EmitInitializer (e.Value, e.Type, gcHandleV, converte);
-                                    Emit (il.Create (OpCodes.Stelem_Any, ocet));
-                                }
-                                else {
-                                    var storee = il.Create (OpCodes.Stelem_Any, ocet);
+                            if (store.OpCode == OpCodes.Stfld) {
+                                var operand = (FieldReference)store.Operand;
+                                Emit (il.Create (OpCodes.Ldflda, operand));
+                                var locRefType = operand.FieldType.MakePointerType ();
+                                var locRef = GetPinnedRef (locRefType);
+                                Emit (il.Create (OpCodes.Stloc, locRef));
+                                Emit (il.Create (OpCodes.Ldloc, locRef));
+                                Emit (il.Create (OpCodes.Conv_U));
+                                for (int i = 0; i < c.Elements.Length; i++) {
+                                    if (i + 1 < c.Elements.Length) {
+                                        Emit (il.Create (OpCodes.Dup));
+                                    }
+                                    Emit (il.Create (OpCodes.Ldc_I4, i));
+                                    Emit (il.Create (OpCodes.Conv_I));
+                                    Emit (il.Create (OpCodes.Sizeof, cet));
+                                    Emit (il.Create (OpCodes.Mul));
+                                    Emit (il.Create (OpCodes.Add));
+                                    var e = c.Elements[i];
+                                    var storee = il.Create (OpCodes.Stobj, cet);
                                     EmitInitializer (e.Value, e.Type, gcHandleV, storee);
                                 }
-                                Emit (il.Create (OpCodes.Dup));
+                                ReleasePinnedRef (locRefType, locRef);
                             }
-                            Emit (il.Create (OpCodes.Pop));
-                            Emit (OpCodes.Ldc_I4_3);
-                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
-                            Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
-                            Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
-                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
-                            Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
-                            Emit (store);
+                            else if (store.OpCode == OpCodes.Stsfld) {
+                                var field = (FieldReference)store.Operand;
+                                Emit (il.Create (OpCodes.Ldc_I4, c.Elements.Length));
+                                Emit (il.Create (OpCodes.Sizeof, cet));
+                                Emit (il.Create (OpCodes.Mul));
+                                Emit (il.Create (OpCodes.Call, compilation.sysAllocHGlobalInt));
+                                Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
+                                Emit (store);
+                                for (int i = 0; i < c.Elements.Length; i++) {
+                                    Emit (il.Create (OpCodes.Ldsfld, field));
+                                    Emit (il.Create (OpCodes.Ldc_I4, i));
+                                    Emit (il.Create (OpCodes.Conv_I));
+                                    Emit (il.Create (OpCodes.Sizeof, cet));
+                                    Emit (il.Create (OpCodes.Mul));
+                                    Emit (il.Create (OpCodes.Add));
+                                    var e = c.Elements[i];
+                                    var storee = il.Create (OpCodes.Stobj, cet);
+                                    EmitInitializer (e.Value, e.Type, gcHandleV, storee);
+                                }
+                            }
+                            else {
+                                var ocet = cet;
+                                if (cet.IsPointer) {
+                                    ocet = compilation.sysIntPtr;
+                                }
+                                Emit (il.Create (OpCodes.Ldc_I4, size));
+                                Emit (il.Create (OpCodes.Ldc_I4, size));
+                                Emit (il.Create (OpCodes.Newarr, ocet));
+                                Emit (il.Create (OpCodes.Dup));
+                                for (int i = 0; i < c.Elements.Length; i++) {
+                                    var e = c.Elements[i];
+                                    Emit (il.Create (OpCodes.Ldc_I4, i));
+                                    if (cet.IsPointer) {
+                                        var converte = il.Create (OpCodes.Call, compilation.sysIntPtrFromPointer);
+                                        EmitInitializer (e.Value, e.Type, gcHandleV, converte);
+                                        Emit (il.Create (OpCodes.Stelem_Any, ocet));
+                                    }
+                                    else {
+                                        var storee = il.Create (OpCodes.Stelem_Any, ocet);
+                                        EmitInitializer (e.Value, e.Type, gcHandleV, storee);
+                                    }
+                                    Emit (il.Create (OpCodes.Dup));
+                                }
+                                Emit (il.Create (OpCodes.Pop));
+                                Emit (OpCodes.Ldc_I4_3);
+                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
+                                Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
+                                Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
+                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
+                                Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
+                                Emit (store);
+                            }
                         }
                         break;
                     case IR.ZeroConstant _ when type is Types.ArrayType art: {
@@ -1049,10 +1169,14 @@ namespace Iril
                             else {
                                 td = ((TypeReference)store.Operand).Resolve ();
                             }
-                            var v = GetStructTempLocal (type);
+                            var v = GetStructTempLocal (td);
                             var n = Math.Min (td.Fields.Count, c.Elements.Length);
                             for (int i = 0; i < n; i++) {
                                 var e = c.Elements[i];
+                                if (ShouldTrace >= 3) {
+                                    Emit (il.Create (OpCodes.Ldstr, $"Init field #{i}: {e.Type} = {e.Value}   (for type {type})"));
+                                    Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
+                                }
                                 Emit (il.Create (OpCodes.Ldloca, v));
                                 var storee = il.Create (OpCodes.Stfld, td.Fields[i]);
                                 EmitInitializer (e.Value, e.Type, gcHandleV, storee);
@@ -1570,35 +1694,110 @@ namespace Iril
                 throw new ArgumentNullException (nameof (module));
             }
 
-            var key = st.Elements.Select (x => GetClrType (x, module: module)).ToArray ();
+            var key = st.Elements.Select (x => x.Resolve (module: module)).ToArray ();
             if (astructTypes.TryGetValue (key, out var vct)) {
                 return vct;
             }
-            return AddAnonymousStruct (key, st);
+            return AddAnonymousStruct (st.Elements, key, st, module);
         }
 
-        AnonymousStruct AddAnonymousStruct (TypeReference[] key, LiteralStructureType st)
+        AnonymousStruct AddAnonymousStruct (LType[] elements, LType[] resolvedElements, LiteralStructureType st, Module module)
         {
-            var tname = $"Struct{key.Length}_{string.Join("_", key.Select(x => x.Name))}";
+            var n = elements.Length;
+            var tname = $"Struct{n}_{string.Join("_", resolvedElements.Select(GetLTypeClrIdentifier))}";
 
             var ns = namespac + ".AnonymousTypes";
             var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.Public;
             var td = new TypeDefinition (ns, tname, tattrs, sysVal);
-            for (var i = 0; i < key.Length; i++) {
-                var f = new FieldDefinition ("F" + i, FieldAttributes.Public, key[i]);
+            td.IsExplicitLayout = true;
+            var elementsClrTypes = new List<TypeReference> (n);
+            var offset = 0;
+            for (var i = 0; i < n; i++) {
+                int size;
+                TypeReference clrType;
+                if (resolvedElements[i] is Types.ArrayType arrt) {
+                    var e = arrt.ElementType;
+                    size = (int)(e.GetByteSize (module: module) * arrt.Length);
+                    clrType = GetClrType (e, module: module);
+                }
+                else {
+                    size = (int)resolvedElements[i].GetByteSize(module: module);
+                    clrType = GetClrType (resolvedElements[i], module: module);
+                }
+                elementsClrTypes.Add (clrType);
+                string pre = GetFieldPrefix (resolvedElements[i]);
+                var f = new FieldDefinition (pre + i, FieldAttributes.Public, clrType);
+                offset = Align (offset, resolvedElements[i], (int)size, module: module);
+                f.Offset = offset;
                 td.Fields.Add (f);
+                offset += size;
             }
+            td.ClassSize = offset;
+            td.PackingSize = (short)module.PointerByteSize;
 
             var r = new AnonymousStruct {
-                ElementClrTypes = key,
+                ElementClrTypes = elementsClrTypes.ToArray (),
                 ClrType = td,
                 ElementFields = td.Fields.Select (x => (FieldReference)x).ToArray (),
             };
 
             mod.Types.Add (td);
-            astructTypes[key] = r;
+            astructTypes[resolvedElements] = r;
 
             return r;
+        }
+
+        static string GetFieldPrefix (LType lType)
+        {
+            switch (lType) {
+                case Types.ArrayType t:
+                    return GetFieldPrefix (t.ElementType) + "Array";
+                case Types.FunctionType _:
+                    return "Function";
+                case Types.PointerType t:
+                    return GetFieldPrefix (t.ElementType) + "Pointer";
+                case Types.IntegerType t when t.Bits == 8:
+                    return "Byte";
+                case Types.IntegerType t:
+                    return "Integer";
+                case Types.FloatType t:
+                    return "Float";
+                case Types.NamedType _:
+                case Types.StructureType _:
+                    return "Struct";
+                default:
+                    return "F";
+            }
+        }
+
+        static int Align (int offset, LType dataType, int dataTypeByteSize, Module module)
+        {
+            int alignment = dataType.GetAlignment (module);
+            while ((offset % alignment) != 0)
+                offset++;
+            return offset;
+        }
+
+        static string GetLTypeClrIdentifier (LType type)
+        {
+            switch (type) {
+                case Types.NamedType t:
+                    return IR.MangledName.Demangle (t.Symbol);
+                case Types.FloatType t:
+                    return t.Symbol.Text;
+                case Types.IntegerType t:
+                    return t.Symbol.Text;
+                case Types.FunctionType t:
+                    return "f" + t.ParameterTypes.Length + GetLTypeClrIdentifier (t.ReturnType) + string.Join ("", t.ParameterTypes.Select (GetLTypeClrIdentifier));
+                case Types.LiteralStructureType t:
+                    return "s" + string.Join ("", t.Elements.Select (GetLTypeClrIdentifier));
+                case Types.PointerType t:
+                    return GetLTypeClrIdentifier (t.ElementType) + "p";
+                case Types.ArrayType t:
+                    return "a" + t.Length + GetLTypeClrIdentifier (t.ElementType);
+                default:
+                    return type.ToString ();
+            }
         }
 
         public SimdVector GetVectorType (VectorType vt, Module module)
