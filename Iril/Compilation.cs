@@ -101,6 +101,7 @@ namespace Iril
         public MethodReference sysDebuggerBreak;
         public TypeReference sysStream;
         public MethodReference sysStreamWrite;
+        public MethodReference sysStreamWriteByte;
         public MethodReference sysStreamRead;
         TypeReference sysTextWriter;
         public MethodReference sysTextWriterFlush;
@@ -332,6 +333,7 @@ namespace Iril
             sysStream = Import ("System.IO.Stream");
             sysStreamRead = ImportMethod (sysStream, sysInt32, "Read", sysByteArray, sysInt32, sysInt32);
             sysStreamWrite = ImportMethod (sysStream, sysVoid, "Write", sysByteArray, sysInt32, sysInt32);
+            sysStreamWriteByte = ImportMethod (sysStream, sysVoid, "WriteByte", sysByte);
             sysTextWriter = Import ("System.IO.TextWriter");
             sysTextWriterFlush = ImportMethod (sysTextWriter, sysVoid, "Flush");
             sysConsole = Import ("System.Console");
