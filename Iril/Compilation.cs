@@ -391,7 +391,8 @@ namespace Iril
         {
             if (module.Metadata.TryGetValue (scopeRef, out var scopeO) && scopeO is SymbolTable<object> scope) {
                 if (scope.TryGetValue (Symbol.File, out var fileO) && fileO is MetaSymbol fileRef) {
-                    if (fileDocuments.TryGetValue (fileRef, out var doc))
+                    Symbol fullFileRef = module.Symbol.Text + "." + fileRef;
+                    if (fileDocuments.TryGetValue (fullFileRef, out var doc))
                         return doc;
 
                     if (module.Metadata.TryGetValue (fileRef, out fileO)
@@ -409,7 +410,7 @@ namespace Iril
                         }
                         doc.Language = DocumentLanguage.C;
 
-                        fileDocuments[fileRef] = doc;
+                        fileDocuments[fullFileRef] = doc;
                         return doc;
                     }
                 }

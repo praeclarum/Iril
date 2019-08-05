@@ -341,28 +341,10 @@ namespace Iril
             //
             // Add sequence points
             //
-            foreach (var (cinst, dbgSym) in sqpts)
-            {
-                if (module.Metadata.TryGetValue(dbgSym, out var dbg) && dbg is SymbolTable<object> dbgVals)
-                {
-                    var cinstr = prev;
-                    if (dbgVals.TryGetValue(Symbol.Line, out var lineO) && lineO is Constant line
-                        && dbgVals.TryGetValue(Symbol.Column, out var columnO) && columnO is Constant column
-                        && dbgVals.TryGetValue(Symbol.Scope, out var scopeO) && scopeO is MetaSymbol scopeRef)
-                    {
-
-                        var doc = compilation.GetScopeDocument(module, scopeRef);
-                        if (doc != null)
-                        {
-                            var sp = new SequencePoint(cinstr, doc);
-                            sp.StartLine = line.Int32Value;
-                            sp.EndLine = line.Int32Value;
-                            sp.StartColumn = column.Int32Value;
-                            sp.EndColumn = column.Int32Value + 1;
-                            method.DebugInformation.SequencePoints.Add(sp);
-                        }
-                    }
-                }
+            foreach (var (cinst, dbgSym) in sqpts) {
+                var sp = TryGetSequencePoint (dbgSym);
+                if (sp != null)
+                    method.DebugInformation.SequencePoints.Add (sp);
             }
 
             var bodyDbg = new ScopeDebugInformation(body.Instructions.First(), null);
@@ -394,6 +376,28 @@ namespace Iril
 
             md.DebugInformation.Scope = bodyDbg;
             md.Body = body;
+        }
+
+        private SequencePoint TryGetSequencePoint (MetaSymbol dbgSym)
+        {
+            if (module.Metadata.TryGetValue (dbgSym, out var dbg) && dbg is SymbolTable<object> dbgVals) {
+                var cinstr = prev;
+                if (dbgVals.TryGetValue (Symbol.Line, out var lineO) && lineO is Constant line
+                    && dbgVals.TryGetValue (Symbol.Column, out var columnO) && columnO is Constant column
+                    && dbgVals.TryGetValue (Symbol.Scope, out var scopeO) && scopeO is MetaSymbol scopeRef) {
+
+                    var doc = compilation.GetScopeDocument (module, scopeRef);
+                    if (doc != null) {
+                        var sp = new SequencePoint (cinstr, doc);
+                        sp.StartLine = line.Int32Value;
+                        sp.EndLine = line.Int32Value;
+                        sp.StartColumn = column.Int32Value;
+                        sp.EndColumn = column.Int32Value + 1;
+                        return sp;
+                    }
+                }
+            }
+            return null;
         }
 
         void EmitBlockAssignments (Block b, Block nextBlock, BlocksContext context)
@@ -502,10 +506,18 @@ namespace Iril
                 Emit (il.Create (OpCodes.Mul));
                 Emit (il.Create (OpCodes.Newobj, compilation.sysStringCharCountCtor));
 
-                Emit (il.Create (OpCodes.Ldstr, $"- {b.Symbol}"));
+                var message = $"- {b.Symbol}";
 
+                var fass = b.Assignments.FirstOrDefault (x => x.HasDebugSymbol);
+                if (fass != null) {
+                    var seq = TryGetSequencePoint (fass.DebugSymbol);
+                    if (seq != null) {
+                        message += $" {seq.Document.Url}:{seq.StartLine}";
+                    }
+                }
+
+                Emit (il.Create (OpCodes.Ldstr, message));
                 Emit (il.Create (OpCodes.Call, compilation.sysStringConcat));
-
                 Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
             }
 
