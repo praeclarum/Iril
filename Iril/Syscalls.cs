@@ -59,6 +59,7 @@ namespace Iril
             EmitSetjmp ();
             EmitLongjmp ();
             EmitUMulOvf64 ();
+            EmitAbort ();
 
             EmitStaticCtor ();
         }
@@ -999,6 +1000,19 @@ namespace Iril
             il.Append (il.Create (OpCodes.Stfld, ct.Fields[1]));
             il.Append (il.Create (OpCodes.Ldloc, v0));
             il.Append (il.Create (OpCodes.Ret));
+
+            b.Optimize ();
+        }
+
+        void EmitAbort ()
+        {
+            var m = NewMethod ("@abort", Types.VoidType.Void);
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+
+            il.Append (il.Create (OpCodes.Ldstr, "Abort"));
+            il.Append (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
+            il.Append (il.Create (OpCodes.Throw));
 
             b.Optimize ();
         }
