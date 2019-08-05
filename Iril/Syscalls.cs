@@ -998,7 +998,7 @@ namespace Iril
             il.Append (il.Create (OpCodes.Ldloca, v0));
             il.Append (il.Create (OpCodes.Ldarg_0));
             il.Append (il.Create (OpCodes.Ldarg_1));
-            il.Append (il.Create (OpCodes.Div_Un));
+            il.Append (il.Create (OpCodes.Mul_Ovf_Un));
             il.Append (il.Create (OpCodes.Stfld, ct.Fields[0]));
             il.Append (il.Create (OpCodes.Ldloca, v0));
             il.Append (il.Create (OpCodes.Ldc_I4_0));
