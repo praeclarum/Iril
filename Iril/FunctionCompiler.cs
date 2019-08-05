@@ -1596,13 +1596,13 @@ namespace Iril
                 switch (Compilation.RoundUpIntBits (intt.Bits))
                 {
                     case 8:
-                        Emit(il.Create(OpCodes.Ldind_I1));
+                        Emit(il.Create(OpCodes.Ldind_U1));
                         break;
                     case 16:
-                        Emit(il.Create(OpCodes.Ldind_I2));
+                        Emit(il.Create(OpCodes.Ldind_U2));
                         break;
                     case 32:
-                        Emit(il.Create(OpCodes.Ldind_I4));
+                        Emit(il.Create(OpCodes.Ldind_U4));
                         break;
                     case 64:
                         Emit(il.Create(OpCodes.Ldind_I8));
