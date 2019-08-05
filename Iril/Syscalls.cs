@@ -56,6 +56,9 @@ namespace Iril
             EmitStandardStreams ();
             EmitUnixRead ("@\"\\01_read\"");
             EmitUnixWrite ("@\"\\01_write\"");
+            EmitSetjmp ();
+            EmitLongjmp ();
+
             EmitStaticCtor ();
         }
 
@@ -939,6 +942,34 @@ namespace Iril
             il.Append (il.Create (OpCodes.Callvirt, compilation.sysStreamWrite));
             il.Append (il.Create (OpCodes.Ldarg_2));
             il.Append (il.Create (OpCodes.Ret));
+
+            b.Optimize ();
+        }
+
+        void EmitSetjmp ()
+        {
+            var m = NewMethod ("@setjmp", Types.IntegerType.I32,
+                               ("env", Types.PointerType.I32Pointer));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Ret));
+
+            b.Optimize ();
+        }
+
+        void EmitLongjmp ()
+        {
+            var m = NewMethod ("@longjmp", Types.VoidType.Void,
+                               ("env", Types.PointerType.I32Pointer),
+                               ("val", Types.IntegerType.I32));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+
+            il.Append (il.Create (OpCodes.Ldstr, "Cannot longjmp"));
+            il.Append (il.Create (OpCodes.Newobj, compilation.sysNotSuppCtor));
+            il.Append (il.Create (OpCodes.Throw));
 
             b.Optimize ();
         }

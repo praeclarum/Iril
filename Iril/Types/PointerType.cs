@@ -9,6 +9,7 @@ namespace Iril.Types
         public readonly int AddressSpace;
 
         public static readonly PointerType I8Pointer = new PointerType (IntegerType.I8, 0);
+        public static readonly PointerType I32Pointer = new PointerType (IntegerType.I32, 0);
         public static readonly PointerType VoidPointer = new PointerType (VoidType.Void, 0);
 
         public PointerType (LType elementType, int addressSpace)

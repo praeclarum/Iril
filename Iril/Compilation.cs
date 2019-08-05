@@ -69,7 +69,7 @@ namespace Iril
         TypeReference sysNotImpl;
         MethodReference sysNotImplCtor;
         TypeReference sysNotSupp;
-        MethodReference sysNotSuppCtor;
+        public MethodReference sysNotSuppCtor;
         TypeReference sysMath;
         public TypeReference sysException;
         TypeReference sysParamsAttr;
