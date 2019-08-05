@@ -179,7 +179,7 @@ namespace Iril
                     Emit(il.Create(OpCodes.Conv_U));
                     break;
                 case IR.LocalValue local:
-                    EmitLocalValue(local);
+                    EmitLocalValue(local, type, unsigned: false);
                     break;
                 case IR.NullConstant nll:
                     Emit(il.Create(OpCodes.Ldc_I4_0));
@@ -229,7 +229,7 @@ namespace Iril
             }
         }
 
-        protected virtual void EmitLocalValue(IR.LocalValue local)
+        protected virtual void EmitLocalValue(IR.LocalValue local, LType resultType, bool unsigned)
         {
             throw new NotSupportedException();
         }

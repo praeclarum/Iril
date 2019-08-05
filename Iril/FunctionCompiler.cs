@@ -1483,11 +1483,35 @@ namespace Iril
             }
         }
 
-        protected override void EmitLocalValue(IR.LocalValue local)
+        protected override void EmitLocalValue(IR.LocalValue local, LType resultType, bool unsigned)
         {
             if (locals.TryGetValue(local.Symbol, out var vd))
             {
+                var crt = compilation.GetClrType (resultType, module, unsigned: unsigned);
                 Emit(il.Create(OpCodes.Ldloc, vd));
+                if (crt.FullName != vd.VariableType.FullName) {
+                    if (resultType is IntegerType intt) {
+                        switch (Compilation.RoundUpIntBits (intt.Bits)) {
+                            case 8:
+                                Emit (unsigned ? OpCodes.Conv_U1 : OpCodes.Conv_I1);
+                                break;
+                            case 16:
+                                Emit (unsigned ? OpCodes.Conv_U2 : OpCodes.Conv_I2);
+                                break;
+                            case 32:
+                                Emit (unsigned ? OpCodes.Conv_U4 : OpCodes.Conv_I4);
+                                break;
+                            case 64:
+                                Emit (unsigned ? OpCodes.Conv_U8 : OpCodes.Conv_I8);
+                                break;
+                            default:
+                                throw new NotSupportedException ($"Cannot emit integer type `{crt}` for local type `{vd.VariableType}`");
+                        }
+                    }
+                    else {
+                        throw new NotSupportedException ($"Cannot emit type `{crt}` for local type `{vd.VariableType}`");
+                    }
+                }
             }
             else
             {
