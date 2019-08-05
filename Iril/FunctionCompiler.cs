@@ -2036,6 +2036,11 @@ namespace Iril
                     case "@llvm.va_end":
                         Emit (il.Create (OpCodes.Pop));
                         return;
+                    case "@llvm.trap":
+                        Emit (il.Create (OpCodes.Ldstr, "Trap"));
+                        Emit (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
+                        Emit (il.Create (OpCodes.Throw));
+                        return;
                     default:
                         if (compilation.TryGetFunction (module, gv.Symbol, out var m)) {
 
