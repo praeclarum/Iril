@@ -2112,9 +2112,11 @@ namespace Iril
                 return;
             }
             else if (call.Pointer is IR.InlineAssemblyValue asm) {
-                var msg = new Message (MessageType.Warning, $"Native assembly not supported in `{function.Symbol}`");
-                Messages.Add (msg);
-                msg.FilePath = module.SourceFilename;
+                if (!string.IsNullOrWhiteSpace (asm.Assembly)) {
+                    var msg = new Message (MessageType.Warning, $"Native assembly not supported in `{function.Symbol}`");
+                    Messages.Add (msg);
+                    msg.FilePath = module.SourceFilename;
+                }
                 return;
             }
             throw new NotSupportedException($"Cannot call `{call.Pointer}`");
