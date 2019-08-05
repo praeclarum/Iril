@@ -571,19 +571,25 @@ namespace Iril
 
         void FindStructures ()
         {
-            var externals = new HashSet<Symbol> ();
+            var externals = new SymbolTable<NameNode> ();
 
             foreach (var m in Modules) {
                 foreach (var iskv in m.IdentifiedStructures) {
                     var sym = iskv.Key;
 
                     if (!IsAnonymousTypeName (sym)) {
-                        if (externals.Contains (sym))
+                        var s = iskv.Value;
+
+                        if (externals.ContainsKey (sym)) {
+                            var onn = externals[sym];
+                            if (onn.Structure is OpaqueStructureType && !(s is OpaqueStructureType)) {
+                                onn.Structure = s;
+                                onn.Module = m;
+                            }
                             continue;
-                        externals.Add (sym);
+                        }
 
                         var tname = new IR.MangledName (sym, prefixWithTypeKind: false);
-                        var s = iskv.Value;
                         var nn = new NameNode {
                             Name = tname.Identifier,
                             Symbol = tname.Symbol,
@@ -596,6 +602,7 @@ namespace Iril
                             a = new[] { namespac };
                         }
                         AddNameNode (nn, a);
+                        externals.Add (sym, nn);
                     }
                 }
             }
@@ -954,7 +961,7 @@ namespace Iril
                         return;
                     if (!all.ContainsKey (symbol))
                         return;
-                    Console.WriteLine ("INIT " + symbol);
+                    //Console.WriteLine ("INIT " + symbol);
                     var i = all[symbol];
                     var deps = i.Item1.Initializer.ReferencedGlobals;
                     adding[symbol] = true;
@@ -1175,7 +1182,7 @@ namespace Iril
                         if (store.OpCode.Code == Code.Stsfld) {
                             var f = (FieldReference)store.Operand;
                             var td = f.FieldType.Resolve ();
-                            var n = Math.Min (td.Fields.Count, c.Elements.Length);
+                            var n = c.Elements.Length;
                             for (int i = 0; i < n; i++) {
                                 var e = c.Elements[i];
                                 Emit (il.Create (OpCodes.Ldsflda, f));
@@ -1186,7 +1193,7 @@ namespace Iril
                         else if (store.OpCode.Code == Code.Stelem_Any && type is NamedType namedType) {
                             var td = ((TypeReference)store.Operand).Resolve ();
                             var v = GetStructTempLocal (namedType);
-                            var n = Math.Min (td.Fields.Count, c.Elements.Length);
+                            var n = c.Elements.Length;
                             for (int i = 0; i < n; i++) {
                                 var e = c.Elements[i];
                                 Emit (il.Create (OpCodes.Ldloca, v));
@@ -1206,7 +1213,7 @@ namespace Iril
                                 td = ((TypeReference)store.Operand).Resolve ();
                             }
                             var v = GetStructTempLocal (td);
-                            var n = Math.Min (td.Fields.Count, c.Elements.Length);
+                            var n = c.Elements.Length;
                             for (int i = 0; i < n; i++) {
                                 var e = c.Elements[i];
                                 if (ShouldTrace >= 3) {
