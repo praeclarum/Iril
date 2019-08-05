@@ -914,7 +914,7 @@ namespace Iril
                     return v;
                 });
 
-                foreach (var (g, f) in needsInit) {
+                foreach (var (g, f) in SortFields (needsInit)) {
                     try {
                         if (ShouldTrace >= 3) {
                             Emit (il.Create (OpCodes.Ldstr, $"Init Field: {f.DeclaringType}::{f.Name}"));
@@ -935,6 +935,42 @@ namespace Iril
                 body.Optimize ();
                 body.InitLocals = true;
                 method.Body = body;
+            }
+
+            List<(IR.GlobalVariable, FieldDefinition)> SortFields (List<(IR.GlobalVariable, FieldDefinition)> needsInit)
+            {
+                var r = new List<(IR.GlobalVariable, FieldDefinition)> ();
+                var added = new SymbolTable<bool> ();
+                var adding = new SymbolTable<bool> ();
+                var all = new SymbolTable<(IR.GlobalVariable, FieldDefinition)> ();
+                foreach (var i in needsInit) {
+                    all[i.Item1.Symbol] = i;
+                }
+                void Init (GlobalSymbol symbol)
+                {
+                    if (added.ContainsKey (symbol))
+                        return;
+                    if (adding.ContainsKey (symbol))
+                        return;
+                    if (!all.ContainsKey (symbol))
+                        return;
+                    Console.WriteLine ("INIT " + symbol);
+                    var i = all[symbol];
+                    var deps = i.Item1.Initializer.ReferencedGlobals;
+                    adding[symbol] = true;
+                    foreach (var d in deps) {
+                        Init (d);
+                    }
+                    if (!added.ContainsKey (symbol)) {
+                        r.Add (i);
+                        added.Add (symbol, true);
+                    }
+                    adding.Remove (symbol);
+                }
+                foreach (var i in needsInit) {
+                    Init (i.Item1.Symbol);
+                }                
+                return r;
             }
 
             readonly Dictionary<string, List<VariableDefinition>> pinnedRefs = new Dictionary<string, List<VariableDefinition>> ();

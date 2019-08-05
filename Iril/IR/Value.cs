@@ -8,6 +8,7 @@ namespace Iril.IR
     public abstract class Value
     {
         public virtual IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
+        public abstract IEnumerable<GlobalSymbol> ReferencedGlobals { get; }
 
         public virtual int GetInt32Value (Module module) => 0;
 
@@ -28,6 +29,8 @@ namespace Iril.IR
         }
 
         public override string ToString () => $"[{string.Join (", ", (object[])Elements)}]";
+
+        public override IEnumerable<GlobalSymbol> ReferencedGlobals => Elements.SelectMany (x => x.Value.ReferencedGlobals);
     }
 
     public class BitcastValue : ConversionValue
@@ -50,6 +53,8 @@ namespace Iril.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
+        public override IEnumerable<GlobalSymbol> ReferencedGlobals => Value.ReferencedGlobals;
+
         public override bool IsIdempotent (FunctionDefinition function) => Value.Value.IsIdempotent (function);
     }
 
@@ -63,6 +68,8 @@ namespace Iril.IR
         }
 
         public override string ToString () => $"label {Symbol}";
+
+        public override IEnumerable<GlobalSymbol> ReferencedGlobals => Enumerable.Empty<GlobalSymbol> ();
     }
 
     public class LocalValue : Value
@@ -74,11 +81,8 @@ namespace Iril.IR
             Symbol = symbol ?? throw new ArgumentNullException (nameof (symbol));
         }
 
-        public override IEnumerable<LocalSymbol> ReferencedLocals {
-            get {
-                yield return Symbol;
-            }
-        }
+        public override IEnumerable<LocalSymbol> ReferencedLocals => new LocalSymbol[] { Symbol };
+        public override IEnumerable<GlobalSymbol> ReferencedGlobals => Enumerable.Empty<GlobalSymbol> ();
 
         public override bool IsIdempotent (FunctionDefinition function)
         {
@@ -98,6 +102,7 @@ namespace Iril.IR
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Enumerable.Empty<LocalSymbol> ();
+        public override IEnumerable<GlobalSymbol> ReferencedGlobals => Enumerable.Empty<GlobalSymbol> ();
 
         public override string ToString () => Symbol.ToString ();
     }
@@ -112,6 +117,8 @@ namespace Iril.IR
         }
 
         public override string ToString () => Symbol.ToString ();
+
+        public override IEnumerable<GlobalSymbol> ReferencedGlobals => new GlobalSymbol[] { Symbol };
     }
 
     public class PtrtointValue : ConversionValue
@@ -134,15 +141,8 @@ namespace Iril.IR
             Values = values.ToArray ();
         }
 
-        public override IEnumerable<LocalSymbol> ReferencedLocals {
-            get {
-                foreach (var v in Values) {
-                    foreach (var l in v.ReferencedLocals) {
-                        yield return l;
-                    }
-                }
-            }
-        }
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Values.SelectMany (x => x.ReferencedLocals);
+        public override IEnumerable<GlobalSymbol> ReferencedGlobals => Values.SelectMany (x => x.ReferencedGlobals);
     }
 
     public class TypedValue
@@ -157,6 +157,7 @@ namespace Iril.IR
         }
 
         public IEnumerable<LocalSymbol> ReferencedLocals => Value.ReferencedLocals;
+        public IEnumerable<GlobalSymbol> ReferencedGlobals => Value.ReferencedGlobals;
 
         public override string ToString () => $"{Type} {Value}";
     }
@@ -176,6 +177,8 @@ namespace Iril.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals =>
             Pointer.ReferencedLocals.Concat (Indices.SelectMany (x => x.Value.ReferencedLocals));
+        public override IEnumerable<GlobalSymbol> ReferencedGlobals =>
+            Pointer.ReferencedGlobals.Concat (Indices.SelectMany (x => x.Value.ReferencedGlobals));
     }
 
     public class IntToPointerValue : ConversionValue
@@ -200,11 +203,15 @@ namespace Iril.IR
         }
 
         public override string ToString () => $"<{string.Join (", ", (object[])Constants)}>";
+
+        public override IEnumerable<GlobalSymbol> ReferencedGlobals => Constants.SelectMany (x => x.Value.ReferencedGlobals);
     }
 
     public class VoidValue : Value
     {
         public static readonly VoidValue Void = new VoidValue ();
+
+        public override IEnumerable<GlobalSymbol> ReferencedGlobals => Enumerable.Empty<GlobalSymbol> ();
     }
 
     public class InlineAssemblyValue : Value
@@ -217,5 +224,7 @@ namespace Iril.IR
             Assembly = assembly ?? throw new ArgumentNullException (nameof (assembly));
             Constraints = constraints ?? throw new ArgumentNullException (nameof (constraints));
         }
+
+        public override IEnumerable<GlobalSymbol> ReferencedGlobals => Enumerable.Empty<GlobalSymbol> ();
     }
 }

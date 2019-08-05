@@ -16,6 +16,8 @@ namespace Iril.IR
 
     public abstract class SimpleConstant : Constant
     {
+        public override IEnumerable<GlobalSymbol> ReferencedGlobals => Enumerable.Empty<GlobalSymbol> ();
+
         public override bool IsIdempotent (FunctionDefinition function) => true;
     }
 
@@ -66,6 +68,8 @@ namespace Iril.IR
         public override int Int32Value => 0;
 
         public override string ToString () => $"{Bytes}";
+
+        public override IEnumerable<GlobalSymbol> ReferencedGlobals => Enumerable.Empty<GlobalSymbol> ();
     }
 
     public class IntegerConstant : SimpleConstant
@@ -138,6 +142,9 @@ namespace Iril.IR
             Elements = elements.ToArray ();
         }
 
+        public override IEnumerable<LocalSymbol> ReferencedLocals => Elements.SelectMany (x => x.Value.ReferencedLocals);
+        public override IEnumerable<GlobalSymbol> ReferencedGlobals => Elements.SelectMany (x => x.Value.ReferencedGlobals);
+
         public override int Int32Value => 0;
     }
 
@@ -152,7 +159,7 @@ namespace Iril.IR
         public override int Int32Value => 0;
     }
 
-    public class ZeroConstant : Constant
+    public class ZeroConstant : SimpleConstant
     {
         public static ZeroConstant Zero = new ZeroConstant ();
 
