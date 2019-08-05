@@ -58,6 +58,7 @@ namespace Iril
             EmitUnixWrite ("@\"\\01_write\"");
             EmitSetjmp ();
             EmitLongjmp ();
+            EmitUMulOvf64 ();
 
             EmitStaticCtor ();
         }
@@ -970,6 +971,34 @@ namespace Iril
             il.Append (il.Create (OpCodes.Ldstr, "Cannot longjmp"));
             il.Append (il.Create (OpCodes.Newobj, compilation.sysNotSuppCtor));
             il.Append (il.Create (OpCodes.Throw));
+
+            b.Optimize ();
+        }
+
+        void EmitUMulOvf64 ()
+        {
+            var st = new LiteralStructureType (new[] { Types.IntegerType.I64, Types.IntegerType.I1 });
+            var ct = compilation.GetClrType (st, module).Resolve ();
+            var m = NewMethod ("@llvm.umul.with.overflow.i64", st,
+                               ("x", Types.IntegerType.I64),
+                               ("y", Types.IntegerType.I64));
+            var b = m.Body;
+            var v0 = new VariableDefinition (ct);
+            b.Variables.Add (v0);
+            var il = b.GetILProcessor ();
+
+            il.Append (il.Create (OpCodes.Ldloca_S, v0));
+            il.Append (il.Create (OpCodes.Initobj, ct));
+            il.Append (il.Create (OpCodes.Ldloca, v0));
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Div_Un));
+            il.Append (il.Create (OpCodes.Stfld, ct.Fields[0]));
+            il.Append (il.Create (OpCodes.Ldloca, v0));
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Stfld, ct.Fields[1]));
+            il.Append (il.Create (OpCodes.Ldloc, v0));
+            il.Append (il.Create (OpCodes.Ret));
 
             b.Optimize ();
         }

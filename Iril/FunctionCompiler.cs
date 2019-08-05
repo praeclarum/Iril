@@ -2036,14 +2036,6 @@ namespace Iril
                     case "@llvm.va_end":
                         Emit (il.Create (OpCodes.Pop));
                         return;
-                    case "@llvm.umul.with.overflow.i64":
-                        Emit (il.Create (OpCodes.Pop));
-                        Emit (il.Create (OpCodes.Pop));
-                        Emit (il.Create (OpCodes.Mul_Ovf_Un)); {
-                            var st = UMulOverflowResultTypeI64.Value;
-                        }
-                        throw new NotImplementedException ();
-                        return;
                     default:
                         if (compilation.TryGetFunction (module, gv.Symbol, out var m)) {
 
