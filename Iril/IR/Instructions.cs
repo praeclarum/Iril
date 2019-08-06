@@ -625,6 +625,8 @@ namespace Iril.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Pointer.ReferencedLocals;
         public override LType ResultType (Module module) => Type;
+
+        public override string ToString () => $"load type={Type}, pointer={Pointer}";
     }
 
     public class LshrInstruction : BinaryInstruction

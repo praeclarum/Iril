@@ -1550,6 +1550,7 @@ namespace Iril
                 var pointerInst = function.IRDefinition.FindAssignment(pointerLocal)?.Instruction;
                 if (pointerInst is IR.GetElementPointerInstruction gep
                     && gep.Indices.Length == 2
+                    && gep.Indices[0].Value is IR.Constant ptrConst && ptrConst.Int32Value == 0
                     && gep.Indices[1].Value is IR.Constant indexConst
                     && gep.Pointer.Type is Types.PointerType gepPointerType
                     && gepPointerType.ElementType.Resolve(function.IRModule) is LiteralStructureType structType)
@@ -1620,11 +1621,12 @@ namespace Iril
                 var pointerInst = function.IRDefinition.FindAssignment(pointerLocal)?.Instruction;
                 if (pointerInst is IR.GetElementPointerInstruction gep
                     && gep.Indices.Length == 2
+                    && gep.Indices[0].Value is IR.Constant ptrConst && ptrConst.Int32Value == 0
                     && gep.Indices[1].Value is IR.Constant indexConst
                     && gep.Pointer.Type is Types.PointerType gepPointerType
                     && gepPointerType.ElementType.Resolve(function.IRModule) is LiteralStructureType structType)
                 {
-
+                    //Console.WriteLine (function.Symbol + " SHORTCUT " + load);
                     var td = compilation.GetClrType(gepPointerType.ElementType, module: module).Resolve();
                     var fieldIndex = indexConst.Int32Value;
                     if (fieldIndex < 0 || fieldIndex >= td.Fields.Count)
