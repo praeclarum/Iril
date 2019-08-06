@@ -710,14 +710,25 @@ namespace Iril
                         }
                     }
                     break;
-                case IR.AllocaInstruction alloca:
-                    Emit(il.Create(OpCodes.Ldc_I4, (int)alloca.Type.GetByteSize(function.IRModule)));
-                    if (alloca.NumElements != null) {
-                        EmitTypedValue (alloca.NumElements);
-                        Emit (il.Create (OpCodes.Mul));
+                case IR.AllocaInstruction alloca: {
+                        var byteSize = alloca.Type.GetByteSize (function.IRModule);
+                        if (byteSize > 1) {
+                            Emit (il.Create (OpCodes.Ldc_I4, (int)byteSize));
+                        }
+                        if (alloca.NumElements != null) {
+                            EmitTypedValue (alloca.NumElements);
+                            if (byteSize > 1) {
+                                Emit (il.Create (OpCodes.Mul));
+                            }
+                        }
+                        else {
+                            if (byteSize == 1) {
+                                Emit (il.Create (OpCodes.Ldc_I4_1));
+                            }
+                        }
+                        Emit (il.Create (OpCodes.Conv_U));
+                        Emit (il.Create (OpCodes.Localloc));
                     }
-                    Emit(il.Create(OpCodes.Conv_U));
-                    Emit(il.Create(OpCodes.Localloc));
                     break;
                 case IR.AndInstruction and:
                     if (and.Type is Types.VectorType)
