@@ -26,6 +26,7 @@ namespace Iril
         // Working Variables
         protected CecilInstruction prev;
         protected readonly SymbolTable<VariableDefinition> locals = new SymbolTable<VariableDefinition> ();
+        protected readonly SymbolTable<SymbolTable<string>> blockLocalNames = new SymbolTable<SymbolTable<string>> ();
 
         readonly Dictionary<(string, int), VariableDefinition> vectorTemps = new Dictionary<(string, int), VariableDefinition> ();
         readonly SymbolTable<VariableDefinition> structTempLocals = new SymbolTable<VariableDefinition> ();
@@ -311,7 +312,8 @@ namespace Iril
                         var esize = t.GetByteSize(module);
                         if (index.Value is IR.Constant ic)
                         {
-                            EmitValue(new IR.IntegerConstant(esize * ic.Int32Value), index.Type);
+                            var offset = esize * ic.Int32Value;
+                            EmitPointerOffset (offset);
                         }
                         else
                         {
@@ -320,9 +322,9 @@ namespace Iril
                                 EmitValue (new IR.IntegerConstant (esize), index.Type);
                                 Emit (il.Create (OpCodes.Mul));
                             }
+                            Emit (il.Create (OpCodes.Conv_U));
+                            Emit (il.Create (OpCodes.Add));
                         }
-                        Emit(il.Create(OpCodes.Conv_U));
-                        Emit(il.Create(OpCodes.Add));
                     }
                 }
                 else if (t is NamedType
@@ -350,12 +352,8 @@ namespace Iril
                 {
                     var esize = artt.ElementType.GetByteSize(module);
                     if (index.Value is Constant ic) {
-                        var offset = (int)esize * ic.Int32Value;
-                        if (offset > 0) {
-                            Emit (il.Create (OpCodes.Ldc_I4, offset));
-                            Emit (il.Create (OpCodes.Conv_U));
-                            Emit (il.Create (OpCodes.Add));
-                        }
+                        var offset = (long)esize * ic.Int32Value;
+                        EmitPointerOffset (offset);
                     }
                     else {
                         EmitValue (index.Value, index.Type);
@@ -371,6 +369,34 @@ namespace Iril
                 else
                 {
                     throw new InvalidOperationException("Cannot get pointer to element of " + t);
+                }
+            }
+        }
+
+        void EmitPointerOffset (long offset)
+        {
+            if (offset != 0) {
+                if (int.MinValue < offset && offset < int.MaxValue) {
+                    if (offset > 0) {
+                        Emit (il.Create (OpCodes.Ldc_I4, (int)offset));
+                        Emit (il.Create (OpCodes.Add));
+                    }
+                    else {
+                        Emit (il.Create (OpCodes.Ldc_I4, (int)(-offset)));
+                        Emit (il.Create (OpCodes.Sub));
+                    }
+                }
+                else {
+                    if (offset > 0) {
+                        Emit (il.Create (OpCodes.Ldc_I8, offset));
+                        Emit (il.Create (OpCodes.Conv_U));
+                        Emit (il.Create (OpCodes.Add));
+                    }
+                    else {
+                        Emit (il.Create (OpCodes.Ldc_I8, -offset));
+                        Emit (il.Create (OpCodes.Conv_U));
+                        Emit (il.Create (OpCodes.Sub));
+                    }
                 }
             }
         }
@@ -409,20 +435,7 @@ namespace Iril
                     return false;
                 }
             }
-            if (offset > 0) {
-                //Console.WriteLine ("EMIT " + offset);
-                if (offset < int.MaxValue) {
-                    EmitValue (new IR.IntegerConstant (offset), Types.IntegerType.I32);
-                }
-                else {
-                    EmitValue (new IR.IntegerConstant (offset), Types.IntegerType.I64);
-                }
-                Emit (il.Create (OpCodes.Conv_U));
-                Emit (il.Create (OpCodes.Add));
-            }
-            else {
-                //Console.WriteLine ("SKIP ZERO");
-            }
+            EmitPointerOffset (offset);
             return true;
         }
 
