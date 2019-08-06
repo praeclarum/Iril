@@ -68,7 +68,7 @@ namespace Iril.IR
 
         public override IEnumerable<LocalSymbol> ReferencedLocals =>
             NumElements != null ? NumElements.ReferencedLocals : Enumerable.Empty<LocalSymbol> ();
-        public override LType ResultType (Module module) => new PointerType (Type, 0);
+        public override LType ResultType (Module module) => Type is ArrayType ? Type : new PointerType (Type, 0);
     }
 
     public class AndInstruction : BinaryInstruction
