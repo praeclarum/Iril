@@ -1156,7 +1156,7 @@ namespace Iril
                     }
                     break;
                 case IR.SwitchInstruction sw:
-                    EmitSwitch(sw, nextBlock, block, context);
+                    EmitSwitch(sw, block, nextBlock, context);
                     break;
                 case IR.TruncInstruction trunc:
                     EmitTypedValue(trunc.Value);
