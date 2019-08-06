@@ -10,6 +10,7 @@ using System.Text;
 using Mono.Cecil.Mdb;
 using System.Security.Cryptography;
 using System.Diagnostics;
+using System.Collections;
 
 namespace Iril
 {
@@ -1320,6 +1321,19 @@ namespace Iril
                     if (dbgMeth.TryGetValue (Symbol.Variables, out var o) && o is MetaSymbol) {
                         if (m.Metadata.TryGetValue ((Symbol)o, out o)) {
                             dbgVars = ((IEnumerable<object>)o).ToArray ();
+                        }
+                    }
+                    else if (dbgMeth.TryGetValue (Symbol.RetainedNodes, out var ro) && ro is MetaSymbol) {
+                        if (m.Metadata.TryGetValue ((Symbol)ro, out ro) && ro is IEnumerable<object> roenum) {
+                            var q = from vref in roenum.OfType<MetaSymbol> ()
+                                    where m.Metadata.ContainsKey (vref)
+                                    let d = m.Metadata[vref] as SymbolTable<object>
+                                    where d != null
+                                    where d.ContainsKey (Symbol.Arg)
+                                    let arg = int.Parse (d[Symbol.Arg].ToString ())
+                                    orderby arg
+                                    select vref;
+                            dbgVars = q.ToArray ();
                         }
                     }
                     var paramSyms = new SymbolTable<ParameterDefinition> ();
