@@ -55,7 +55,7 @@ namespace Iril.Types
             }
             var bitText = text.Substring (i, e - i);
             var bits = int.Parse (bitText);
-            return new IntegerType (bits);
+            return IntegerType.WithBits (bits);
         }
 
         public override bool StructurallyEquals (LType other) =>
@@ -65,5 +65,23 @@ namespace Iril.Types
         public override int GetStructuralHashCode () =>
             345
             + Bits.GetHashCode ();
+
+        public static IntegerType WithBits(int nbits)
+        {
+            switch (nbits) {
+                case 1:
+                    return I1;
+                case 8:
+                    return I8;
+                case 16:
+                    return I16;
+                case 32:
+                    return I32;
+                case 64:
+                    return I64;
+                default:
+                    return new IntegerType (nbits);
+            }
+        }
     }
 }

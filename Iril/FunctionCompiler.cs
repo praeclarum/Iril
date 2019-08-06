@@ -1162,20 +1162,30 @@ namespace Iril
                     EmitTypedValue(trunc.Value);
                     switch (trunc.Type)
                     {
-                        case Types.IntegerType intt:
-                            switch (Compilation.RoundUpIntBits (intt.Bits)) {
-                                case 8:
-                                    Emit(il.Create(OpCodes.Conv_I1));
-                                    break;
-                                case 16:
-                                    Emit(il.Create(OpCodes.Conv_I2));
-                                    break;
-                                case 32:
-                                    Emit(il.Create(OpCodes.Conv_I4));
-                                    break;
-                                default:
-                                    Emit(il.Create(OpCodes.Conv_I8));
-                                    break;
+                        case Types.IntegerType intt: {
+                                int nbits = 0;
+                                switch (Compilation.RoundUpIntBits (intt.Bits)) {
+                                    case 8:
+                                        nbits = 8;
+                                        Emit (il.Create (OpCodes.Conv_U1));
+                                        break;
+                                    case 16:
+                                        nbits = 16;
+                                        Emit (il.Create (OpCodes.Conv_U2));
+                                        break;
+                                    case 32:
+                                        nbits = 32;
+                                        Emit (il.Create (OpCodes.Conv_U4));
+                                        break;
+                                    default:
+                                        nbits = 64;
+                                        Emit (il.Create (OpCodes.Conv_U8));
+                                        break;
+                                }
+                                if (intt.Bits < nbits) {
+                                    EmitValue (IntegerConstant.MaskBits (intt.Bits), IntegerType.WithBits (nbits));
+                                    Emit (il.Create (OpCodes.And));
+                                }
                             }
                             break;
                         default:
@@ -1490,7 +1500,7 @@ namespace Iril
                 var crt = compilation.GetClrType (resultType, module, unsigned: unsigned);
                 Emit(il.Create(OpCodes.Ldloc, vd));
                 if (crt.FullName != vd.VariableType.FullName) {
-                    if (resultType is IntegerType intt) {
+                    if (resultType is Types.IntegerType intt) {
                         switch (Compilation.RoundUpIntBits (intt.Bits)) {
                             case 8:
                                 Emit (unsigned ? OpCodes.Conv_U1 : OpCodes.Conv_I1);
@@ -1507,6 +1517,9 @@ namespace Iril
                             default:
                                 throw new NotSupportedException ($"Cannot emit integer type `{crt}` for local type `{vd.VariableType}`");
                         }
+                    }
+                    else if (resultType is Types.PointerType) {
+                        // OK
                     }
                     else {
                         throw new NotSupportedException ($"Cannot emit type `{crt}` for local type `{vd.VariableType}`");

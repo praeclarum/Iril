@@ -75,6 +75,15 @@ namespace Iril.IR
     public class IntegerConstant : SimpleConstant
     {
         public static readonly IntegerConstant Zero = new IntegerConstant (BigInteger.Zero);
+        public static readonly IntegerConstant One = new IntegerConstant (BigInteger.One);
+        public static readonly IntegerConstant B1 = new IntegerConstant (BigInteger.One);
+        public static readonly IntegerConstant B11       = new IntegerConstant (0b11);
+        public static readonly IntegerConstant B111      = new IntegerConstant (0b111);
+        public static readonly IntegerConstant B1111     = new IntegerConstant (0b1111);
+        public static readonly IntegerConstant B11111    = new IntegerConstant (0b11111);
+        public static readonly IntegerConstant B111111   = new IntegerConstant (0b111111);
+        public static readonly IntegerConstant B1111111  = new IntegerConstant (0b1111111);
+        public static readonly IntegerConstant B11111111 = new IntegerConstant (0b11111111);
 
         public readonly BigInteger Value;
 
@@ -86,6 +95,33 @@ namespace Iril.IR
         public override int Int32Value => (int)Value;
 
         public override string ToString () => Value.ToString ();
+
+        public static IntegerConstant MaskBits (int bits)
+        {
+            switch (bits) {
+                case 0:
+                    return Zero;
+                case 1:
+                    return One;
+                case 2:
+                    return B11;
+                case 3:
+                    return B111;
+                case 4:
+                    return B1111;
+                case 5:
+                    return B11111;
+                case 6:
+                    return B111111;
+                case 7:
+                    return B1111111;
+                case 8:
+                    return B11111111;
+                default: { var m = (BigInteger.One << bits) - 1;
+                    return new IntegerConstant (m);
+                    }
+            }
+        }
     }
 
     public class HexIntegerConstant : SimpleConstant

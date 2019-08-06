@@ -6,12 +6,13 @@ using CecilInstruction = Mono.Cecil.Cil.Instruction;
 using System.Linq;
 using System.Collections.Generic;
 using Iril.IR;
+using System.Numerics;
 
 namespace Iril
 {
     abstract class Emitter
     {
-        public const int ShouldTrace = 2;
+        public const int ShouldTrace = 0;
 
         // Input
         protected readonly Compilation compilation;
@@ -154,24 +155,42 @@ namespace Iril
                         }
                     }
                     break;
-                case IR.IntegerConstant i:
-                    switch (Compilation.RoundUpIntBits (((IntegerType)type).Bits)) {
-                        case 8:
-                            Emit(il.Create(OpCodes.Ldc_I4, ((int)i.Value) & 0xFF));
-                            Emit (il.Create (OpCodes.Conv_I1));
-                            break;
-                        case 16:
-                            Emit(il.Create(OpCodes.Ldc_I4, ((int)i.Value) & 0xFFFF));
-                            Emit (il.Create (OpCodes.Conv_I2));
-                            break;
-                        case 32:
-                            Emit(il.Create(OpCodes.Ldc_I4, (int)i.Value));
-                            break;
-                        case 64:
-                            Emit(il.Create(OpCodes.Ldc_I8, (long)i.Value));
-                            break;
-                        default:
-                            throw new NotSupportedException($"{((IntegerType)type).Bits}-bit integers");
+                case IR.IntegerConstant i: {
+                        var intt = (IntegerType)type;
+                        var bits = intt.Bits;
+                        var upBits = Compilation.RoundUpIntBits (bits);
+                        var mask = IntegerConstant.MaskBits (bits).Value;
+                        var maskedValue = i.Value;
+                        if (bits != upBits) {
+                            if (maskedValue >= 0) {
+                                maskedValue = (i.Value & mask);
+                            }
+                            else {
+                                if (upBits == 8) {
+                                    //var sext = IntegerConstant.MaskBits (8 - bits).Value << bits;
+                                    maskedValue = new BigInteger ((byte)(sbyte)(i.Value)) & mask;
+                                }
+                            }
+                        }
+                        switch (upBits) {
+                            case 8:
+                                Emit (il.Create (OpCodes.Ldc_I4, (int)maskedValue));
+                                Emit (il.Create (OpCodes.Conv_U1));
+                                break;
+                            case 16:
+                                Emit (il.Create (OpCodes.Ldc_I4, (int)maskedValue));
+                                Emit (il.Create (OpCodes.Conv_I2));
+                                break;
+                            case 32:
+                                Emit (il.Create (OpCodes.Ldc_I4, (int)maskedValue));
+                                break;
+                            case 64:
+                                //Console.WriteLine ($"{i.Value} masked = {(long)maskedValue}");
+                                Emit (il.Create (OpCodes.Ldc_I8, (long)maskedValue));
+                                break;
+                            default:
+                                throw new NotSupportedException ($"{((IntegerType)type).Bits}-bit integers");
+                        }
                     }
                     break;
                 case IR.IntToPointerValue itop:
