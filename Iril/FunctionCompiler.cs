@@ -356,16 +356,22 @@ namespace Iril
                 {
                     if (!a.HasResult)
                         continue;
+                    var name = "";
+                    if (blockLocalNames.TryGetValue (b.Symbol, out var localNames)
+                        && localNames.TryGetValue (a.Result, out var dbgName)) {
+                        name = dbgName + "_";
+                    }
+
                     if (locals.TryGetValue(a.Result, out var vd))
                     {
-                        var name = "local" + a.Result.Text.Substring(1) + "_";
+                        name += "local" + a.Result.Text.Substring(1) + "_";
                         var vdbg = new VariableDebugInformation(vd, name);
                         vdbg.IsDebuggerHidden = false;
                         scope.Variables.Add(vdbg);
                     }
                     else if (phiLocals.TryGetValue(a.Result, out vd))
                     {
-                        var name = "phi" + a.Result.Text.Substring(1) + "_";
+                        name += "phi" + a.Result.Text.Substring(1) + "_";
                         var vdbg = new VariableDebugInformation(vd, name);
                         vdbg.IsDebuggerHidden = false;
                         scope.Variables.Add(vdbg);
@@ -735,7 +741,7 @@ namespace Iril
                     EmitTypedValue(bitcast.Input);
                     break;
                 case IR.CallInstruction call:
-                    EmitCall(call);
+                    EmitCall(call, block);
                     break;
                 case IR.ConditionalBrInstruction cbr:
                     EmitBrtrue(cbr.Condition, Types.IntegerType.I1, GetLabel(cbr.IfTrue, block, context));
@@ -1985,14 +1991,24 @@ namespace Iril
             return compilation.GetClrType (irType, module: module).Resolve ();
         }
 
-        void EmitCall(IR.CallInstruction call)
+        void EmitCall(IR.CallInstruction call, Block fromBlock)
         {
             if (call.Pointer is IR.GlobalValue gv) {
                 switch (gv.Symbol.Text) {
                     case "@llvm.lifetime.start.p0i8":
                     case "@llvm.lifetime.end.p0i8":
                     case "@llvm.dbg.declare":
+                        return;
                     case "@llvm.dbg.value":
+                        // call void @llvm.dbg.value(metadata %struct._parser_t* %3, metadata !1020, metadata !DIExpression(DW_OP_deref)), !dbg !1140
+                        // !DILocalVariable (name: "parser", scope: !1013, file: !3, line: 871, type: !790)
+                        if (call.Arguments.Length >= 2
+                            && call.Arguments[0].Value is LocalValue local
+                            && call.Arguments[1].Value is MetaValue meta
+                            && module.Metadata.TryGetValue(meta.Symbol, out var o)
+                            && o is SymbolTable<object> metadata) {
+                            AddLocalDebugInfo (fromBlock, local, metadata);
+                        }
                         return;
                     case "@llvm.ceil.f64":
                         EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
@@ -2180,6 +2196,15 @@ namespace Iril
                 return;
             }
             throw new NotSupportedException($"Cannot call `{call.Pointer}`");
+        }
+
+        void AddLocalDebugInfo (Block block, LocalValue local, SymbolTable<object> metadata)
+        {
+            if (!blockLocalNames.TryGetValue (block.Symbol, out var names)) {
+                names = new SymbolTable<string> ();
+                blockLocalNames.Add (block.Symbol, names);
+            }
+            names[local.Symbol] = metadata[Symbol.Name].ToString();
         }
 
         private void EmitVarArgs(IR.Argument[] arguments, int numFixedArgs)
