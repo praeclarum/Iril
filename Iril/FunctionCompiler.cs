@@ -690,6 +690,18 @@ namespace Iril
                         EmitValue(add.Op1, add.Type);
                         EmitValue(add.Op2, add.Type);
                         Emit(il.Create(OpCodes.Add));
+                        if (add.Type is IntegerType intt) {
+                            var bits = intt.Bits;
+                            var upBits = Compilation.RoundUpIntBits (bits);
+                            switch (upBits) {
+                                case 8:
+                                    Emit (il.Create (OpCodes.Conv_U1));
+                                    break;
+                                case 16:
+                                    Emit (il.Create (OpCodes.Conv_I2));
+                                    break;
+                            }
+                        }
                     }
                     break;
                 case IR.AllocaInstruction alloca:
