@@ -2119,9 +2119,13 @@ namespace Iril
                         compilation.WarningMessage (module.SourceFilename, $"Stack restore is not supported in `{MangledName.Demangle (function.Symbol)}`");
                         return;
                     case "@llvm.va_start":
-                        compilation.WarningMessage (module.SourceFilename, $"va_start not supported in `{MangledName.Demangle (function.Symbol)}`");
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        Emit (il.Create (OpCodes.Ldarg, function.IRDefinition.Parameters.Length - 1));
+                        Emit (il.Create (OpCodes.Call, compilation.GetSystemMethod(gv.Symbol)));
                         return;
                     case "@llvm.va_end":
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.GetSystemMethod (gv.Symbol)));
                         return;
                     case "@llvm.trap":
                         Emit (il.Create (OpCodes.Ldstr, "Trap"));

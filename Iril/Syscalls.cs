@@ -4,10 +4,11 @@ using System.Collections.Generic;
 using Iril.Types;
 using Mono.Cecil.Cil;
 using Mono.Cecil.Rocks;
+using System.Linq;
 
 namespace Iril
 {
-    class Syscalls
+    public class Syscalls
     {
         readonly Compilation compilation;
         readonly TypeDefinition syscallsType;
@@ -63,10 +64,12 @@ namespace Iril
             EmitMemmoveChecked ();
             EmitMemset ();
             EmitMemsetChecked ();
+            EmitUMulOvf64 ();
             EmitSetjmp ();
             EmitLongjmp ();
-            EmitUMulOvf64 ();
             EmitAbort ();
+            EmitVAStart ();
+            EmitVAEnd ();
 
             EmitStaticCtor ();
         }
@@ -96,14 +99,22 @@ namespace Iril
 
         MethodDefinition NewMethod (Symbol symbol, LType returnType, params (string, LType)[] parameters)
         {
+            return NewMethod (symbol,
+                compilation.GetClrType (returnType, module),
+                parameters.Select (x => (x.Item1, compilation.GetClrType (x.Item2, module))).ToArray ());
+        }
+
+        MethodDefinition NewMethod (Symbol symbol, TypeReference returnType, params (string, TypeReference)[] parameters)
+        {
             var mattrs = MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.Static;
             var md = new MethodDefinition (
                 new IR.MangledName (symbol).Identifier,
                 mattrs,
-                compilation.GetClrType (returnType, module: this.module));
-            foreach (var p in parameters) {
-                var pd = new ParameterDefinition (p.Item1, ParameterAttributes.None, compilation.GetClrType (p.Item2, module: this.module));
-                if (p.Item2 is VarArgsType) {
+                returnType);
+            for (var i = 0; i < parameters.Length; i++) {
+                var p = parameters[i];
+                var pd = new ParameterDefinition (p.Item1, ParameterAttributes.None, p.Item2);
+                if (i == parameters.Length - 1 && p.Item2.IsArray && p.Item2.GetElementType().FullName == "System.Object") {
                     pd.CustomAttributes.Add (new CustomAttribute (compilation.sysParamsAttrCtor));
                 }
                 md.Parameters.Add (pd);
@@ -1093,6 +1104,35 @@ namespace Iril
             var il = b.GetILProcessor ();
 
             il.Append (il.Create (OpCodes.Ldstr, "Abort"));
+            il.Append (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
+            il.Append (il.Create (OpCodes.Throw));
+
+            b.Optimize ();
+        }
+
+        void EmitVAStart ()
+        {
+            var m = NewMethod ("@llvm.va_start", compilation.sysVoid,
+                               ("arglist", compilation.sysByte.MakePointerType()),
+                               ("arguments", compilation.sysObjArray));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+
+            il.Append (il.Create (OpCodes.Ldstr, "VAStart"));
+            il.Append (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
+            il.Append (il.Create (OpCodes.Throw));
+
+            b.Optimize ();
+        }
+
+        void EmitVAEnd ()
+        {
+            var m = NewMethod ("@llvm.va_end", compilation.sysVoid,
+                               ("arglist", compilation.sysByte.MakePointerType ()));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+
+            il.Append (il.Create (OpCodes.Ldstr, "VAEnd"));
             il.Append (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
             il.Append (il.Create (OpCodes.Throw));
 

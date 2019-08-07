@@ -172,6 +172,13 @@ namespace Iril
         public FieldDefinition GetGlobal (Symbol module, Symbol symbol) => globals[module][symbol].Field;
 
         Syscalls syscalls;
+        public MethodDefinition GetSystemMethod (Symbol symbol)
+        {
+            if (externalMethodDefs.TryGetValue (symbol, out var f)) {
+                f.ReferenceCount++;
+            }
+            return syscalls.Calls[symbol];
+        }
 
         readonly Lazy<TypeDefinition> dataType;
         readonly Dictionary<int, TypeDefinition> dataFieldTypes = new Dictionary<int, TypeDefinition> ();
@@ -1359,6 +1366,10 @@ namespace Iril
 
                         var pt = GetParameterType (fp.ParameterType, m, dbgType);
                         var p = new ParameterDefinition (pname, ParameterAttributes.None, pt);
+                        if (fp.ParameterType is VarArgsType) {
+                            p.CustomAttributes.Add (new CustomAttribute (sysParamsAttrCtor));
+                            p.Name = "arguments";
+                        }
                         md.Parameters.Add (p);
                         paramSyms[fp.Symbol] = p;
                     }
