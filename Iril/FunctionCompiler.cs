@@ -1257,7 +1257,7 @@ namespace Iril
                     Emit(il.Create(OpCodes.Br, GetLabel(br.Destination, block, context)));
                     break;
                 case IR.UnreachableInstruction unreach:
-                    if (function.IRDefinition.ReturnType != VoidType.Void) {
+                    if (!function.IRDefinition.ReturnType.StructurallyEquals (VoidType.Void)) {
                         EmitZeroValue (function.IRDefinition.ReturnType);
                     }
                     Emit (OpCodes.Ret);
@@ -2117,14 +2117,11 @@ namespace Iril
                         return;
                     case "@llvm.stackrestore":
                         compilation.WarningMessage (module.SourceFilename, $"Stack restore is not supported in `{MangledName.Demangle (function.Symbol)}`");
-                        Emit (il.Create (OpCodes.Pop));
                         return;
                     case "@llvm.va_start":
                         compilation.WarningMessage (module.SourceFilename, $"va_start not supported in `{MangledName.Demangle (function.Symbol)}`");
-                        Emit (il.Create (OpCodes.Pop));
                         return;
                     case "@llvm.va_end":
-                        Emit (il.Create (OpCodes.Pop));
                         return;
                     case "@llvm.trap":
                         Emit (il.Create (OpCodes.Ldstr, "Trap"));
@@ -2155,14 +2152,6 @@ namespace Iril
                             }
 
                             Emit (il.Create (OpCodes.Call, m.ILDefinition));
-
-                            // LLVM allows for return type mismatches with void
-                            if (m.ILDefinition.ReturnType.FullName == "System.Void" && !(call.ReturnType is VoidType)) {
-                                EmitZeroValue (call.ReturnType);
-                            }
-                            else if (m.ILDefinition.ReturnType.FullName != "System.Void" && (call.ReturnType is VoidType)) {
-                                Emit (OpCodes.Pop);
-                            }
 
                             return;
                         }
