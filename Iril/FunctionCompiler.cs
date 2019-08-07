@@ -2019,6 +2019,13 @@ namespace Iril
                             && module.Metadata.TryGetValue(meta.Symbol, out var o)
                             && o is SymbolTable<object> metadata) {
                             AddLocalDebugInfo (fromBlock, local, metadata);
+                            if (metadata.TryGetValue (Symbol.Type, out o)
+                                && o is MetaSymbol ts
+                                && module.Metadata.TryGetValue (ts, out o)
+                                && o is SymbolTable<object> tdata
+                                ) {
+                                compilation.AddDebugInfoToStruct (call.Arguments[0].Type, module, tdata);
+                            }
                         }
                         return;
                     case "@llvm.ceil.f64":

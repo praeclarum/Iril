@@ -1632,34 +1632,40 @@ namespace Iril
             md.Body = body;
         }
 
+        readonly SymbolTable<bool> addedDebugInfoToStruct = new SymbolTable<bool> ();
+
         void AddDebugInfoToStruct (Symbol symbol, SymbolTable<object> debugInfo, Module module)
         {
+            if (addedDebugInfoToStruct.ContainsKey (symbol))
+                return;
             var td = globalStructs[symbol].Item2;
             if (debugInfo.TryGetValue (Symbol.BaseType, out var o) && o is MetaSymbol) {
-                if (module.Metadata.TryGetValue ((Symbol)o, out o) && o is SymbolTable<object>) {
-                    var typedefDbg = (SymbolTable<object>)o;
+                if (module.Metadata.TryGetValue ((Symbol)o, out o) && o is SymbolTable<object> typedefDbg) {
                     if (typedefDbg.TryGetValue (Symbol.Name, out o) && o is string) {
                         td.Name = o.ToString ();
                     }
-                    if (typedefDbg.TryGetValue (Symbol.BaseType, out o) && o is MetaSymbol) {
-                        if (module.Metadata.TryGetValue ((Symbol)o, out o) && o is SymbolTable<object>) {
-                            var structDbg = (SymbolTable<object>)o;
-                            if (structDbg.TryGetValue (Symbol.Elements, out o) && o is MetaSymbol) {
-                                if (module.Metadata.TryGetValue ((Symbol)o, out o) && o is IEnumerable<object>) {
-                                    var elementDbgs = ((IEnumerable<object>)o).Cast<MetaSymbol> ().Select (x => {
-                                        module.Metadata.TryGetValue (x, out var oo);
-                                        return (oo as SymbolTable<object>) ?? new SymbolTable<object> ();
-                                    }).ToArray ();
-                                    if (elementDbgs.Length == td.Fields.Count) {
-                                        for (int i = 0; i < td.Fields.Count; i++) {
-                                            var f = td.Fields[i];
-                                            var d = elementDbgs[i];
-                                            if (d.TryGetValue (Symbol.Name, out var ooo) && ooo is string) {
-                                                f.Name = ooo.ToString ();
-                                            }
-                                        }
+                    var structDbg = typedefDbg;
+                    while (structDbg.TryGetValue (Symbol.BaseType, out o)
+                           && o is MetaSymbol bt
+                           && module.Metadata.TryGetValue (bt, out o)
+                           && o is SymbolTable<object> next) {
+                        structDbg = next;
+                    }
+                    if (structDbg.TryGetValue (Symbol.Elements, out o) && o is MetaSymbol) {
+                        if (module.Metadata.TryGetValue ((Symbol)o, out o) && o is IEnumerable<object>) {
+                            var elementDbgs = ((IEnumerable<object>)o).Cast<MetaSymbol> ().Select (x => {
+                                module.Metadata.TryGetValue (x, out var oo);
+                                return (oo as SymbolTable<object>) ?? new SymbolTable<object> ();
+                            }).ToArray ();
+                            if (elementDbgs.Length == td.Fields.Count) {
+                                for (int i = 0; i < td.Fields.Count; i++) {
+                                    var f = td.Fields[i];
+                                    var d = elementDbgs[i];
+                                    if (d.TryGetValue (Symbol.Name, out var ooo) && ooo is string) {
+                                        f.Name = ooo.ToString ();
                                     }
                                 }
+                                addedDebugInfoToStruct[symbol] = true;
                             }
                         }
                     }
@@ -1671,13 +1677,18 @@ namespace Iril
         {
             bool? unsigned = null;
 
+            AddDebugInfoToStruct (irType, module, debugInfo);
+
+            return GetClrType (irType, module: module, unsigned: unsigned);
+        }
+
+        public void AddDebugInfoToStruct (LType irType, Module module, SymbolTable<object> debugInfo)
+        {
             if (debugInfo != null) {
                 if (irType is Types.PointerType pt && pt.ElementType is NamedType nt && nt.Resolve (module) is LiteralStructureType st) {
                     AddDebugInfoToStruct (nt.Symbol, debugInfo, module);
                 }
             }
-
-            return GetClrType (irType, module: module, unsigned: unsigned);
         }
 
         public static int RoundUpIntBits (int bits) {
