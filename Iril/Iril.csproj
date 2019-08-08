@@ -25,4 +25,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Lib\libcxx.zip" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\StdLib\StdLib.csproj" />
+  </ItemGroup>
 </Project>

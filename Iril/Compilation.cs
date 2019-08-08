@@ -11,6 +11,8 @@ using Mono.Cecil.Mdb;
 using System.Security.Cryptography;
 using System.Diagnostics;
 using System.Collections;
+using StdLib;
+using Mono.CompilerServices.SymbolWriter;
 
 namespace Iril
 {
@@ -127,6 +129,8 @@ namespace Iril
         public MethodDefinition nativeExceptionCtor => nativeException.Value.GetConstructors ().First ();
         public FieldDefinition nativeExceptionData => nativeException.Value.Fields.First ();
 
+        readonly SymbolTable<MethodDefinition> importedMethods = new SymbolTable<MethodDefinition> ();
+
         readonly Dictionary<(int, string), SimdVector> vectorTypes =
             new Dictionary<(int, string), SimdVector> ();
 
@@ -176,8 +180,9 @@ namespace Iril
         {
             if (externalMethodDefs.TryGetValue (symbol, out var f)) {
                 f.ReferenceCount++;
+                return f.ILDefinition;
             }
-            return syscalls.Calls[symbol];
+            throw new Exception ($"Failed to find system method {symbol}");
         }
 
         readonly Lazy<TypeDefinition> dataType;
@@ -218,6 +223,7 @@ namespace Iril
             FindFunctions ();
             //PrintNameTree ();
             CompileStructures ();
+            ImportAssemblies ();
             EmitSyscalls ();
             EmitNativeExceptions ();
             EmitGlobalVariables ();
@@ -1247,6 +1253,199 @@ namespace Iril
             }
         }
 
+        void ImportAssemblies ()
+        {
+            var parameters = new ReaderParameters (ReadingMode.Immediate) {
+                AssemblyResolver = resolver,
+            };
+            var a = typeof (StdLib.Memory).Assembly;
+            ImportAssembly (a.Location, parameters);
+        }
+
+        void ImportAssembly (string path, ReaderParameters parameters)
+        {
+            var assembly = AssemblyDefinition.ReadAssembly (path, parameters);
+            var module = assembly.MainModule;
+            foreach (var t in module.Types) {
+                var it = ImportType (t);
+                if (it != null) {
+                    mod.Types.Add (it);
+                }
+            }
+
+            TypeDefinition ImportType (TypeDefinition type)
+            {
+                var it = new TypeDefinition (type.Namespace, type.Name, type.Attributes);
+                foreach (var m in type.Methods) {
+                    if (!m.IsStatic)
+                        continue;
+                    if (!m.HasCustomAttributes)
+                        continue;
+                    var dllExportAttr = m.CustomAttributes.FirstOrDefault (x =>
+                        x.Constructor.DeclaringType.Name == "DllExportAttribute"
+                        && x.HasConstructorArguments
+                        && x.ConstructorArguments.Count > 0);
+                    if (dllExportAttr == null)
+                        continue;
+
+                    var symbol = Symbol.Intern (dllExportAttr.ConstructorArguments[0].Value.ToString ());
+                    var im = ImportMethod (m);
+                    if (im != null) {
+                        it.Methods.Add (im);
+                        importedMethods[symbol] = im;
+
+                        externalMethodDefs[symbol] = new DefinedFunction {
+                            Symbol = symbol,
+                            IRModule = null,
+                            IRDefinition = null,
+                            ILDefinition = im,
+                            ParamSyms = new SymbolTable<ParameterDefinition> (),
+                        };
+                    }
+                }
+                return (it.Methods.Count > 0) ? it : null;
+            }
+
+            MethodDefinition ImportMethod (MethodDefinition methodDefinition)
+            {
+                var irt = ImportTypeRef (methodDefinition.ReturnType);
+                var im = new MethodDefinition (methodDefinition.Name, methodDefinition.Attributes, irt);
+                foreach (var p in methodDefinition.Parameters) {
+                    var ip = new ParameterDefinition (p.Name, p.Attributes, ImportTypeRef (p.ParameterType));
+                    im.Parameters.Add (ip);
+                }
+                var ib = new MethodBody (im);
+                ImportMethodBody (methodDefinition, im, ib);
+                im.Body = ib;
+                return im;
+            }
+
+            void ImportMethodBody (MethodDefinition methodDefinition, MethodDefinition im, MethodBody ib)
+            {
+                var b = methodDefinition.Body;
+                ib.InitLocals = b.InitLocals;
+                foreach (var v in b.Variables) {
+                    var iv = new VariableDefinition (ImportTypeRef (v.VariableType));
+                    ib.Variables.Add (iv);
+                }
+
+                var il = ib.GetILProcessor ();
+                var importedInstructions = new Dictionary<Instruction, Instruction> ();
+                foreach (var i in b.Instructions) {
+                    il.Append (ImportInstruction (i));
+                }
+
+                Instruction ImportInstruction (Instruction i)
+                {
+                    if (importedInstructions.TryGetValue (i, out var existing))
+                        return existing;
+                    //var ii = il.Create (i.OpCode);
+                    //importedInstructions[i] = ii;
+                    Instruction ii;
+                    if (i.Operand == null) {
+                        ii = il.Create (i.OpCode);
+                    }
+                    else if (i.Operand is Instruction oi) {
+                        ii = il.Create (i.OpCode, ImportInstruction (oi));
+                    }
+                    else if (i.Operand is ParameterDefinition op) {
+                        ii = il.Create (i.OpCode, im.Parameters[op.Index]);
+                    }
+                    else if (i.Operand is VariableDefinition ov) {
+                        ii = il.Create (i.OpCode, ib.Variables[ov.Index]);
+                    }
+                    else if (i.Operand is TypeReference ot) {
+                        ii = il.Create (i.OpCode, ImportTypeRef (ot));
+                    }
+                    else if (i.Operand is MethodReference omr) {
+                        ii = il.Create (i.OpCode, ImportMethodRef (omr));
+                    }
+                    else if (i.Operand is FieldReference ofr) {
+                        ii = il.Create (i.OpCode, ImportFieldRef (ofr));
+                    }
+                    else if (i.Operand is string os) {
+                        ii = il.Create (i.OpCode, os);
+                    }
+                    else if (i.Operand is sbyte osbyte) {
+                        ii = il.Create (i.OpCode, osbyte);
+                    }
+                    else if (i.Operand is byte obyte) {
+                        ii = il.Create (i.OpCode, obyte);
+                    }
+                    else if (i.Operand is short oshort) {
+                        ii = il.Create (i.OpCode, oshort);
+                    }
+                    else if (i.Operand is ushort oushort) {
+                        ii = il.Create (i.OpCode, oushort);
+                    }
+                    else if (i.Operand is int oint) {
+                        ii = il.Create (i.OpCode, oint);
+                    }
+                    else if (i.Operand is uint ouint) {
+                        ii = il.Create (i.OpCode, ouint);
+                    }
+                    else if (i.Operand is long olong) {
+                        ii = il.Create (i.OpCode, olong);
+                    }
+                    else if (i.Operand is ulong oulong) {
+                        ii = il.Create (i.OpCode, oulong);
+                    }
+                    else if (i.Operand is float ofloat) {
+                        ii = il.Create (i.OpCode, ofloat);
+                    }
+                    else if (i.Operand is double odouble) {
+                        ii = il.Create (i.OpCode, odouble);
+                    }
+                    else {
+                        throw new NotSupportedException ($"Instruction operand {i.Operand} ({i.Operand.GetType().Name}) not supported.");
+                    }
+                    importedInstructions[i] = ii;
+                    return ii;
+                }
+            }
+
+            FieldReference ImportFieldRef (FieldReference fr)
+            {
+                var fd = fr.Resolve ();
+                var fieldIndex = fd.DeclaringType.Fields.IndexOf (fd);
+                var it = ImportTypeDef (fr.DeclaringType.Namespace, fr.DeclaringType.Name);
+                var ifr = it.Fields.FirstOrDefault (x => x.Name == fr.Name);
+                if (0 > fieldIndex || fieldIndex >= it.Fields.Count)
+                    throw new Exception ($"Couldn't find field {fr.Name} in {it.FullName}");
+                return it.Fields[fieldIndex];
+            }
+
+            MethodReference ImportMethodRef (MethodReference mr)
+            {
+                var imr = mod.ImportReference (mr);
+                return imr;
+            }
+
+            TypeDefinition ImportTypeDef (string @namespace, string name)
+            {
+                var itd = mod.Types.FirstOrDefault (x => x.Name == name);
+                if (itd == null)
+                    throw new Exception ($"Couldn't find type {@namespace}.{name}");
+                return itd;
+            }
+
+            TypeReference ImportTypeRef (TypeReference tr)
+            {
+                if (tr.IsPointer) {
+                    return ImportTypeRef (tr.GetElementType ()).MakePointerType ();
+                }
+                else {
+
+                    var name = tr.Name;
+                    var itd = mod.Types.FirstOrDefault (x => x.Name == name);
+                    if (itd != null)
+                        return itd;
+                    var itr = mod.ImportReference (tr);
+                    return itr;
+                }
+            }
+        }
+
         void EmitSyscalls ()
         {
             var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract | TypeAttributes.Sealed;
@@ -1257,8 +1456,14 @@ namespace Iril
             syscalls.Emit ();
 
             foreach (var iskv in syscalls.Calls) {
-                externalMethodDefs[iskv.Key] = new DefinedFunction {
-                    Symbol = iskv.Key,
+                var symbol = iskv.Key;
+                if (externalMethodDefs.ContainsKey (symbol)) {
+                    iskv.Value.DeclaringType.Methods.Remove (iskv.Value);
+                    continue;
+                }
+
+                externalMethodDefs[symbol] = new DefinedFunction {
+                    Symbol = symbol,
                     IRModule = null,
                     IRDefinition = null,
                     ILDefinition = iskv.Value,
