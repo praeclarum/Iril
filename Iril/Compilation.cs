@@ -1276,6 +1276,7 @@ namespace Iril
             TypeDefinition ImportType (TypeDefinition type)
             {
                 var it = new TypeDefinition (type.Namespace, type.Name, type.Attributes);
+                it.BaseType = ImportTypeRef (type.BaseType) ?? sysObj;
                 foreach (var m in type.Methods) {
                     if (!m.IsStatic)
                         continue;
@@ -1431,6 +1432,8 @@ namespace Iril
 
             TypeReference ImportTypeRef (TypeReference tr)
             {
+                if (tr == null)
+                    return null;
                 if (tr.IsPointer) {
                     return ImportTypeRef (tr.GetElementType ()).MakePointerType ();
                 }

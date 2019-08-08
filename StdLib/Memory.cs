@@ -100,7 +100,7 @@ namespace StdLib
         }
 
         [DllExport ("@strncmp")]
-        unsafe static int strncmp (byte* s1, byte* s2, long n)
+        public unsafe static int strncmp (byte* s1, byte* s2, long n)
         {
 
             if (n == 0)
