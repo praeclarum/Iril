@@ -127,18 +127,46 @@ namespace Iril
         }
     }
 
+    class SymbolComparer : IEqualityComparer<Symbol>
+    {
+        public static readonly SymbolComparer Shared = new SymbolComparer ();
+
+        public bool Equals (Symbol x, Symbol y)
+        {
+            return ReferenceEquals (x, y);
+        }
+
+        public int GetHashCode (Symbol obj)
+        {
+            unchecked { return (int)obj.Hash; }
+        }
+    }
+
     public class SymbolTable<T> : Dictionary<Symbol, T>
     {
         public SymbolTable ()
+            : base (SymbolComparer.Shared)
         {
         }
         public SymbolTable (SymbolTable<T> other)
-            : base (other.Count)
+            : base (other.Count, SymbolComparer.Shared)
         {
             foreach (var kv in other) {
                 Add (kv.Key, kv.Value);
             }
         }
+    }
+
+    public class SymbolSet : HashSet<Symbol>
+    {
+        public SymbolSet ()
+            : base (SymbolComparer.Shared)
+        {
+        }
+    }
+
+    public class SymbolQueue : Queue<Symbol>
+    {
     }
 
     public class GlobalSymbol : Symbol

@@ -50,5 +50,14 @@ namespace Iril.IR
                 return q.Distinct();
             }
         }
+
+        public Assignment FindAssignment (Symbol symbol)
+        {
+            foreach (var a in Assignments) {
+                if (a.HasResult && a.Result == symbol)
+                    return a;
+            }
+            return null;
+        }
     }
 }

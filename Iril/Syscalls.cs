@@ -1048,8 +1048,11 @@ namespace Iril
             var b = m.Body;
             var il = b.GetILProcessor ();
 
-            il.Append (il.Create (OpCodes.Ldc_I4_0));
-            il.Append (il.Create (OpCodes.Ret));
+            il.Append (il.Create (OpCodes.Ldstr, "Cannot setjmp"));
+            il.Append (il.Create (OpCodes.Newobj, compilation.sysNotSuppCtor));
+            il.Append (il.Create (OpCodes.Throw));
+            //il.Append (il.Create (OpCodes.Ldc_I4_0));
+            //il.Append (il.Create (OpCodes.Ret));
 
             b.Optimize ();
         }

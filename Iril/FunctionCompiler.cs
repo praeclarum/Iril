@@ -9,6 +9,7 @@ using CecilInstruction = Mono.Cecil.Cil.Instruction;
 using System.Runtime.InteropServices;
 using System.Numerics;
 using Iril.IR;
+using System.Collections;
 
 namespace Iril
 {
@@ -261,9 +262,14 @@ namespace Iril
             }
 
             //
-            // Find landing pads
+            // Find landing pads for exception handlers
             //
             FindLandingPads ();
+
+            //
+            // Find setjmps
+            //
+            FindSetjmps ();
 
             prev = null;
 
@@ -347,6 +353,9 @@ namespace Iril
                     method.DebugInformation.SequencePoints.Add (sp);
             }
 
+            //
+            // Add local variable names
+            //
             var bodyDbg = new ScopeDebugInformation(body.Instructions.First(), null);
 
             foreach (var b in emitBlocks)
@@ -609,7 +618,192 @@ namespace Iril
             }
         }
 
-        void EmitPhis(List<(Assignment Assignment, PhiInstruction Phi, Value Value)> phiVs)
+        void FindSetjmps ()
+        {
+            var blocks = function.IRDefinition.Blocks;
+            var blockIndex = new SymbolTable<Block> ();
+            foreach (var b in blocks)
+                blockIndex[b.Symbol] = b;
+            FindSetjmps (blocks.First ().Symbol, blockIndex);
+        }
+
+        void FindSetjmps (List<Symbol> blocks, SymbolTable<Block> blockIndex)
+        {
+            if (blocks.Count == 0)
+                return;
+            var newBlockIndex = new SymbolTable<Block> ();
+            foreach (var b in blocks)
+                newBlockIndex[b] = blockIndex[b];
+            FindSetjmps (blocks.First (), newBlockIndex);
+        }
+
+        readonly SymbolTable<SetjmpInfo> setjmpBlocks = new SymbolTable<SetjmpInfo> ();
+        readonly SymbolTable<SetjmpInfo> setjmpHandledBlocks = new SymbolTable<SetjmpInfo> ();
+
+        void FindSetjmps (Symbol firstBlockSymbol, SymbolTable<Block> blockIndex)
+        {
+            var analyzed = new SymbolSet ();
+            var needsAnalysis = new SymbolQueue ();
+            needsAnalysis.Enqueue (firstBlockSymbol);
+            while (needsAnalysis.Count > 0) {
+                var blockSymbol = needsAnalysis.Dequeue ();
+                analyzed.Add (blockSymbol);
+                var block = blockIndex[blockSymbol];
+
+                //
+                // Find the setjmp
+                //
+                Assignment con = null, call = null;
+                SetjmpInfo setjmpInfo = null;
+                if (block.Terminator is ConditionalBrInstruction br
+                    && br.Condition is LocalValue conv) {
+                    con = block.FindAssignment (conv.Symbol);
+                    if (con != null
+                        && con.Instruction is IcmpInstruction icmp
+                        && icmp.Op1 is LocalValue icmpop1v) {
+                        call = block.FindAssignment (icmpop1v.Symbol);
+                        if (call != null
+                            && call.Instruction is CallInstruction calli
+                            && calli.Arguments.Length == 1
+                            && calli.Pointer is GlobalValue setjmp
+                            && setjmp.Symbol.Text == "@setjmp") {
+                            // FOUND SETJMP
+                            setjmpInfo = new SetjmpInfo {
+                                SetjmpBlock = blockSymbol,
+                                InitialBlock = br.IfTrue.Symbol,
+                                LaterBlock = br.IfFalse.Symbol,
+                                Argument = calli.Arguments[0],
+                            };
+                        }
+                    }
+                }
+
+                //
+                // If found,
+                // 1. trace blocks to find: (a) initial blocks, (b) later blocks, (c) exit block
+                // 2. remember it
+                // 3. recursively look for setjmps in the initial and later blocks
+                // 4. remove the used blocks from block index
+                // 5. enqueue the exit block to keep looking for other setjmps
+                //
+                if (setjmpInfo != null) {
+                    Console.WriteLine ("FOUND SETJMP IN " + function.Symbol);
+
+                    //
+                    // 1. trace blocks to find: (a) initial blocks, (b) later blocks, (c) exit block
+                    //
+                    var initialTrace = TraceBlocks (setjmpInfo.InitialBlock, blockSymbol, blockIndex);
+                    var laterTrace = TraceBlocks (setjmpInfo.LaterBlock, blockSymbol, blockIndex);
+                    var common = new List<Symbol> (initialTrace);
+                    for (var i = 0; i < common.Count;) {
+                        var s = common[i];
+                        if (laterTrace.Contains (s)) {
+                            i++;
+                        }
+                        else {
+                            common.RemoveAt (i);
+                        }
+                    }
+                    setjmpInfo.ExitBlockSymbol = common.FirstOrDefault ();
+                    setjmpInfo.InitialBlocks = new List<Symbol> (initialTrace);
+                    for (var i = 0; i < setjmpInfo.InitialBlocks.Count;) {
+                        if (common.Contains (setjmpInfo.InitialBlocks[i])) {
+                            setjmpInfo.InitialBlocks.RemoveAt (i);
+                        }
+                        else {
+                            i++;
+                        }
+                    }
+                    setjmpInfo.LaterBlocks = new List<Symbol> (laterTrace);
+                    for (var i = 0; i < setjmpInfo.LaterBlocks.Count;) {
+                        if (common.Contains (setjmpInfo.LaterBlocks[i])) {
+                            setjmpInfo.LaterBlocks.RemoveAt (i);
+                        }
+                        else {
+                            i++;
+                        }
+                    }
+
+                    //
+                    // 2. remember it
+                    //
+                    setjmpBlocks[setjmpInfo.SetjmpBlock] = setjmpInfo;
+                    foreach (var b in setjmpInfo.InitialBlocks)
+                        setjmpHandledBlocks[b] = setjmpInfo;
+                    foreach (var b in setjmpInfo.LaterBlocks)
+                        setjmpHandledBlocks[b] = setjmpInfo;
+
+                    //
+                    // 3. recursively look for setjmps in the initial and later blocks
+                    //
+                    FindSetjmps (setjmpInfo.InitialBlocks, blockIndex);
+                    FindSetjmps (setjmpInfo.LaterBlocks, blockIndex);
+
+                    //
+                    // 4. remove the used blocks from block index
+                    //
+                    foreach (var b in setjmpInfo.InitialBlocks)
+                        blockIndex.Remove (b);
+                    foreach (var b in setjmpInfo.LaterBlocks)
+                        blockIndex.Remove (b);
+
+                    //
+                    // 5. enqueue the exit block to keep looking for other setjmps
+                    //
+                    var exit = setjmpInfo.ExitBlockSymbol;
+                    if (exit != null && blockIndex.ContainsKey (exit) && !analyzed.Contains(exit) && !needsAnalysis.Contains(exit))
+                        needsAnalysis.Enqueue (exit);
+                }
+                else {
+                    //
+                    // If not found, keep tracing
+                    //
+                    foreach (var n in block.Terminator.NextLabelSymbols) {
+                        if (blockIndex.ContainsKey (n) && !analyzed.Contains (n) && !needsAnalysis.Contains (n))
+                            needsAnalysis.Enqueue (n);
+                    }
+                }
+            }
+        }
+
+        class SetjmpInfo
+        {
+            public Symbol SetjmpBlock;
+            public Symbol InitialBlock;
+            public Symbol LaterBlock;
+            public Argument Argument;
+            public Symbol ExitBlockSymbol;
+            public List<Symbol> InitialBlocks;
+            public List<Symbol> LaterBlocks;
+        }
+
+        List<Symbol> TraceBlocks (Symbol firstBlockSymbol, Symbol terminator, SymbolTable<Block> blocks)
+        {
+            var r = new List<Symbol> ();
+            var visited = new SymbolSet ();
+            var tovisit = new SymbolQueue ();
+            tovisit.Enqueue (firstBlockSymbol);
+            while (tovisit.Count > 0) {
+                var blockSymbol = tovisit.Dequeue ();
+                if (visited.Contains (blockSymbol))
+                    continue;
+                visited.Add (blockSymbol);
+                if (terminator != null && blockSymbol == terminator)
+                    continue;
+                if (!blocks.TryGetValue (blockSymbol, out var block))
+                    continue;
+
+                r.Add (blockSymbol);
+
+                foreach (var n in block.Terminator.NextLabelSymbols) {
+                    if (!visited.Contains (n) && !tovisit.Contains (n))
+                        tovisit.Enqueue (n);
+                }
+            }
+            return r;
+        }
+
+        void EmitPhis (List<(Assignment Assignment, PhiInstruction Phi, Value Value)> phiVs)
         {
             // Recursive phis need to be handled specially
             // Make sure to emit all reads before overwriting the phi
