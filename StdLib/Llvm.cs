@@ -37,8 +37,13 @@ namespace StdLib
                     num_fp = 0;
                     size = 8;
                 }
+                else if (o is IntPtr) {
+                    num_gp = 1;
+                    num_fp = 0;
+                    size = sizeof(IntPtr);
+                }
                 else {
-                    throw new Exception ($"Cannot pass {o} as an argument");
+                    throw new Exception ($"Cannot pass {o} ({o?.GetType()}) as an argument");
                 }
                 if ((gp_offset > 48 - num_gp * 8) || (fp_offset > 304 - num_fp * 16)) {
                     overflow += size;
@@ -73,8 +78,13 @@ namespace StdLib
                     num_fp = 0;
                     size = 8;
                 }
+                else if (o is IntPtr) {
+                    num_gp = 1;
+                    num_fp = 0;
+                    size = sizeof(IntPtr);
+                }
                 else {
-                    throw new Exception ($"Cannot pass {o} as an argument");
+                    throw new Exception ($"Cannot pass {o} ({o?.GetType()}) as an argument");
                 }
                 if ((gp_offset > 48 - num_gp * 8) || (fp_offset > 304 - num_fp * 16)) {
                     if (o is int i32) {
@@ -82,6 +92,9 @@ namespace StdLib
                     }
                     else if (o is long i64) {
                         *((long*)overflowPointer) = i64;
+                    }
+                    else if (o is IntPtr intptr) {
+                        *((IntPtr*)overflowPointer) = intptr;
                     }
                     overflowPointer += size;
                 }
@@ -91,6 +104,9 @@ namespace StdLib
                     }
                     else if (o is long i64) {
                         *((long*)&list->reg_save_area[gp_offset]) = i64;
+                    }
+                    else if (o is IntPtr intptr) {
+                        *((IntPtr*)&list->reg_save_area[gp_offset]) = intptr;
                     }
                     gp_offset += num_gp * 8;
                     fp_offset += num_fp * 16;
