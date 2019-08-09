@@ -2307,7 +2307,7 @@ void case_11()
 #line 89 "Iril/IR/IR.jay"
 {
         var g = (GlobalVariable)yyVals[0+yyTop];
-        module.GlobalVariables[g.Symbol] = g;
+        module.AddGlobalVariable(g);
     }
 
 void case_15()

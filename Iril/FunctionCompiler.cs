@@ -1919,44 +1919,7 @@ namespace Iril
 
             EmitTypedValue(store.Pointer);
             EmitTypedValue(store.Value);
-            var et = compilation.GetClrType(store.Value.Type, module: module);
-            if (store.Value.Type is IntegerType intt)
-            {
-                switch (Compilation.RoundUpIntBits (intt.Bits))
-                {
-                    case 8:
-                        Emit(il.Create(OpCodes.Stind_I1));
-                        break;
-                    case 16:
-                        Emit(il.Create(OpCodes.Stind_I2));
-                        break;
-                    case 32:
-                        Emit(il.Create(OpCodes.Stind_I4));
-                        break;
-                    case 64:
-                        Emit(il.Create(OpCodes.Stind_I8));
-                        break;
-                    default:
-                        Emit(il.Create(OpCodes.Stobj, et));
-                        break;
-                }
-            }
-            else if (store.Value.Type is FloatType fltt)
-            {
-                switch (fltt.Bits)
-                {
-                    case 32:
-                        Emit(il.Create(OpCodes.Stind_R4));
-                        break;
-                    default:
-                        Emit(il.Create(OpCodes.Stind_R8));
-                        break;
-                }
-            }
-            else
-            {
-                Emit(il.Create(OpCodes.Stobj, et));
-            }
+            EmitStind (store.Value.Type);
         }
 
         void EmitLoad(IR.LoadInstruction load)
@@ -2321,10 +2284,11 @@ namespace Iril
                         // call void @llvm.dbg.value(metadata %struct._parser_t* %3, metadata !1020, metadata !DIExpression(DW_OP_deref)), !dbg !1140
                         // !DILocalVariable (name: "parser", scope: !1013, file: !3, line: 871, type: !790)
                         if (call.Arguments.Length >= 2
-                            && call.Arguments[0].Value is LocalValue local
+                            && call.Arguments[0].Value.ReferencedLocals.Count () > 0
                             && call.Arguments[1].Value is MetaValue meta
                             && module.Metadata.TryGetValue(meta.Symbol, out var o)
                             && o is SymbolTable<object> metadata) {
+                            var local = call.Arguments[0].Value.ReferencedLocals.First ();
                             AddLocalDebugInfo (fromBlock, local, metadata);
                             if (metadata.TryGetValue (Symbol.Type, out o)
                                 && o is MetaSymbol ts
@@ -2516,13 +2480,13 @@ namespace Iril
             throw new NotSupportedException($"Cannot call `{call.Pointer}`");
         }
 
-        void AddLocalDebugInfo (Block block, LocalValue local, SymbolTable<object> metadata)
+        void AddLocalDebugInfo (Block block, LocalSymbol local, SymbolTable<object> metadata)
         {
             if (!blockLocalNames.TryGetValue (block.Symbol, out var names)) {
                 names = new SymbolTable<string> ();
                 blockLocalNames.Add (block.Symbol, names);
             }
-            names[local.Symbol] = metadata[Symbol.Name].ToString();
+            names[local] = metadata[Symbol.Name].ToString();
         }
 
         private void EmitVarArgs(IR.Argument[] arguments, int numFixedArgs)

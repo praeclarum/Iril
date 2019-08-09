@@ -88,7 +88,7 @@ module_part
     | global_variable
     {
         var g = (GlobalVariable)$1;
-        module.GlobalVariables[g.Symbol] = g;
+        module.AddGlobalVariable(g);
     }
     | ATTRIBUTES ATTRIBUTE_GROUP_REF '=' '{' attributes '}'
     | META_SYMBOL_DEF '=' '!' '{' '}'

@@ -45,6 +45,8 @@ namespace Iril
 
         public SymbolTable<GlobalVariable> GlobalVariables = new SymbolTable<GlobalVariable> ();
 
+        public List<GlobalVariable> OrderedGlobalVariables = new List<GlobalVariable> ();
+
         public SymbolTable<object> Metadata = new SymbolTable<object> ();
 
         public List<Message> Errors = new List<Message> ();
@@ -79,6 +81,14 @@ namespace Iril
             var name = System.IO.Path.GetFileNameWithoutExtension (rawName ?? "");
             var lastName = name.Split (new[] { '.', ' ', '\t', '\r', '\n', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault ();
             return lastName ?? "Module";
+        }
+
+        public void AddGlobalVariable (GlobalVariable g)
+        {
+            if (!GlobalVariables.ContainsKey (g.Symbol)) {
+                GlobalVariables[g.Symbol] = g;
+                OrderedGlobalVariables.Add (g);
+            }
         }
     }
 }

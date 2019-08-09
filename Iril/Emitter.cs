@@ -96,13 +96,14 @@ namespace Iril
                     }
                     else if (compilation.TryGetGlobal(module.Symbol, g.Symbol, out var globalVariable))
                     {
-                        if (globalVariable.Global.Type is Types.ArrayType) {
-                            Emit (il.Create (OpCodes.Ldsfld, globalVariable.Field));
+                        if (globalVariable.Field.IsStatic) {
+                            Emit (il.Create (OpCodes.Ldsflda, globalVariable.Field));
                         }
                         else {
-                            Emit (il.Create (OpCodes.Ldsflda, globalVariable.Field));
-                            Emit (il.Create (OpCodes.Conv_U));
+                            Emit (il.Create (OpCodes.Ldsfld, globalVariable.Module.DataField));
+                            Emit (il.Create (OpCodes.Ldflda, globalVariable.Field));
                         }
+                        Emit (il.Create (OpCodes.Conv_U));
                     }
                     else
                     {
@@ -674,6 +675,42 @@ namespace Iril
         {
             Emit (il.Create (OpCodes.Ldstr, message));
             Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
+        }
+
+        protected void EmitStind (LType type)
+        {
+            if (type is IntegerType intt) {
+                switch (Compilation.RoundUpIntBits (intt.Bits)) {
+                    case 8:
+                        Emit (il.Create (OpCodes.Stind_I1));
+                        break;
+                    case 16:
+                        Emit (il.Create (OpCodes.Stind_I2));
+                        break;
+                    case 32:
+                        Emit (il.Create (OpCodes.Stind_I4));
+                        break;
+                    case 64:
+                        Emit (il.Create (OpCodes.Stind_I8));
+                        break;
+                    default:
+                        Emit (il.Create (OpCodes.Stobj, compilation.GetClrType(type, module)));
+                        break;
+                }
+            }
+            else if (type is FloatType fltt) {
+                switch (fltt.Bits) {
+                    case 32:
+                        Emit (il.Create (OpCodes.Stind_R4));
+                        break;
+                    default:
+                        Emit (il.Create (OpCodes.Stind_R8));
+                        break;
+                }
+            }
+            else {
+                Emit (il.Create (OpCodes.Stobj, compilation.GetClrType (type, module)));
+            }
         }
     }
 }

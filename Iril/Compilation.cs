@@ -42,7 +42,7 @@ namespace Iril
         TypeReference sysArray;
         TypeReference sysRuntimeFieldHandle;
         TypeReference sysRuntimeHelpers;
-        MethodReference sysRuntimeHelpersInitArray;
+        public MethodReference sysRuntimeHelpersInitArray;
         TypeReference sysVoidPtr;
         TypeReference sysVoidPtrPtr;
         public TypeReference sysObj;
@@ -66,10 +66,10 @@ namespace Iril
         MethodReference sysStringToCharArray;
         TypeReference sysCompGen;
         MethodReference sysCompGenCtor;
-        TypeReference sysGCHandle;
+        public TypeReference sysGCHandle;
         TypeReference sysGCHandleType;
-        MethodReference sysGCHandleAlloc;
-        MethodReference sysGCHandleAddrOfPinnedObject;
+        public MethodReference sysGCHandleAlloc;
+        public MethodReference sysGCHandleAddrOfPinnedObject;
         TypeReference sysNotImpl;
         MethodReference sysNotImplCtor;
         TypeReference sysNotSupp;
@@ -162,22 +162,25 @@ namespace Iril
             return r;
         }
 
-        readonly SymbolTable<SymbolTable<(IR.GlobalVariable Global, FieldDefinition Field)>> globals =
-            new SymbolTable<SymbolTable<(IR.GlobalVariable, FieldDefinition)>> ();
+        readonly SymbolTable<ModuleGlobalInfo> globals =
+            new SymbolTable<ModuleGlobalInfo> ();
 
         int compiledFunctionCount;
 
         public int CompiledFunctionCount => compiledFunctionCount;
 
-        public bool TryGetGlobal (Symbol module, Symbol symbol, out (IR.GlobalVariable Global, FieldDefinition Field) global)
+        public bool TryGetGlobal (Symbol module, Symbol symbol, out (ModuleGlobalInfo Module, IR.GlobalVariable Global, FieldDefinition Field) global)
         {
-            if (globals.TryGetValue (module, out var mglobals))
-                return mglobals.TryGetValue (symbol, out global);
-            global = (null, null);
+            if (globals.TryGetValue (module, out var info)) {
+                if (info.GlobalFields.TryGetValue (symbol, out var globali)) {
+                    global = (info, globali.Global, globali.Field);
+                    return true;
+                }
+                return info.ExternalGlobals.TryGetValue (symbol, out global);
+            }
+            global = (null, null, null);
             return false;
         }
-
-        public FieldDefinition GetGlobal (Symbol module, Symbol symbol) => globals[module][symbol].Field;
 
         Syscalls syscalls;
         public MethodDefinition GetSystemMethod (Symbol symbol)
@@ -750,49 +753,77 @@ namespace Iril
                     continue;
 
                 if (!globals.TryGetValue (m.Symbol, out var mglobals)) {
-                    mglobals = new SymbolTable<(IR.GlobalVariable Global, FieldDefinition Field)> ();
+                    mglobals = new ModuleGlobalInfo ();
                     globals.Add (m.Symbol, mglobals);
                 }
 
                 var allVarsPrivate = m.GlobalVariables.All (x => x.Value.IsExternal || x.Value.IsPrivate);
 
+                var moduleTypeName = new IR.MangledName (m.Symbol).Identifier;
                 var moduleType = GetModuleType (m, allVarsPrivate);
 
+                //
+                // Find the defined (not external) global variables
+                //
+                var globs = new List<(Symbol, IR.GlobalVariable)> ();
                 var needsInit = new List<(IR.GlobalVariable, FieldDefinition)> ();
-                foreach (var kv in m.GlobalVariables) {
-                    var symbol = kv.Key;
-                    var g = kv.Value;
+                foreach (var g in m.OrderedGlobalVariables) {
+                    var symbol = g.Symbol;
                     if (g.IsExternal)
                         continue;
-                    if (globals.ContainsKey (symbol))
-                        continue;
-                    try {
-                        var gname = new IR.MangledName (symbol);
-
-                        var gtype = GetClrType (g.Type, module: m);
-                        var field = new FieldDefinition (
-                            gname.Identifier,
-                            FieldAttributes.Static | (FieldAttributes.Public), gtype);
-
-                        moduleType.Fields.Add (field);
-                        mglobals.Add (symbol, (g, field));
-
-                        if (g.Initializer != null) {
-                            needsInit.Add ((g, field));
-                        }
-                    }
-                    catch (Exception ex) {
-                        ErrorMessage (m.SourceFilename, $"Failed to emit global variable `{IR.MangledName.Demangle (symbol)}` ({symbol}): {ex.Message}", ex);
-                    }
+                    globs.Add ((symbol, g));
                 }
 
+                //
+                // If there aren't any, no need to generate a data class
+                //
+                if (globs.Count == 0)
+                    continue;
+
+                //
+                // Create a data type to store the global variables
+                //
+                var (moduleStruct, _) = CreateStructType ("", "GlobalData", globs.Select(x => x.Item2.Type).ToArray(), m);
+                moduleStruct.Attributes = (moduleStruct.Attributes & ~TypeAttributes.Public) | TypeAttributes.NestedPublic;
+                var n = globs.Count;
+                var gfields = new SymbolTable<(IR.GlobalVariable, FieldDefinition)> ();
+                for (var i = 0; i < n; i++) {
+                    var s = globs[i].Item1;
+                    var f = moduleStruct.Fields[i];
+                    f.Name = new IR.MangledName (s).Identifier;
+                    var g = globs[i].Item2;
+                    gfields[s] = (g, f);
+                    if (g.Initializer != null) {
+                        needsInit.Add ((g, f));
+                    }
+                }
+                moduleType.NestedTypes.Add (moduleStruct);
+
+                //
+                // Create a static variable to hold a reference to the data
+                //
+                var dataFieldType = moduleStruct.MakePointerType ();
+                var dataField = new FieldDefinition ("Globals", FieldAttributes.Public | FieldAttributes.Static, dataFieldType);
+                moduleType.Fields.Add (dataField);
+
+                //
+                // Remember this data
+                //
+                mglobals.NeedsInit = needsInit;
+                mglobals.DataType = moduleStruct;
+                mglobals.DataField = dataField;
+                mglobals.GlobalFields = gfields;
+
+                //
+                // Add the initializers to the global list of inits
+                //
                 if (needsInit.Count > 0) {
-                    globalInits.Add (() => EmitGlobalInitializers (m, moduleType, needsInit));
+                    globalInits.Add (() => EmitGlobalInitializers (m, moduleType, mglobals));
                 }
             }
 
             //
-            // Link module variables
+            // Link external module variables
             //
             foreach (var m in Modules) {
 
@@ -800,24 +831,21 @@ namespace Iril
                     continue;
 
                 if (!globals.TryGetValue (m.Symbol, out var mglobals)) {
-                    mglobals = new SymbolTable<(IR.GlobalVariable Global, FieldDefinition Field)> ();
+                    mglobals = new ModuleGlobalInfo ();
                     globals.Add (m.Symbol, mglobals);
                 }
 
-                foreach (var kv in m.GlobalVariables) {
+                foreach (var g in m.OrderedGlobalVariables) {
 
-                    var symbol = kv.Key;
-                    var ident = new IR.MangledName (symbol).Identifier;
-                    var g = kv.Value;
+                    var symbol = g.Symbol;
 
                     if (!g.IsExternal)
                         continue;
 
                     var fieldq = from ms in globals.Values
-                                from mkv in ms
-                                let mg = mkv.Value
-                                where mg.Field.IsPublic && mg.Field.Name == ident
-                                select mg;
+                                 where ms.GlobalFields.ContainsKey (symbol)
+                                 let mg = ms.GlobalFields[symbol]
+                                 select (ms, mg.Global, mg.Field);
                     var f = fieldq.FirstOrDefault ();
                     if (f.Field == null) {
                         ErrorMessage (m.SourceFilename, $"Undefined global variable `{IR.MangledName.Demangle (symbol)}` ({symbol})");
@@ -831,10 +859,10 @@ namespace Iril
 
                         var moduleType = GetModuleType (m, false);
                         moduleType.Fields.Add (field);
-                        mglobals.Add (symbol, (g, field));
+                        mglobals.GlobalFields.Add (symbol, (g, field));
                     }
                     if (f.Field != null) {
-                        mglobals.Add (symbol, f);
+                        mglobals.ExternalGlobals.Add (symbol, f);
                     }
                 }
             }
@@ -866,13 +894,13 @@ namespace Iril
             }
         }
 
-        void EmitGlobalInitializers (Module m, TypeDefinition moduleGlobalsType, List<(IR.GlobalVariable, FieldDefinition)> needsInit)
+        void EmitGlobalInitializers (Module m, TypeDefinition moduleGlobalsType, ModuleGlobalInfo info)
         {
             var mattrs = MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName;
             var cctor = new MethodDefinition (".cctor", mattrs, sysVoid);
             moduleGlobalsType.Methods.Add (cctor);
-            var compiler = new GlobalInitializersCompiler (this, m, cctor);
-            compiler.Compile (needsInit);
+            var compiler = new GlobalInitializersCompiler (this, m, cctor, info);
+            compiler.Compile ();
         }
 
         TypeDefinition CreateLongjmpException ()
@@ -903,7 +931,7 @@ namespace Iril
             return td;
         }
 
-        FieldDefinition AddDataField (byte[] data)
+        public FieldDefinition AddDataField (byte[] data)
         {
             var td = dataType.Value;
             var size = data.Length;
@@ -921,360 +949,6 @@ namespace Iril
             };
             td.Fields.Add (fd);
             return fd;
-        }
-
-        class GlobalInitializersCompiler : InnerGlobalInitializersCompiler
-        {
-            public GlobalInitializersCompiler (Compilation compilation, Module module, MethodDefinition methodDefinition)
-                : base (compilation, module, methodDefinition)
-            {
-            }
-
-            // Uncomment to make a new function for each field (helps in debugging)
-            //public new void Compile (List<(IR.GlobalVariable, FieldDefinition)> needsInit)
-            //{
-            //    foreach (var (g, f) in needsInit) {
-            //        var mattrs = MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig;
-            //        var cctor = new MethodDefinition ("__init" + f.Name, mattrs, compilation.sysVoid);
-            //        method.DeclaringType.Methods.Add (cctor);
-            //        var compiler = new InnerGlobalInitializersCompiler (compilation, module, cctor);
-            //        compiler.Compile (new List<(IR.GlobalVariable, FieldDefinition)> { (g, f) });
-            //        Emit (il.Create (OpCodes.Call, cctor));
-            //    }
-            //    Emit (OpCodes.Ret);
-            //    body.Optimize ();
-            //    method.Body = body;
-            //}
-        }
-
-        class InnerGlobalInitializersCompiler : Emitter
-        {
-            public InnerGlobalInitializersCompiler (Compilation compilation, Module module, MethodDefinition methodDefinition)
-                : base (compilation, module, methodDefinition)
-            {
-            }
-
-            public void Compile (List<(IR.GlobalVariable, FieldDefinition)> needsInit)
-            {
-                var gcHandleV = new Lazy<VariableDefinition> (() => {
-                    var v = new VariableDefinition (compilation.sysGCHandle);
-                    body.Variables.Add (v);
-                    return v;
-                });
-
-                foreach (var (g, f) in SortFields (needsInit)) {
-                    try {
-                        if (ShouldTrace >= 3) {
-                            Emit (il.Create (OpCodes.Ldstr, $"Init Field: {f.DeclaringType}::{f.Name}"));
-                            Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
-                            Emit (il.Create (OpCodes.Call, compilation.sysConsoleGetOut));
-                            Emit (il.Create (OpCodes.Callvirt, compilation.sysTextWriterFlush));
-                        }
-                        var store = il.Create (OpCodes.Stsfld, f);
-                        EmitInitializer (g.Initializer, g.Type, gcHandleV, store);
-                    }
-                    catch (Exception ex) {
-                        compilation.ErrorMessage ("", $"Failed to init global `{g.Symbol}`", ex);
-                    }
-                }
-
-                Emit (OpCodes.Ret);
-
-                body.Optimize ();
-                body.InitLocals = true;
-                method.Body = body;
-            }
-
-            List<(IR.GlobalVariable, FieldDefinition)> SortFields (List<(IR.GlobalVariable, FieldDefinition)> needsInit)
-            {
-                var r = new List<(IR.GlobalVariable, FieldDefinition)> ();
-                var added = new SymbolTable<bool> ();
-                var adding = new SymbolTable<bool> ();
-                var all = new SymbolTable<(IR.GlobalVariable, FieldDefinition)> ();
-                foreach (var i in needsInit) {
-                    all[i.Item1.Symbol] = i;
-                }
-                void Init (GlobalSymbol symbol)
-                {
-                    if (added.ContainsKey (symbol))
-                        return;
-                    if (adding.ContainsKey (symbol))
-                        return;
-                    if (!all.ContainsKey (symbol))
-                        return;
-                    //Console.WriteLine ("INIT " + symbol);
-                    var i = all[symbol];
-                    var deps = i.Item1.Initializer.ReferencedGlobals;
-                    adding[symbol] = true;
-                    foreach (var d in deps) {
-                        Init (d);
-                    }
-                    if (!added.ContainsKey (symbol)) {
-                        r.Add (i);
-                        added.Add (symbol, true);
-                    }
-                    adding.Remove (symbol);
-                }
-                foreach (var i in needsInit) {
-                    Init (i.Item1.Symbol);
-                }                
-                return r;
-            }
-
-            readonly Dictionary<string, List<VariableDefinition>> pinnedRefs = new Dictionary<string, List<VariableDefinition>> ();
-
-            VariableDefinition GetPinnedRef (TypeReference typeReference)
-            {
-                var key = typeReference.FullName;
-                if (!pinnedRefs.TryGetValue (key, out var vars)) {
-                    vars = new List<VariableDefinition> ();
-                    pinnedRefs.Add (key, vars);
-                }
-                if (vars.Count > 0) {
-                    var ev = vars[vars.Count - 1];
-                    vars.RemoveAt (vars.Count - 1);
-                    return ev;
-                }
-                var nv = new VariableDefinition (typeReference.MakePinnedType ());
-                body.Variables.Add (nv);
-                return nv;
-            }
-
-            void ReleasePinnedRef (TypeReference typeReference, VariableDefinition variable)
-            {
-                Emit (il.Create (OpCodes.Ldc_I4_0));
-                Emit (il.Create (OpCodes.Conv_U));
-                Emit (il.Create (OpCodes.Stloc, variable));
-                pinnedRefs[typeReference.FullName].Add (variable);
-            }
-
-            void EmitInitializer (IR.Value initializer, LType type, Lazy<VariableDefinition> gcHandleV, Instruction store)
-            {
-                switch (initializer) {
-                    case IR.ArrayConstant c: {
-                            //Console.WriteLine ("EMIT ARRAY TO " + store);
-                            var size = c.Elements.Length;
-                            var et = c.Elements[0].Type;
-                            var cet = compilation.GetClrType (et, module: module);
-                            if (store.OpCode == OpCodes.Stfld) {
-                                var operand = (FieldReference)store.Operand;
-                                Emit (il.Create (OpCodes.Ldflda, operand));
-                                var locRefType = operand.FieldType.MakePointerType ();
-                                var locRef = GetPinnedRef (locRefType);
-                                Emit (il.Create (OpCodes.Stloc, locRef));
-                                Emit (il.Create (OpCodes.Ldloc, locRef));
-                                Emit (il.Create (OpCodes.Conv_U));
-                                for (int i = 0; i < c.Elements.Length; i++) {
-                                    if (i + 1 < c.Elements.Length) {
-                                        Emit (il.Create (OpCodes.Dup));
-                                    }
-                                    Emit (il.Create (OpCodes.Ldc_I4, i));
-                                    Emit (il.Create (OpCodes.Conv_I));
-                                    Emit (il.Create (OpCodes.Sizeof, cet));
-                                    Emit (il.Create (OpCodes.Mul));
-                                    Emit (il.Create (OpCodes.Add));
-                                    var e = c.Elements[i];
-                                    var storee = il.Create (OpCodes.Stobj, cet);
-                                    EmitInitializer (e.Value, e.Type, gcHandleV, storee);
-                                }
-                                ReleasePinnedRef (locRefType, locRef);
-                            }
-                            else if (store.OpCode == OpCodes.Stsfld) {
-                                var field = (FieldReference)store.Operand;
-                                Emit (il.Create (OpCodes.Ldc_I4, c.Elements.Length));
-                                Emit (il.Create (OpCodes.Sizeof, cet));
-                                Emit (il.Create (OpCodes.Mul));
-                                Emit (il.Create (OpCodes.Call, compilation.sysAllocHGlobalInt));
-                                Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
-                                Emit (store);
-                                for (int i = 0; i < c.Elements.Length; i++) {
-                                    Emit (il.Create (OpCodes.Ldsfld, field));
-                                    Emit (il.Create (OpCodes.Ldc_I4, i));
-                                    Emit (il.Create (OpCodes.Conv_I));
-                                    Emit (il.Create (OpCodes.Sizeof, cet));
-                                    Emit (il.Create (OpCodes.Mul));
-                                    Emit (il.Create (OpCodes.Add));
-                                    var e = c.Elements[i];
-                                    var storee = il.Create (OpCodes.Stobj, cet);
-                                    EmitInitializer (e.Value, e.Type, gcHandleV, storee);
-                                }
-                            }
-                            else {
-                                var ocet = cet;
-                                if (cet.IsPointer) {
-                                    ocet = compilation.sysIntPtr;
-                                }
-                                Emit (il.Create (OpCodes.Ldc_I4, size));
-                                Emit (il.Create (OpCodes.Ldc_I4, size));
-                                Emit (il.Create (OpCodes.Newarr, ocet));
-                                Emit (il.Create (OpCodes.Dup));
-                                for (int i = 0; i < c.Elements.Length; i++) {
-                                    var e = c.Elements[i];
-                                    Emit (il.Create (OpCodes.Ldc_I4, i));
-                                    if (cet.IsPointer) {
-                                        var converte = il.Create (OpCodes.Call, compilation.sysIntPtrFromPointer);
-                                        EmitInitializer (e.Value, e.Type, gcHandleV, converte);
-                                        Emit (il.Create (OpCodes.Stelem_Any, ocet));
-                                    }
-                                    else {
-                                        var storee = il.Create (OpCodes.Stelem_Any, ocet);
-                                        EmitInitializer (e.Value, e.Type, gcHandleV, storee);
-                                    }
-                                    Emit (il.Create (OpCodes.Dup));
-                                }
-                                Emit (il.Create (OpCodes.Pop));
-                                Emit (OpCodes.Ldc_I4_3);
-                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
-                                Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
-                                Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
-                                Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
-                                Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
-                                Emit (store);
-                            }
-                        }
-                        break;
-                    case IR.ZeroConstant _ when type is Types.ArrayType art: {
-                            var size = (int)art.Length;
-                            var et = art.ElementType;
-                            var cet = compilation.GetClrType (et, module: module);
-                            var ocet = cet;
-                            if (cet.IsPointer) {
-                                ocet = compilation.sysIntPtr;
-                            }
-                            Emit (il.Create (OpCodes.Ldc_I4, size));
-                            Emit (il.Create (OpCodes.Newarr, ocet));
-                            Emit (OpCodes.Ldc_I4_3);
-                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
-                            Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
-                            Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
-                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
-                            Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
-                            Emit (store);
-                        }
-                        break;
-                    case IR.UndefinedConstant _ when type is Types.ArrayType art: {
-                            var size = (int)art.Length;
-                            var et = art.ElementType;
-                            var cet = compilation.GetClrType (et, module: module);
-                            var ocet = cet;
-                            if (cet.IsPointer) {
-                                ocet = compilation.sysIntPtr;
-                            }
-                            Emit (il.Create (OpCodes.Ldc_I4, size));
-                            Emit (il.Create (OpCodes.Newarr, ocet));
-                            Emit (OpCodes.Ldc_I4_3);
-                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
-                            Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
-                            Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
-                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
-                            Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
-                            Emit (store);
-                        }
-                        break;
-                    case IR.BytesConstant c: {
-                            var chars = new List<byte> ();
-                            var s = c.Bytes.Text;
-                            var i = 2;
-                            var n = s.Length - 1;
-                            while (i < n) {
-                                if (s[i] == '\\' && i + 1 < n && s[i + 1] == '\\') {
-                                    chars.Add ((byte)'\\');
-                                    i += 2;
-                                }
-                                else if (s[i] == '\\' && i + 2 < n) {
-                                    var hex = s.Substring (i + 1, 2);
-                                    var v = int.Parse (hex, System.Globalization.NumberStyles.HexNumber);
-                                    var sv = Math.Min (255, Math.Max (0, v));
-                                    chars.Add ((byte)sv);
-                                    i += 3;
-                                }
-                                else {
-                                    chars.Add ((byte)s[i]);
-                                    i++;
-                                }
-                            }
-                            var bytes = chars.ToArray ();
-                            var isAscii = bytes.All (x => (x == '\n' || x == '\r' || x == '\0') || (x >= ' ' && x < 128));
-                            var size = bytes.Length;
-                            if (isAscii) {
-                                var str = System.Text.Encoding.ASCII.GetString (bytes);
-                                Emit (il.Create (OpCodes.Call, compilation.sysAscii));
-                                Emit (il.Create (OpCodes.Ldstr, str));
-                                Emit (il.Create (OpCodes.Callvirt, compilation.sysAsciiGetBytes));
-                            }
-                            else {
-                                var dataField = compilation.AddDataField (bytes);
-                                Emit (il.Create (OpCodes.Ldc_I4, size));
-                                Emit (il.Create (OpCodes.Newarr, compilation.sysByte));
-                                Emit (il.Create (OpCodes.Dup));
-                                Emit (il.Create (OpCodes.Ldtoken, dataField));
-                                Emit (il.Create (OpCodes.Call, compilation.sysRuntimeHelpersInitArray));
-                            }
-                            Emit (OpCodes.Ldc_I4_3);
-                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAlloc));
-                            Emit (il.Create (OpCodes.Stloc, gcHandleV.Value));
-                            Emit (il.Create (OpCodes.Ldloca, gcHandleV.Value));
-                            Emit (il.Create (OpCodes.Call, compilation.sysGCHandleAddrOfPinnedObject));
-                            Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
-                            Emit (store);
-                        }
-                        break;
-                    case IR.StructureConstant c:
-                        if (store.OpCode.Code == Code.Stsfld) {
-                            var f = (FieldReference)store.Operand;
-                            var td = f.FieldType.Resolve ();
-                            var n = c.Elements.Length;
-                            for (int i = 0; i < n; i++) {
-                                var e = c.Elements[i];
-                                Emit (il.Create (OpCodes.Ldsflda, f));
-                                var storee = il.Create (OpCodes.Stfld, td.Fields[i]);
-                                EmitInitializer (e.Value, e.Type, gcHandleV, storee);
-                            }
-                        }
-                        else if (store.OpCode.Code == Code.Stelem_Any && type is NamedType namedType) {
-                            var td = ((TypeReference)store.Operand).Resolve ();
-                            var v = GetStructTempLocal (namedType);
-                            var n = c.Elements.Length;
-                            for (int i = 0; i < n; i++) {
-                                var e = c.Elements[i];
-                                Emit (il.Create (OpCodes.Ldloca, v));
-                                var storee = il.Create (OpCodes.Stfld, td.Fields[i]);
-                                EmitInitializer (e.Value, e.Type, gcHandleV, storee);
-                            }
-                            Emit (il.Create (OpCodes.Ldloc, v));
-                            Emit (store);
-                        }
-                        else {
-                            TypeDefinition td;
-                            if (store.OpCode.Code == Code.Stfld) {
-                                var f = (FieldReference)store.Operand;
-                                td = f.FieldType.Resolve ();
-                            }
-                            else {
-                                td = ((TypeReference)store.Operand).Resolve ();
-                            }
-                            var v = GetStructTempLocal (td);
-                            var n = c.Elements.Length;
-                            for (int i = 0; i < n; i++) {
-                                var e = c.Elements[i];
-                                if (ShouldTrace >= 3) {
-                                    Emit (il.Create (OpCodes.Ldstr, $"Init field #{i}: {e.Type} = {e.Value}   (for type {type})"));
-                                    Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
-                                }
-                                Emit (il.Create (OpCodes.Ldloca, v));
-                                var storee = il.Create (OpCodes.Stfld, td.Fields[i]);
-                                EmitInitializer (e.Value, e.Type, gcHandleV, storee);
-                            }
-                            Emit (il.Create (OpCodes.Ldloc, v));
-                            Emit (store);
-                        }
-                        break;
-                    default:
-                        EmitValue (initializer, type);
-                        Emit (store);
-                        break;
-                }
-            }
         }
 
         void ImportAssemblies ()
@@ -2026,9 +1700,26 @@ namespace Iril
             var tname = $"Struct{n}_{string.Join("_", resolvedElements.Select(GetLTypeClrIdentifier))}";
 
             var ns = namespac + ".AnonymousTypes";
+            var (td, elementsClrTypes) = CreateStructType (ns, tname, resolvedElements, module);
+
+            var r = new AnonymousStruct {
+                ElementClrTypes = elementsClrTypes.ToArray (),
+                ClrType = td,
+                ElementFields = td.Fields.Select (x => (FieldReference)x).ToArray (),
+            };
+
+            mod.Types.Add (td);
+            astructTypes[resolvedElements] = r;
+
+            return r;
+        }
+
+        (TypeDefinition, List<TypeReference>) CreateStructType (string ns, string tname, LType[] resolvedElements, Module module)
+        {
             var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.Public;
             var td = new TypeDefinition (ns, tname, tattrs, sysVal);
             td.IsExplicitLayout = true;
+            var n = resolvedElements.Length;
             var elementsClrTypes = new List<TypeReference> (n);
             var offset = 0;
             for (var i = 0; i < n; i++) {
@@ -2040,7 +1731,7 @@ namespace Iril
                     clrType = GetClrType (e, module: module);
                 }
                 else {
-                    size = (int)resolvedElements[i].GetByteSize(module: module);
+                    size = (int)resolvedElements[i].GetByteSize (module: module);
                     clrType = GetClrType (resolvedElements[i], module: module);
                 }
                 elementsClrTypes.Add (clrType);
@@ -2053,17 +1744,7 @@ namespace Iril
             }
             td.ClassSize = offset;
             td.PackingSize = (short)module.PointerByteSize;
-
-            var r = new AnonymousStruct {
-                ElementClrTypes = elementsClrTypes.ToArray (),
-                ClrType = td,
-                ElementFields = td.Fields.Select (x => (FieldReference)x).ToArray (),
-            };
-
-            mod.Types.Add (td);
-            astructTypes[resolvedElements] = r;
-
-            return r;
+            return (td, elementsClrTypes);
         }
 
         static string GetFieldPrefix (LType lType)
