@@ -307,6 +307,7 @@ namespace Iril
             //
             var emitBlocks = (from b in f.Blocks
                               where !(isLandingPad.ContainsKey (b.Symbol) && isLandingPad[b.Symbol])
+                              where !setjmpHandledBlocks.ContainsKey (b.Symbol)
                               select b).ToList ();
             foreach (var b in emitBlocks) {
                 EmitBlockFirstInstruction (b, mainContext);
@@ -319,7 +320,12 @@ namespace Iril
             for (var i = 0; i < emitBlocks.Count; i++) {
                 var b = emitBlocks[i];
                 var nextBlock = i + 1 < emitBlocks.Count ? emitBlocks[i + 1] : null;
-                EmitBlockAssignments (b, nextBlock, mainContext);
+                if (setjmpBlocks.TryGetValue (b.Symbol, out var setjmp)) {
+                    EmitSetjmpBlockAssignments (b, nextBlock, mainContext, setjmp);
+                }
+                else {
+                    EmitBlockAssignments (b, nextBlock, mainContext);
+                }
             }
 
             body.InitLocals = true;
@@ -329,17 +335,26 @@ namespace Iril
             // Emit try handlers
             //
             foreach (var eh in ehs) {
-                var hend = eh.CatchLast.Next;
-                if (hend == null) {
-                    hend = il.Create (OpCodes.Nop);
-                    Emit (hend);
-                }
                 var handler = new ExceptionHandler (ExceptionHandlerType.Catch) {
                     TryStart = eh.TryStart,
                     TryEnd = eh.TryLast.Next,
                     HandlerStart = eh.TryLast.Next,
-                    HandlerEnd = hend,
+                    HandlerEnd = eh.CatchLast.Next,
                     CatchType = compilation.sysException,
+                };
+                body.ExceptionHandlers.Add (handler);
+            }
+
+            //
+            // Emit setjmp handlers
+            //
+            foreach (var eh in setjmpBlocks.Values) {
+                var handler = new ExceptionHandler (ExceptionHandlerType.Catch) {
+                    TryStart = eh.TryStart,
+                    TryEnd = eh.TryLast.Next,
+                    HandlerStart = eh.TryLast.Next,
+                    HandlerEnd = eh.CatchLast.Next,
+                    CatchType = compilation.LongjmpException,
                 };
                 body.ExceptionHandlers.Add (handler);
             }
@@ -360,6 +375,8 @@ namespace Iril
 
             foreach (var b in emitBlocks)
             {
+                if (!mainContext.BlockFirstInstr.ContainsKey (b.Symbol) || !mainContext.BlockLastInstr.ContainsKey (b.Symbol))
+                    continue;
                 var scope = new ScopeDebugInformation(mainContext.BlockFirstInstr[b.Symbol], mainContext.BlockLastInstr[b.Symbol]);
                 foreach (var a in b.Assignments)
                 {
@@ -415,39 +432,110 @@ namespace Iril
             return null;
         }
 
+        void EmitBlocks (List<Block> emitBlocks, BlocksContext context)
+        {
+            foreach (var b in emitBlocks) {
+                EmitBlockFirstInstruction (b, context);
+            }
+
+            //
+            // Emit block assignments
+            //
+            for (var i = 0; i < emitBlocks.Count; i++) {
+                var b = emitBlocks[i];
+                var nextBlock = i + 1 < emitBlocks.Count ? emitBlocks[i + 1] : null;
+
+                if (setjmpBlocks.TryGetValue (b.Symbol, out var innerSetjmp)) {
+                    EmitSetjmpBlockAssignments (b, nextBlock: null, context, innerSetjmp);
+                }
+                else if (!(isLandingPad.ContainsKey (b.Symbol) && isLandingPad[b.Symbol])) {
+                    EmitBlockAssignments (b, nextBlock, context);
+                }                
+            }
+        }
+
+        void EmitSetjmpBlockAssignments (Block setjmpBlock, Block nextBlock, BlocksContext origContext, SetjmpInfo setjmp)
+        {
+            var b = setjmpBlock;
+            prev = origContext.BlockHeadLastInstr[b.Symbol];
+            foreach (var a in b.Assignments) {
+                if (!ReferenceEquals (setjmp.SetjmpCallAssignment, a))
+                    EmitBlockAssignment (b, nextBlock: null, origContext, a);
+            }
+            origContext.BlockLastInstr[b.Symbol] = prev;
+
+            Emit (OpCodes.Nop);
+            setjmp.TryStart = prev;
+
+            if (setjmp.InitialBlock != setjmp.ExitBlockSymbol && setjmp.InitialBlocks.Count > 0) {
+                var context = new BlocksContext (origContext, setjmp.InitialBlocks);
+                var emitBlocks = setjmp.InitialBlocks.Select (x => setjmp.BlockIndex[x]).ToList ();
+                //EmitBlockAssignment (emitBlocks[0], null, context, new Assignment (setjmp.SetjmpCallAssignment.Result, IR.Instruction.ZeroI32));
+                EmitBlocks (emitBlocks, context);
+            }
+            else {
+                if (setjmp.ExitBlockSymbol != null) {
+                    Emit (il.Create (OpCodes.Leave, GetLabel (new LabelValue ((LocalSymbol)setjmp.ExitBlockSymbol), setjmpBlock, origContext)));
+                }
+                else {
+                    throw new NotSupportedException ($"Empty try block without exit");
+                }
+            }
+
+            setjmp.TryLast = prev;
+
+            if (setjmp.LaterBlock != setjmp.ExitBlockSymbol && setjmp.LaterBlocks.Count > 0) {
+                var context = new BlocksContext (origContext, setjmp.LaterBlocks);
+                var emitBlocks = setjmp.LaterBlocks.Select (x => setjmp.BlockIndex[x]).ToList ();
+                //EmitBlockAssignment (emitBlocks[0], null, context, new Assignment (setjmp.SetjmpCallAssignment.Result, IR.Instruction.OneI32));
+                EmitBlocks (emitBlocks, context);
+            }
+            else {
+                if (setjmp.ExitBlockSymbol != null) {
+                    Emit (il.Create (OpCodes.Leave, GetLabel (new LabelValue ((LocalSymbol)setjmp.ExitBlockSymbol), setjmpBlock, origContext)));
+                }
+                else {
+                    throw new NotSupportedException ($"Empty catch block without exit");
+                }
+            }
+
+            setjmp.CatchLast = prev;
+        }
+
         void EmitBlockAssignments (Block b, Block nextBlock, BlocksContext context)
         {
             prev = context.BlockHeadLastInstr[b.Symbol];
 
             foreach (var a in b.Assignments) {
-                if (!ShouldInline (a.Result)
-                    && !(a.Instruction is IR.PhiInstruction)) {
-
-                    EmitInstruction (a.Result, a.Instruction, b, nextBlock, context);
-
-                    if (a.HasDebugSymbol) {
-                        //sqpts.Add ((prev, a.DebugSymbol));
-                    }
-
-                    // If we need to assign it, do so
-                    if (locals.TryGetValue (a.Result, out var vd)) {
-                        Emit (il.Create (OpCodes.Stloc, vd));
-                    }
-                    else {
-                        // If it produced a value but it's discarded, pop it
-                        if (a.Result != LocalSymbol.None && localCounts[a.Result] == 0) {
-                            Emit (il.Create (OpCodes.Pop));
-                        }
-                    }
-                }
+                EmitBlockAssignment (b, nextBlock, context, a);
             }
-
-            //
-            // Emit terminator
-            //
             EmitInstruction (b.TerminatorAssignment.Result, b.Terminator, b, nextBlock, context);
 
             context.BlockLastInstr[b.Symbol] = prev;
+        }
+
+        private void EmitBlockAssignment (Block b, Block nextBlock, BlocksContext context, Assignment a)
+        {
+            if (!ShouldInline (a.Result)
+                                && !(a.Instruction is IR.PhiInstruction)) {
+
+                EmitInstruction (a.Result, a.Instruction, b, nextBlock, context);
+
+                if (a.HasDebugSymbol) {
+                    //sqpts.Add ((prev, a.DebugSymbol));
+                }
+
+                // If we need to assign it, do so
+                if (locals.TryGetValue (a.Result, out var vd)) {
+                    Emit (il.Create (OpCodes.Stloc, vd));
+                }
+                else {
+                    // If it produced a value but it's discarded, pop it
+                    if (a.Result != LocalSymbol.None && localCounts[a.Result] == 0) {
+                        Emit (il.Create (OpCodes.Pop));
+                    }
+                }
+            }
         }
 
         class BlocksContext
@@ -457,6 +545,7 @@ namespace Iril
             public readonly SymbolTable<SymbolTable<CecilInstruction>> BlockPredInstr;
             public readonly SymbolTable<CecilInstruction> BlockHeadLastInstr;
             public readonly SymbolTable<CecilInstruction> BlockLastInstr;
+            public readonly SymbolSet ProtectedBlocks;
             public BlocksContext ()
             {
                 IsExceptionHandler = false;
@@ -465,9 +554,10 @@ namespace Iril
                 BlockHeadLastInstr = new SymbolTable<CecilInstruction> ();
                 BlockLastInstr = new SymbolTable<CecilInstruction> ();
             }
-            public BlocksContext (BlocksContext other)
+            public BlocksContext (BlocksContext other, IEnumerable<Symbol> protectedBlocks)
             {
                 IsExceptionHandler = true;
+                ProtectedBlocks = new SymbolSet (protectedBlocks);
                 BlockFirstInstr = new SymbolTable<CecilInstruction> (other.BlockFirstInstr);
                 BlockHeadLastInstr = new SymbolTable<CecilInstruction> (other.BlockHeadLastInstr);
                 BlockLastInstr = new SymbolTable<CecilInstruction> (other.BlockLastInstr);
@@ -476,6 +566,11 @@ namespace Iril
                     var r = new SymbolTable<CecilInstruction> (kv.Value);
                     BlockPredInstr[kv.Key] = r;
                 }
+            }
+
+            public bool IsProtecting (LabelValue destination)
+            {
+                return ProtectedBlocks.Contains (destination.Symbol);
             }
         }
 
@@ -670,9 +765,11 @@ namespace Iril
                             // FOUND SETJMP
                             setjmpInfo = new SetjmpInfo {
                                 SetjmpBlock = blockSymbol,
+                                SetjmpCallAssignment = call,
                                 InitialBlock = br.IfTrue.Symbol,
                                 LaterBlock = br.IfFalse.Symbol,
                                 Argument = calli.Arguments[0],
+                                BlockIndex = new SymbolTable<Block> (blockIndex),
                             };
                         }
                     }
@@ -687,7 +784,7 @@ namespace Iril
                 // 5. enqueue the exit block to keep looking for other setjmps
                 //
                 if (setjmpInfo != null) {
-                    Console.WriteLine ("FOUND SETJMP IN " + function.Symbol);
+                    //Console.WriteLine ("FOUND SETJMP IN " + function.Symbol);
 
                     //
                     // 1. trace blocks to find: (a) initial blocks, (b) later blocks, (c) exit block
@@ -769,12 +866,16 @@ namespace Iril
         class SetjmpInfo
         {
             public Symbol SetjmpBlock;
+            public Assignment SetjmpCallAssignment;
             public Symbol InitialBlock;
             public Symbol LaterBlock;
             public Argument Argument;
             public Symbol ExitBlockSymbol;
             public List<Symbol> InitialBlocks;
             public List<Symbol> LaterBlocks;
+            public SymbolTable<Block> BlockIndex;
+
+            public CecilInstruction TryStart, TryLast, CatchLast;
         }
 
         List<Symbol> TraceBlocks (Symbol firstBlockSymbol, Symbol terminator, SymbolTable<Block> blocks)
@@ -948,10 +1049,28 @@ namespace Iril
                 case IR.CallInstruction call:
                     EmitCall(call, block);
                     break;
-                case IR.ConditionalBrInstruction cbr:
-                    EmitBrtrue(cbr.Condition, Types.IntegerType.I1, GetLabel(cbr.IfTrue, block, context));
-                    //if (cbr.IfFalse.Symbol != nextBlock?.Symbol)
-                    Emit(il.Create(OpCodes.Br, GetLabel(cbr.IfFalse, block, context)));
+                case IR.ConditionalBrInstruction cbr: {
+                        var trueDest = GetLabel (cbr.IfTrue, block, context);
+                        CecilInstruction leaveDest = null;
+                        if (context.IsExceptionHandler && !context.IsProtecting (cbr.IfTrue)) {
+                            leaveDest = il.Create (OpCodes.Leave, trueDest);
+                            EmitBrtrue (cbr.Condition, Types.IntegerType.I1, leaveDest);
+                        }
+                        else {
+                            EmitBrtrue (cbr.Condition, Types.IntegerType.I1, trueDest);
+                        }
+                        //if (cbr.IfFalse.Symbol != nextBlock?.Symbol)
+                        var falseDest = GetLabel (cbr.IfFalse, block, context);
+                        if (context.IsExceptionHandler && !context.IsProtecting (cbr.IfFalse)) {
+                            Console.WriteLine ("EMIT FARLSE");
+                            Emit (il.Create (OpCodes.Leave, falseDest));
+                        }
+                        else {
+                            Emit (il.Create (OpCodes.Br, falseDest));
+                        }
+                        if (leaveDest != null)
+                            Emit (leaveDest);
+                    }
                     break;
                 case IR.DivInstruction div:
                     if (div.Type is Types.VectorType)
@@ -1446,9 +1565,15 @@ namespace Iril
                             throw new NotSupportedException($"Cannot uitofp {uitofp.Type}");
                     }
                     break;
-                case IR.UnconditionalBrInstruction br:
-                    //if (br.Destination.Symbol != nextBlock?.Symbol)
-                    Emit(il.Create(OpCodes.Br, GetLabel(br.Destination, block, context)));
+                case IR.UnconditionalBrInstruction br: {
+                        var destination = GetLabel (br.Destination, block, context);
+                        if (context.IsExceptionHandler && !context.IsProtecting (br.Destination)) {
+                            Emit (il.Create (OpCodes.Leave, destination));
+                        }
+                        else {
+                            Emit (il.Create (OpCodes.Br, destination));
+                        }
+                    }
                     break;
                 case IR.UnreachableInstruction unreach:
                     if (!function.IRDefinition.ReturnType.StructurallyEquals (VoidType.Void)) {
@@ -2156,23 +2281,11 @@ namespace Iril
 
             var tryLast = prev;
 
-            var catchContext = new BlocksContext (context);
+            var catchContext = new BlocksContext (context, Enumerable.Empty<Symbol> ());
 
             var pad = landingPads[invoke.ExceptionLabel.Symbol];
 
-            var emitBlocks = pad.Blocks;
-            foreach (var b in emitBlocks) {
-                EmitBlockFirstInstruction (b, catchContext);
-            }
-
-            //
-            // Emit block assignments
-            //
-            for (var i = 0; i < emitBlocks.Count; i++) {
-                var b = emitBlocks[i];
-                var nextBlock = i + 1 < emitBlocks.Count ? emitBlocks[i + 1] : null;
-                EmitBlockAssignments (b, nextBlock, catchContext);
-            }
+            EmitBlocks (pad.Blocks, catchContext);            
             
             var catchLast = prev;
             ehs.Add ((tryPrev.Next, tryLast, catchLast));

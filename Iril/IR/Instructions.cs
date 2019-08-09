@@ -7,6 +7,9 @@ namespace Iril.IR
 {
     public abstract class Instruction
     {
+        public static readonly Instruction ZeroI32 = new TruncInstruction (new TypedValue (IntegerType.I32, ZeroConstant.Zero), IntegerType.I32);
+        public static readonly Instruction OneI32 = new TruncInstruction (new TypedValue (IntegerType.I32, IntegerConstant.One), IntegerType.I32);
+
         public abstract IEnumerable<LocalSymbol> ReferencedLocals { get; }
         public virtual bool IsIdempotent (FunctionDefinition function) => false;
         public abstract LType ResultType (Module module);

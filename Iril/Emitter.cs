@@ -669,5 +669,11 @@ namespace Iril
                 Emit (il.Create (OpCodes.Box, compilation.GetClrType (type, module: this.module)));
             }
         }
+
+        protected void EmitConsoleWriteLine (string message)
+        {
+            Emit (il.Create (OpCodes.Ldstr, message));
+            Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
+        }
     }
 }

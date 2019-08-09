@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.Collections;
 using StdLib;
 using Mono.CompilerServices.SymbolWriter;
+using System.Transactions;
 
 namespace Iril
 {
@@ -142,6 +143,9 @@ namespace Iril
         readonly SymbolTable<SymbolTable<DefinedFunction>> moduleMethodDefs =
             new SymbolTable<SymbolTable<DefinedFunction>> ();
 
+        readonly Lazy<TypeDefinition> longjmpException;
+        public TypeDefinition LongjmpException => longjmpException.Value;
+
         public bool TryGetFunction (Module module, Symbol symbol, out DefinedFunction function)
         {
             var r = (moduleMethodDefs.TryGetValue (module.Symbol, out var mdefs) && mdefs.TryGetValue (symbol, out function))
@@ -208,6 +212,7 @@ namespace Iril
             asm = AssemblyDefinition.CreateAssembly (asmName, modName, mps);
             mod = asm.MainModule;
             dataType = new Lazy<TypeDefinition> (CreateDataType);
+            longjmpException = new Lazy<TypeDefinition> (CreateLongjmpException);
 
             globalName = new NameNode {
                 Name = "global"
@@ -870,6 +875,25 @@ namespace Iril
             compiler.Compile (needsInit);
         }
 
+        TypeDefinition CreateLongjmpException ()
+        {
+            var td = new TypeDefinition ("", "LongjmpException", TypeAttributes.AnsiClass | TypeAttributes.Sealed, sysException);
+            var compGen = new CustomAttribute (sysCompGenCtor);
+            td.CustomAttributes.Add (compGen);
+
+            var ctor = new MethodDefinition (".ctor", MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName, sysVoid);
+            ctor.Parameters.Add (new ParameterDefinition ("code", ParameterAttributes.None, sysInt32));
+            var b = new MethodBody (ctor);
+            var il = b.GetILProcessor ();
+            il.Append (il.Create (OpCodes.Ret));
+            b.Optimize ();
+            ctor.Body = b;
+            td.Methods.Add (ctor);
+
+            mod.Types.Add (td);
+            return td;
+        }
+
         TypeDefinition CreateDataType ()
         {
             var td = new TypeDefinition ("", pidTypeName, TypeAttributes.AnsiClass | TypeAttributes.Sealed, sysObj);
@@ -1316,9 +1340,15 @@ namespace Iril
                     im.Parameters.Add (ip);
                 }
                 var ib = new MethodBody (im);
-                ImportMethodBody (methodDefinition, im, ib);
-                im.Body = ib;
-                return im;
+                try {
+                    ImportMethodBody (methodDefinition, im, ib);
+                    im.Body = ib;
+                    return im;
+                }
+                catch (Exception ex) {
+                    Debug.WriteLine (ex);
+                    return null;
+                }
             }
 
             void ImportMethodBody (MethodDefinition methodDefinition, MethodDefinition im, MethodBody ib)
@@ -1767,7 +1797,8 @@ namespace Iril
             foreach (var s in syscalls.Calls) {
                 if (externalMethodDefs.TryGetValue (s.Key, out var f)) {
                     if (f.ReferenceCount == 0) {
-                        s.Value.DeclaringType.Methods.Remove (s.Value);
+                        //Console.WriteLine ($"REM {s.Key}, {s.Value}, {s.Value?.DeclaringType}");
+                        s.Value.DeclaringType?.Methods.Remove (s.Value);
                     }
                 }
             }

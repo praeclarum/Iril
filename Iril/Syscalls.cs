@@ -1065,8 +1065,10 @@ namespace Iril
             var b = m.Body;
             var il = b.GetILProcessor ();
 
-            il.Append (il.Create (OpCodes.Ldstr, "Cannot longjmp"));
-            il.Append (il.Create (OpCodes.Newobj, compilation.sysNotSuppCtor));
+            var ctor = compilation.LongjmpException.GetConstructors ().First ();
+            //il.Append (il.Create (OpCodes.Ldstr, "Cannot longjmp"));
+            il.Append (il.Create (OpCodes.Ldarg_1));
+            il.Append (il.Create (OpCodes.Newobj, ctor));
             il.Append (il.Create (OpCodes.Throw));
 
             b.Optimize ();

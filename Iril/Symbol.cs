@@ -163,6 +163,10 @@ namespace Iril
             : base (SymbolComparer.Shared)
         {
         }
+
+        public SymbolSet(IEnumerable<Symbol> collection) : base(collection)
+        {
+        }
     }
 
     public class SymbolQueue : Queue<Symbol>
