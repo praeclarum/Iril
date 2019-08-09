@@ -200,7 +200,7 @@ linkage
     | WEAK                 { $$ = true; }
     | WEAK_ODR             { $$ = true; }
     | APPENDING            { $$ = true; }
-    | COMMON               { $$ = true; }
+    | COMMON               { $$ = false; }
     ;
     
 visibility
