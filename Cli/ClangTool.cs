@@ -71,17 +71,41 @@ namespace Cli
             if (!iswin)
                 args.Add ("-fpic");
 
-            args.AddRange (files);
+            var clangFileCount = 0;
+
+            if (outputAssembly) {
+                // If creating an assembly, only clang updated files
+                foreach (var f in files) {
+                    var outPath = GetOutFilePath (buildDir, f);
+                    var srcInfo = new FileInfo (f);
+                    var needsClang = true;
+                    if (srcInfo.Exists) {
+                        var destInfo = new FileInfo (outPath);
+                        if (destInfo.Exists && destInfo.LastWriteTimeUtc > new FileInfo (f).LastWriteTimeUtc) {
+                            needsClang = false;
+                        }
+                    }
+                    if (needsClang) {
+                        args.Add (f);
+                        clangFileCount++;
+                    }
+                }
+            }
+            else {
+                args.AddRange (files);
+                clangFileCount = files.Count;
+            }
 
             args.Insert (0, "-I" + Environment.CurrentDirectory);
 
             var outFiles = new List<string> ();
 
-            if (Run (buildDir, "clang", args.ToArray ()) == 0) {
+            var clangResult = clangFileCount > 0 ? Run (buildDir, "clang", args.ToArray ()) : 0;
+
+            if (clangResult == 0) {
                 if (outputAssembly) {
                     foreach (var f in files) {
-                        var outName = Path.ChangeExtension (Path.GetFileName (f), ".ll");
-                        var outPath = Path.Combine (buildDir, outName);
+                        var outPath = GetOutFilePath (buildDir, f);
                         //Console.WriteLine ($"OUTLL = {outPath}");
                         outFiles.Add (outPath);
                     }
@@ -91,6 +115,13 @@ namespace Cli
             }
 
             return outFiles;
+        }
+
+        static string GetOutFilePath (string buildDir, string f)
+        {
+            var outName = Path.ChangeExtension (Path.GetFileName (f), ".ll");
+            var outPath = Path.Combine (buildDir, outName);
+            return outPath;
         }
 
         protected override string GetWindowsInstructions () =>
