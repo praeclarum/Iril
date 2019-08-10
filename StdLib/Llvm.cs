@@ -30,7 +30,7 @@ namespace StdLib
                 if (o is int) {
                     num_gp = 1;
                     num_fp = 0;
-                    size = 4;
+                    size = 8;
                 }
                 else if (o is long) {
                     num_gp = 1;
@@ -65,6 +65,7 @@ namespace StdLib
             var overflowPointer = list->overflow_arg_area;
             for (var i = 0; i < arguments.Length; i++) {
                 var o = arguments[i];
+                // Console.WriteLine($"Push VarArg #{i} = {o} ({o.GetType()})");
                 int num_gp;
                 int num_fp;
                 int size;
@@ -88,7 +89,7 @@ namespace StdLib
                 }
                 if ((gp_offset > 48 - num_gp * 8) || (fp_offset > 304 - num_fp * 16)) {
                     if (o is int i32) {
-                        *((int*)overflowPointer) = i32;
+                        *((long*)overflowPointer) = i32;
                     }
                     else if (o is long i64) {
                         *((long*)overflowPointer) = i64;
@@ -100,7 +101,7 @@ namespace StdLib
                 }
                 else {
                     if (o is int i32) {
-                        *((int*)&list->reg_save_area[gp_offset]) = i32;
+                        *((long*)&list->reg_save_area[gp_offset]) = i32;
                     }
                     else if (o is long i64) {
                         *((long*)&list->reg_save_area[gp_offset]) = i64;
