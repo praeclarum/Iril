@@ -1345,26 +1345,44 @@ namespace Iril
                 case IR.SextInstruction sext:
                     switch (sext.Type)
                     {
-                        case Types.IntegerType intt:
-                            EmitTypedValue(sext.Value);
-                            if (sext.Value.Type is Types.IntegerType sintt && sintt.Bits == 1)
-                            {
-                                Emit(il.Create(OpCodes.Ldc_I4_M1));
-                                Emit(il.Create(OpCodes.Mul));
-                            }
-                            switch (Compilation.RoundUpIntBits (intt.Bits)) {
-                                case 8:
-                                    Emit(il.Create(OpCodes.Conv_I1));
-                                    break;
-                                case 16:
-                                    Emit(il.Create(OpCodes.Conv_I2));
-                                    break;
-                                case 32:
-                                    Emit(il.Create(OpCodes.Conv_I4));
-                                    break;
-                                default:
-                                    Emit(il.Create(OpCodes.Conv_I8));
-                                    break;
+                        case Types.IntegerType intt: {
+                                var toBits = intt.Bits;
+                                var toUpBits = Compilation.RoundUpIntBits (toBits);
+                                var fromBits = 32;
+                                var fromUpBits = 32;
+                                EmitTypedValue (sext.Value);
+                                if (sext.Value.Type is Types.IntegerType sintt) {
+                                    fromBits = sintt.Bits;
+                                    fromUpBits = Compilation.RoundUpIntBits (fromBits);
+                                    if (fromBits == 1) {
+                                        Emit (il.Create (OpCodes.Ldc_I4_M1));
+                                        Emit (il.Create (OpCodes.Mul));
+                                    }
+                                    else if (fromBits == 8) {
+                                        Emit (il.Create (OpCodes.Conv_I1));
+                                    }
+                                    else if (fromBits != fromUpBits) {
+                                        compilation.ErrorMessage (module.FilePath, $"Cannot sign extend from {fromBits}-bit to {toBits}-bit integers");
+                                    }
+
+                                    switch (toUpBits) {
+                                        case 8:
+                                            Emit (il.Create (OpCodes.Conv_I1));
+                                            break;
+                                        case 16:
+                                            Emit (il.Create (OpCodes.Conv_I2));
+                                            break;
+                                        case 32:
+                                            Emit (il.Create (OpCodes.Conv_I4));
+                                            break;
+                                        default:
+                                            Emit (il.Create (OpCodes.Conv_I8));
+                                            break;
+                                    }
+                                }
+                                else {
+                                    compilation.ErrorMessage (module.FilePath, $"Cannot sign extend from type {sext.Value.Type} to {toBits}-bit integers");
+                                }
                             }
                             break;
                         case VectorType vt when vt.ElementType is Types.IntegerType vintt:
@@ -1851,7 +1869,7 @@ namespace Iril
                     if (resultType is Types.IntegerType intt) {
                         switch (Compilation.RoundUpIntBits (intt.Bits)) {
                             case 8:
-                                Emit (unsigned ? OpCodes.Conv_U1 : OpCodes.Conv_I1);
+                                Emit (unsigned ? OpCodes.Conv_U1 : OpCodes.Conv_U1);
                                 break;
                             case 16:
                                 Emit (unsigned ? OpCodes.Conv_U2 : OpCodes.Conv_I2);
