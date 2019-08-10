@@ -71,30 +71,8 @@ namespace Cli
             if (!iswin)
                 args.Add ("-fpic");
 
-            var clangFileCount = 0;
-
-            if (outputAssembly) {
-                // If creating an assembly, only clang updated files
-                foreach (var f in files) {
-                    var outPath = GetOutFilePath (buildDir, f);
-                    var srcInfo = new FileInfo (f);
-                    var needsClang = true;
-                    if (srcInfo.Exists) {
-                        var destInfo = new FileInfo (outPath);
-                        if (destInfo.Exists && destInfo.LastWriteTimeUtc > new FileInfo (f).LastWriteTimeUtc) {
-                            needsClang = false;
-                        }
-                    }
-                    if (needsClang) {
-                        args.Add (f);
-                        clangFileCount++;
-                    }
-                }
-            }
-            else {
-                args.AddRange (files);
-                clangFileCount = files.Count;
-            }
+            args.AddRange (files);
+            var clangFileCount = files.Count;
 
             args.Insert (0, "-I" + Environment.CurrentDirectory);
 

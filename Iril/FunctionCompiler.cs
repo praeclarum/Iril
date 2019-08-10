@@ -1362,7 +1362,7 @@ namespace Iril
                                         Emit (il.Create (OpCodes.Conv_I1));
                                     }
                                     else if (fromBits != fromUpBits) {
-                                        compilation.ErrorMessage (module.FilePath, $"Cannot sign extend from {fromBits}-bit to {toBits}-bit integers");
+                                        compilation.ErrorMessage (module.SourceFilename, $"Cannot sign extend from {fromBits}-bit to {toBits}-bit integers");
                                     }
 
                                     switch (toUpBits) {
@@ -1381,7 +1381,7 @@ namespace Iril
                                     }
                                 }
                                 else {
-                                    compilation.ErrorMessage (module.FilePath, $"Cannot sign extend from type {sext.Value.Type} to {toBits}-bit integers");
+                                    compilation.ErrorMessage (module.SourceFilename, $"Cannot sign extend from type {sext.Value.Type} to {toBits}-bit integers");
                                 }
                             }
                             break;
