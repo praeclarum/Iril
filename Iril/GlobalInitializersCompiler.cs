@@ -69,8 +69,18 @@ namespace Iril
 
             var needsInit = info.NeedsInit;
 
+            // Allocate the globals
             Emit (il.Create (OpCodes.Sizeof, info.DataType));
             Emit (il.Create (OpCodes.Call, compilation.sysAllocHGlobalInt));
+
+            // Zero init
+            Emit (il.Create (OpCodes.Dup));
+            Emit (il.Create (OpCodes.Ldc_I4_0));
+            Emit (il.Create (OpCodes.Conv_U1));
+            Emit (il.Create (OpCodes.Sizeof, info.DataType));
+            Emit (il.Create (OpCodes.Initblk));
+
+            // Store them for later
             Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
             Emit (il.Create (OpCodes.Stsfld, info.DataField));
 
@@ -267,7 +277,7 @@ namespace Iril
                 }
             }
             else if (value is ZeroConstant) {
-                // Nothing to do, GlobalAlloc does this
+                // Nothing to do, memory is zerod to start with
             }
             else if (value is UndefinedConstant) {
                 // Nothing to do
