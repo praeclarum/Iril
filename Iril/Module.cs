@@ -90,6 +90,14 @@ namespace Iril
                 OrderedGlobalVariables.Add (g);
             }
         }
+
+        public int Align (int offset, LType dataType, int dataTypeByteSize)
+        {
+            int alignment = dataType.GetAlignment (this);
+            while ((offset % alignment) != 0)
+                offset++;
+            return offset;
+        }
     }
 }
 

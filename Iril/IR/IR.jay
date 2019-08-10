@@ -327,7 +327,7 @@ literal_structure
     }
     | '{' type_list '}'
     {
-        $$ = new LiteralStructureType ((List<LType>)$2);
+        $$ = new LiteralStructureType (false, (List<LType>)$2);
     }
     | '<' '{' type_list '}' '>'
     {

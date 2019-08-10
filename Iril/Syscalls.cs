@@ -1076,7 +1076,7 @@ namespace Iril
 
         void EmitUMulOvf64 ()
         {
-            var st = new LiteralStructureType (new[] { Types.IntegerType.I64, Types.IntegerType.I1 });
+            var st = new LiteralStructureType (false, new[] { Types.IntegerType.I64, Types.IntegerType.I1 });
             var ct = compilation.GetClrType (st, module).Resolve ();
             var m = NewMethod ("@llvm.umul.with.overflow.i64", st,
                                ("x", Types.IntegerType.I64),

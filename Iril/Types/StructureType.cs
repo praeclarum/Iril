@@ -25,24 +25,37 @@ namespace Iril.Types
 
     public class LiteralStructureType : StructureType
     {
-        public static readonly LiteralStructureType Empty = new LiteralStructureType (Enumerable.Empty<LType> ());
+        public static readonly LiteralStructureType Empty = new LiteralStructureType (false, Enumerable.Empty<LType> ());
 
+        public readonly bool IsPacked;
         public readonly LType[] Elements;
 
-        public LiteralStructureType (IEnumerable<LType> elements)
+        public LiteralStructureType (bool isPacked, IEnumerable<LType> elements)
         {
+            IsPacked = isPacked;
             Elements = elements.ToArray ();
         }
 
         public override string ToString () =>
             $"{{{string.Join(", ", (object[])Elements)}}}";
 
-        public override long GetByteSize (Module module) => Elements.Sum (x => x.GetByteSize (module));
+        public override long GetByteSize (Module module)
+        {
+            var offset = 0;
+            for (var i = 0; i < Elements.Length; i++) {
+                var type = Elements[i];
+                var size = type.GetByteSize (module);
+                offset = module.Align (offset, type, (int)size);
+                offset += (int)size;
+            }
+            return offset;
+        }
 
         public override int GetAlignment (Module module) => Elements[0].GetAlignment (module);
 
         public override bool StructurallyEquals (LType other) =>
             other is LiteralStructureType a
+            && IsPacked == a.IsPacked
             && ElementsEqual (a.Elements);
 
         bool ElementsEqual (LType[] parameterTypes)
@@ -58,6 +71,7 @@ namespace Iril.Types
 
         public override int GetStructuralHashCode () =>
             1123
+            + IsPacked.GetHashCode ()
             + GetElementsHash ();
 
         int GetElementsHash ()
@@ -72,7 +86,7 @@ namespace Iril.Types
 
     public class PackedStructureType : LiteralStructureType
     {
-        public PackedStructureType (IEnumerable<LType> elements) : base (elements)
+        public PackedStructureType (IEnumerable<LType> elements) : base (true, elements)
         {
         }
     }

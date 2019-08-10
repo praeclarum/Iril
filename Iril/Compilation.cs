@@ -661,7 +661,7 @@ namespace Iril
                         fieldType = GetClrType (e, module: m);
                     }
                     var field = new FieldDefinition (fn, FieldAttributes.Public, fieldType);
-                    offset = Align (offset, e, (int)byteSize, m);
+                    offset = m.Align (offset, e, (int)byteSize);
                     field.Offset = offset;
                     td.Fields.Add (field);
                     offset += (int)byteSize;
@@ -783,7 +783,7 @@ namespace Iril
                 //
                 // Create a data type to store the global variables
                 //
-                var (moduleStruct, _) = CreateStructType ("", "GlobalData", globs.Select(x => x.Item2.Type).ToArray(), m);
+                var (moduleStruct, _) = CreateStructType ("", "GlobalData", false, globs.Select(x => x.Item2.Type).ToArray(), m);
                 moduleStruct.Attributes = (moduleStruct.Attributes & ~TypeAttributes.Public) | TypeAttributes.NestedPublic;
                 var n = globs.Count;
                 var gfields = new SymbolTable<(IR.GlobalVariable, FieldDefinition)> ();
@@ -1698,9 +1698,11 @@ namespace Iril
         {
             var n = elements.Length;
             var tname = $"Struct{n}_{string.Join("_", resolvedElements.Select(GetLTypeClrIdentifier))}";
+            if (st.IsPacked)
+                tname = "Packed" + tname;
 
             var ns = namespac + ".AnonymousTypes";
-            var (td, elementsClrTypes) = CreateStructType (ns, tname, resolvedElements, module);
+            var (td, elementsClrTypes) = CreateStructType (ns, tname, st.IsPacked, resolvedElements, module);
 
             var r = new AnonymousStruct {
                 ElementClrTypes = elementsClrTypes.ToArray (),
@@ -1714,7 +1716,7 @@ namespace Iril
             return r;
         }
 
-        (TypeDefinition, List<TypeReference>) CreateStructType (string ns, string tname, LType[] resolvedElements, Module module)
+        (TypeDefinition, List<TypeReference>) CreateStructType (string ns, string tname, bool isPacked, LType[] resolvedElements, Module module)
         {
             var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.Public;
             var td = new TypeDefinition (ns, tname, tattrs, sysVal);
@@ -1737,13 +1739,14 @@ namespace Iril
                 elementsClrTypes.Add (clrType);
                 string pre = GetFieldPrefix (resolvedElements[i]);
                 var f = new FieldDefinition (pre + i, FieldAttributes.Public, clrType);
-                offset = Align (offset, resolvedElements[i], (int)size, module: module);
+                if (!isPacked)
+                    offset = module.Align (offset, resolvedElements[i], (int)size);
                 f.Offset = offset;
                 td.Fields.Add (f);
                 offset += size;
             }
             td.ClassSize = offset;
-            td.PackingSize = (short)module.PointerByteSize;
+            td.PackingSize = isPacked ? (short)1 : (short)module.PointerByteSize;
             return (td, elementsClrTypes);
         }
 
@@ -1768,14 +1771,6 @@ namespace Iril
                 default:
                     return "F";
             }
-        }
-
-        static int Align (int offset, LType dataType, int dataTypeByteSize, Module module)
-        {
-            int alignment = dataType.GetAlignment (module);
-            while ((offset % alignment) != 0)
-                offset++;
-            return offset;
         }
 
         static string GetLTypeClrIdentifier (LType type)

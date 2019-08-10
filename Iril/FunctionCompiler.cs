@@ -2268,7 +2268,7 @@ namespace Iril
 
         TypeDefinition GetUMulOverflowResultType (LType valueType)
         {
-            var irType = new LiteralStructureType (new LType[] { valueType, Types.IntegerType.I1 });
+            var irType = new LiteralStructureType (false, new LType[] { valueType, Types.IntegerType.I1 });
             return compilation.GetClrType (irType, module: module).Resolve ();
         }
 

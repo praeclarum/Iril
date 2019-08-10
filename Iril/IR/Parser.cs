@@ -965,7 +965,7 @@ case 89:
 case 90:
 #line 331 "Iril/IR/IR.jay"
   {
-        yyVal = new LiteralStructureType ((List<LType>)yyVals[-1+yyTop]);
+        yyVal = new LiteralStructureType (false, (List<LType>)yyVals[-1+yyTop]);
     }
   break;
 case 91:
