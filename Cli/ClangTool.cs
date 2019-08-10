@@ -23,7 +23,8 @@ namespace Cli
             if (files.Count == 0)
                 return Enumerable.Empty<string> ();
 
-            var buildDir = Environment.CurrentDirectory;
+            var srcDir = Environment.CurrentDirectory;
+            var buildDir = Path.GetTempPath ();
 
             var iswin = Environment.OSVersion.Platform == PlatformID.Win32NT;
 
@@ -48,6 +49,12 @@ namespace Cli
                         argsHasStd = true;
                         args.Add (e);
                         break;
+                    case var _ when e.StartsWith ("-I"): {
+                            var orig = e.Substring (2);
+                            var fix = Path.GetFullPath (orig, srcDir);
+                            args.Add ("-I" + fix);
+                        }
+                        break;
                     default:
                         args.Add (e);
                         break;
@@ -66,6 +73,8 @@ namespace Cli
 
             args.AddRange (files);
 
+            args.Insert (0, "-I" + Environment.CurrentDirectory);
+
             var outFiles = new List<string> ();
 
             if (Run (buildDir, "clang", args.ToArray ()) == 0) {
@@ -73,7 +82,7 @@ namespace Cli
                     foreach (var f in files) {
                         var outName = Path.ChangeExtension (Path.GetFileName (f), ".ll");
                         var outPath = Path.Combine (buildDir, outName);
-                        Console.WriteLine ($"OUTLL = {outPath}");
+                        //Console.WriteLine ($"OUTLL = {outPath}");
                         outFiles.Add (outPath);
                     }
                 }
