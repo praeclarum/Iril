@@ -80,6 +80,15 @@ namespace Iril
             Emit (il.Create (OpCodes.Sizeof, info.DataType));
             Emit (il.Create (OpCodes.Initblk));
 
+            // Register with the memory manager
+            if (compilation.Options.SafeMemory) {
+                Emit (il.Create (OpCodes.Dup));
+                Emit (il.Create (OpCodes.Sizeof, info.DataType));
+                Emit (il.Create (OpCodes.Conv_I8));
+                Emit (il.Create (OpCodes.Ldstr, IR.MangledName.Demangle (module.Symbol) + ".globals"));
+                Emit (il.Create (OpCodes.Call, compilation.GetSystemMethod ("@_register_memory")));
+            }
+
             // Store them for later
             Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
             Emit (il.Create (OpCodes.Stsfld, info.DataField));

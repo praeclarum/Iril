@@ -1929,6 +1929,7 @@ namespace Iril
                     var field = td.Fields[fieldIndex];
 
                     EmitTypedValue(gep.Pointer);
+                    EmitVerifyWritePointer ();
                     EmitTypedValue(store.Value);
                     Emit(il.Create(OpCodes.Stfld, field));
                     return;
@@ -1936,7 +1937,8 @@ namespace Iril
             }
 
             EmitTypedValue(store.Pointer);
-            EmitTypedValue(store.Value);
+            EmitVerifyWritePointer ();
+            EmitTypedValue (store.Value);
             EmitStind (store.Value.Type);
         }
 
@@ -1963,12 +1965,14 @@ namespace Iril
                     var field = td.Fields[fieldIndex];
 
                     EmitTypedValue(gep.Pointer);
+                    EmitVerifyReadPointer ();
                     Emit(il.Create(OpCodes.Ldfld, field));
                     return;
                 }
             }
 
             EmitTypedValue(load.Pointer);
+            EmitVerifyReadPointer ();
 
             var et = compilation.GetClrType(load.Type, module: module);
             if (load.Type is IntegerType intt)

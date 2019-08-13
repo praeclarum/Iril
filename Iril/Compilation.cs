@@ -14,6 +14,7 @@ using System.Collections;
 using StdLib;
 using Mono.CompilerServices.SymbolWriter;
 using System.Transactions;
+using System.Globalization;
 
 namespace Iril
 {
@@ -189,7 +190,7 @@ namespace Iril
                 f.ReferenceCount++;
                 return f.ILDefinition;
             }
-            throw new Exception ($"Failed to find system method {symbol}");
+            throw new KeyNotFoundException ($"Failed to find system method `{symbol}`");
         }
 
         readonly Lazy<TypeDefinition> dataType;
@@ -199,10 +200,14 @@ namespace Iril
 
         public int MaxFunctions { get; set; } = int.MaxValue;
 
-        public Compilation (IEnumerable<Module> documents, string assemblyName)
+        readonly CompilationOptions options;
+        public CompilationOptions Options => options;
+
+        public Compilation (CompilationOptions options)
         {
-            Modules = documents.ToArray ();
-            AssemblyName = assemblyName;
+            this.options = options;
+            Modules = options.Modules;
+            AssemblyName = options.AssemblyName;
             SystemAssemblyPath = typeof(object).Assembly.Location;
             var version = new Version (1, 0);
             var asmName = new AssemblyNameDefinition (Path.GetFileNameWithoutExtension (AssemblyName), version);
@@ -280,44 +285,7 @@ namespace Iril
                 AssemblyResolver = resolver
             };
             sysAsm = AssemblyDefinition.ReadAssembly (netstdPath, rps);
-            var types = sysAsm.MainModule.ExportedTypes;
-            var scope = sysAsm.MainModule.Types.First ().Scope;
-            TypeReference Import (string name)
-            {
-                var et = types.First (x =>
-                    x.FullName == name);
-                var rt = et.Resolve ();
-                var t = new TypeReference (et.Namespace, et.Name, sysAsm.MainModule, scope);
-                t.IsValueType = rt.IsValueType;
-                return mod.ImportReference (t);
-            }
-            MethodReference ImportMethod (TypeReference declType, TypeReference returnType, string name, params TypeReference[] argTypes)
-            {
-                var td = declType.Resolve ();
-                var ms = td.Methods.Where (x => x.Name == name);
-                foreach (var m in ms) {
-                    if (m.Parameters.Count != argTypes.Length)
-                        continue;
-                    var match = m.ReturnType.FullName == returnType.FullName;
-                    for (var i = 0; match && i < m.Parameters.Count; i++) {
-                        var p = m.Parameters[i];
-                        if (p.ParameterType.FullName != argTypes[i].FullName)
-                            match = false;
-                    }
-                    if (match) {
-                        var mr = new MethodReference (name, returnType, declType);
-                        mr.ExplicitThis = m.ExplicitThis;
-                        mr.CallingConvention = m.CallingConvention;
-                        mr.HasThis = m.HasThis;
-                        foreach (var p in argTypes) {
-                            mr.Parameters.Add (new ParameterDefinition (p));
-                        }
-                        var imr = mod.ImportReference (mr);
-                        return imr;
-                    }
-                }
-                throw new Exception ($"Cannot find {name} in {declType}");
-            }
+            
             sysVoid = Import ("System.Void");
             sysObj = Import ("System.Object");
             sysVal = Import ("System.ValueType");
@@ -405,6 +373,61 @@ namespace Iril
             sysStackTraceGetFrameCount = ImportMethod (sysStackTrace, sysInt32, "get_FrameCount");
             sysStringCharCountCtor = ImportMethod (sysString, sysVoid, ".ctor", sysChar, sysInt32);
             sysStringConcat = ImportMethod (sysString, sysString, "Concat", sysString, sysString);
+        }
+
+        TypeReference Import (string name)
+        {
+            var types = sysAsm.MainModule.ExportedTypes;
+            var scope = sysAsm.MainModule.Types.First ().Scope;
+            var et = types.FirstOrDefault (x =>
+                x.FullName == name);
+            if (et == null) {
+                throw new Exception ($"Cannot find imported type `{name}`");
+            }
+            var rt = et.Resolve ();
+            var t = new TypeReference (et.Namespace, et.Name, sysAsm.MainModule, scope) {
+                IsValueType = rt.IsValueType,
+            };
+            if (rt.HasGenericParameters) {
+                foreach (var g in rt.GenericParameters) {
+                    Console.WriteLine (g.Owner);
+                    t.GenericParameters.Add (new GenericParameter (g.Name, t));
+                }
+            }
+            return mod.ImportReference (t);
+        }
+        MethodReference ImportMethod (TypeReference declType, TypeReference returnType, string name, params TypeReference[] argTypes)
+        {
+            var td = (declType.IsGenericInstance ? declType.GetElementType() : declType).Resolve ();
+            var ms = td.Methods.Where (x => x.Name == name);
+            foreach (var m in ms) {
+                if (m.Parameters.Count != argTypes.Length)
+                    continue;
+                var match = m.ReturnType.IsGenericParameter ? true : (m.ReturnType.FullName == returnType.FullName);
+                for (var i = 0; match && i < m.Parameters.Count; i++) {
+                    var p = m.Parameters[i];
+                    if (!p.ParameterType.IsGenericParameter && p.ParameterType.FullName != argTypes[i].FullName)
+                        match = false;
+                }
+                if (match) {
+                    var mr = new MethodReference (name, returnType, declType);
+                    mr.ExplicitThis = m.ExplicitThis;
+                    mr.CallingConvention = m.CallingConvention;
+                    mr.HasThis = m.HasThis;
+                    for (var i = 0; i < argTypes.Length; i++) {
+                        var p = argTypes[i];
+                        if (p.IsGenericParameter) {
+                            mr.Parameters.Add (new ParameterDefinition (m.Parameters[i].ParameterType));
+                        }
+                        else {
+                            mr.Parameters.Add (new ParameterDefinition (p));
+                        }
+                    }
+                    var imr = mod.ImportReference (mr);
+                    return imr;
+                }
+            }
+            throw new Exception ($"Cannot find {name} in {declType}");
         }
 
         readonly SymbolTable<Mono.Cecil.Cil.Document> fileDocuments = new SymbolTable<Mono.Cecil.Cil.Document> ();
@@ -896,11 +919,16 @@ namespace Iril
 
         void EmitGlobalInitializers (Module m, TypeDefinition moduleGlobalsType, ModuleGlobalInfo info)
         {
-            var mattrs = MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName;
-            var cctor = new MethodDefinition (".cctor", mattrs, sysVoid);
-            moduleGlobalsType.Methods.Add (cctor);
-            var compiler = new GlobalInitializersCompiler (this, m, cctor, info);
-            compiler.Compile ();
+            try {
+                var mattrs = MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName;
+                var cctor = new MethodDefinition (".cctor", mattrs, sysVoid);
+                moduleGlobalsType.Methods.Add (cctor);
+                var compiler = new GlobalInitializersCompiler (this, m, cctor, info);
+                compiler.Compile ();
+            }
+            catch (Exception ex) {
+                ErrorMessage (m.SourceFilename, "Failed to compile global initializers", ex);
+            }
         }
 
         TypeDefinition CreateLongjmpException ()
@@ -964,33 +992,56 @@ namespace Iril
         {
             var assembly = AssemblyDefinition.ReadAssembly (path, parameters);
             var module = assembly.MainModule;
+            var itypes = new Dictionary<string, TypeDefinition> ();
+
             foreach (var t in module.Types) {
-                var it = ImportType (t);
-                if (it != null) {
-                    mod.Types.Add (it);
+                if (HasExportAttribute (t, needsArg: false)) {
+                    var it = ImportType (t, x => mod.Types.Add (x));
                 }
             }
 
-            TypeDefinition ImportType (TypeDefinition type)
+            bool HasExportAttribute (ICustomAttributeProvider m, bool needsArg)
+            {
+                return FindExportAttribute (m, needsArg) != null;
+            }
+
+            CustomAttribute FindExportAttribute (ICustomAttributeProvider m, bool needsArg)
+            {
+                if (!m.HasCustomAttributes)
+                    return null;
+                var dllExportAttr = m.CustomAttributes.FirstOrDefault (x =>
+                    x.Constructor.DeclaringType.Name == "DllExportAttribute"
+                    && (!needsArg || x.HasConstructorArguments && x.ConstructorArguments.Count > 0));
+                return dllExportAttr;
+            }
+
+            TypeDefinition ImportType (TypeDefinition type, Action<TypeDefinition> add)
             {
                 var it = new TypeDefinition (type.Namespace, type.Name, type.Attributes);
                 it.BaseType = ImportTypeRef (type.BaseType) ?? sysObj;
+                itypes[it.FullName] = it;
+                add (it);
+                foreach (var nt in type.NestedTypes) {
+                    if (HasExportAttribute (nt, needsArg: false)) {
+                        ImportType (nt, x => it.NestedTypes.Add (x));
+                    }
+                }
+                foreach (var f in type.Fields) {
+                    var iff = new FieldDefinition (f.Name, f.Attributes, ImportTypeRef (f.FieldType));
+                    it.Fields.Add (iff);
+                }
                 foreach (var m in type.Methods) {
-                    if (!m.IsStatic)
-                        continue;
-                    if (!m.HasCustomAttributes)
-                        continue;
-                    var dllExportAttr = m.CustomAttributes.FirstOrDefault (x =>
-                        x.Constructor.DeclaringType.Name == "DllExportAttribute"
-                        && x.HasConstructorArguments
-                        && x.ConstructorArguments.Count > 0);
-                    if (dllExportAttr == null)
+                    var export = FindExportAttribute (m, needsArg: true);
+                    if (export == null && !m.IsConstructor)
                         continue;
 
-                    var symbol = Symbol.Intern (dllExportAttr.ConstructorArguments[0].Value.ToString ());
-                    var im = ImportMethod (m);
-                    if (im != null) {
-                        it.Methods.Add (im);
+                    var im = ImportTypeMethod (m, it);
+                    if (im == null)
+                        continue;
+
+                    if (export != null) {
+                        var symbol = Symbol.Intern (export.ConstructorArguments[0].Value.ToString ());
+
                         importedMethods[symbol] = im;
 
                         externalMethodDefs[symbol] = new DefinedFunction {
@@ -1001,31 +1052,36 @@ namespace Iril
                             ParamSyms = new SymbolTable<ParameterDefinition> (),
                         };
                     }
+                    else if (im.IsConstructor) {
+                        // OK
+                    }
                 }
-                return (it.Methods.Count > 0) ? it : null;
+                return it;
             }
 
-            MethodDefinition ImportMethod (MethodDefinition methodDefinition)
+            MethodDefinition ImportTypeMethod (MethodDefinition methodDefinition, TypeDefinition importType)
             {
                 var irt = ImportTypeRef (methodDefinition.ReturnType);
                 var im = new MethodDefinition (methodDefinition.Name, methodDefinition.Attributes, irt);
+                importType.Methods.Add (im);
                 foreach (var p in methodDefinition.Parameters) {
                     var ip = new ParameterDefinition (p.Name, p.Attributes, ImportTypeRef (p.ParameterType));
                     im.Parameters.Add (ip);
                 }
                 var ib = new MethodBody (im);
                 try {
-                    ImportMethodBody (methodDefinition, im, ib);
+                    ImportMethodBody (methodDefinition, im, ib, importType);
                     im.Body = ib;
                     return im;
                 }
                 catch (Exception ex) {
-                    Debug.WriteLine (ex);
+                    ErrorMessage ("", "Failed to import method", ex);
+                    importType.Methods.Remove(im);
                     return null;
                 }
             }
 
-            void ImportMethodBody (MethodDefinition methodDefinition, MethodDefinition im, MethodBody ib)
+            void ImportMethodBody (MethodDefinition methodDefinition, MethodDefinition im, MethodBody ib, TypeDefinition importType)
             {
                 var b = methodDefinition.Body;
                 ib.InitLocals = b.InitLocals;
@@ -1066,7 +1122,7 @@ namespace Iril
                         ii = il.Create (i.OpCode, ImportMethodRef (omr));
                     }
                     else if (i.Operand is FieldReference ofr) {
-                        ii = il.Create (i.OpCode, ImportFieldRef (ofr));
+                        ii = il.Create (i.OpCode, ImportFieldRef (ofr, methodDefinition.DeclaringType, importType));
                     }
                     else if (i.Operand is string os) {
                         ii = il.Create (i.OpCode, os);
@@ -1109,20 +1165,36 @@ namespace Iril
                 }
             }
 
-            FieldReference ImportFieldRef (FieldReference fr)
+            FieldReference ImportFieldRef (FieldReference fr, TypeReference type, TypeDefinition importType)
             {
-                var fd = fr.Resolve ();
-                var fieldIndex = fd.DeclaringType.Fields.IndexOf (fd);
-                var it = ImportTypeDef (fr.DeclaringType.Namespace, fr.DeclaringType.Name);
-                var ifr = it.Fields.FirstOrDefault (x => x.Name == fr.Name);
-                if (0 > fieldIndex || fieldIndex >= it.Fields.Count)
-                    throw new Exception ($"Couldn't find field {fr.Name} in {it.FullName}");
-                return it.Fields[fieldIndex];
+                if (fr.DeclaringType.FullName == type.FullName) {
+                    var fd = importType.Fields.First (x => x.Name == fr.Name);
+                    return fd;
+                }
+                else if (fr.DeclaringType.Namespace == type.Namespace) {
+                    var fd = fr.Resolve ();
+                    var fieldIndex = fd.DeclaringType.Fields.IndexOf (fd);
+                    var it = ImportTypeDef (fr.DeclaringType.Namespace, fr.DeclaringType.Name);
+                    var ifr = it.Fields.FirstOrDefault (x => x.Name == fr.Name);
+                    if (0 > fieldIndex || fieldIndex >= it.Fields.Count)
+                        throw new Exception ($"Couldn't find field {fr.Name} in {it.FullName}");
+                    return it.Fields[fieldIndex];
+                }
+                else {
+                    var tr = ImportTypeRef (fr.DeclaringType);
+                    var td = tr.Resolve ();
+                    var ifr = mod.ImportReference (td.Fields.First (x => x.Name == fr.Name));
+                    return ifr;
+                }
             }
 
             MethodReference ImportMethodRef (MethodReference mr)
             {
-                var imr = mod.ImportReference (mr);
+                Console.WriteLine ("IMPORT " + mr);
+                var t = ImportTypeRef (mr.DeclaringType);
+                var irt = ImportTypeRef (mr.ReturnType);
+                var iparams = mr.Parameters.Select (x => ImportTypeRef (x.ParameterType)).ToArray ();
+                var imr = ImportMethod (t, irt, mr.Name, iparams);
                 return imr;
             }
 
@@ -1136,19 +1208,53 @@ namespace Iril
 
             TypeReference ImportTypeRef (TypeReference tr)
             {
+                Console.WriteLine ("ITR " + tr.FullName);
                 if (tr == null)
                     return null;
                 if (tr.IsPointer) {
                     return ImportTypeRef (tr.GetElementType ()).MakePointerType ();
                 }
+                else if (tr.IsArray) {
+                    return ImportTypeRef (tr.GetElementType ()).MakeArrayType ();
+                }
+                else if (tr.IsGenericParameter) {
+                    var et = ImportTypeRef (tr.DeclaringType).Resolve ();
+                    var igp = new GenericParameter (tr.Name, et);
+                    return igp;
+                }
+                else if (tr.IsNested) {
+                    var td = ImportTypeRef (tr.DeclaringType).Resolve ();
+                    var nt = td.NestedTypes.FirstOrDefault (x => x.Name == tr.Name);
+                    if (nt == null) {
+                        throw new Exception ($"Cannot find imported nested type {tr.Name} in {td}");
+                    }
+                    return nt;
+                }
+                else if (tr.IsByReference) {
+                    return ImportTypeRef (tr.GetElementType ()).MakeByReferenceType ();
+                }
+                else if (tr.IsGenericInstance && tr is GenericInstanceType git) {
+                    var ips = git.GenericArguments.Select (ImportTypeRef).ToArray ();
+                    var itr = ImportTypeRef (git.ElementType);
+                    var igit = itr.MakeGenericInstanceType (ips);
+                    return igit;
+                }
+                else if (itypes.TryGetValue (tr.FullName, out var itt)) {
+                    return itt;
+                }
                 else {
-
                     var name = tr.Name;
                     var itd = mod.Types.FirstOrDefault (x => x.Name == name);
                     if (itd != null)
                         return itd;
-                    var itr = mod.ImportReference (tr);
-                    return itr;
+
+                    if (tr.Namespace.StartsWith ("System", StringComparison.Ordinal)) {
+                        var itr = Import (tr.FullName);
+                        return itr;
+                    }
+                    else {
+                        throw new NotSupportedException ($"Cannot import type reference {tr}");
+                    }
                 }
             }
         }
@@ -1980,6 +2086,20 @@ namespace Iril
                 var rtjsonPath = Path.ChangeExtension (path, ".runtimeconfig.json");
                 File.WriteAllText (rtjsonPath, text);
             }
+        }
+    }
+
+    public class CompilationOptions
+    {
+        public readonly Module[] Modules;
+        public readonly string AssemblyName;
+        public readonly bool SafeMemory;
+
+        public CompilationOptions (IEnumerable<Module> modules, string assemblyName, bool safeMemory = false)
+        {
+            Modules = modules.ToArray ();
+            AssemblyName = assemblyName;
+            SafeMemory = safeMemory;
         }
     }
 }

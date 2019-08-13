@@ -22,6 +22,7 @@ namespace Cli
             var files = new List<string> ();
             var extraArgs = new List<string> ();
             var outName = "";
+            var safeMemory = false;
             var showHelp = false;
             var showVersion = false;
 
@@ -46,6 +47,10 @@ namespace Cli
                     }
                     else if (a == "-v" || a == "--version") {
                         showVersion = true;
+                        i++;
+                    }
+                    else if (a == "--safe-memory") {
+                        safeMemory = true;
                         i++;
                     }
                     else {
@@ -77,6 +82,7 @@ namespace Cli
                 Console.WriteLine ($"  -o <asm file>      Path to the assembly .dll to output");
                 Console.WriteLine ($"  -h, -?, --help     Display this help");
                 Console.WriteLine ($"  -v, --version      Display the version");
+                Console.WriteLine ($"  --safe-memory      Verify memory accesses to make code safe from crashes");
                 return 0;
             }
 
@@ -131,7 +137,7 @@ namespace Cli
                 // Compile
                 //
                 Info ("Compiling...");
-                var comp = new Compilation (modules, outName);
+                var comp = new Compilation (new CompilationOptions (modules, outName, safeMemory: safeMemory));
                 comp.Compile ();
 
                 //

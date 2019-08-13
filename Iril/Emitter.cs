@@ -712,5 +712,21 @@ namespace Iril
                 Emit (il.Create (OpCodes.Stobj, compilation.GetClrType (type, module)));
             }
         }
+
+        protected void EmitVerifyReadPointer ()
+        {
+            if (compilation.Options.SafeMemory) {
+                Emit (il.Create (OpCodes.Dup));
+                Emit (il.Create (OpCodes.Call, compilation.GetSystemMethod ("@_verify_read_pointer")));
+            }
+        }
+
+        protected void EmitVerifyWritePointer ()
+        {
+            if (compilation.Options.SafeMemory) {
+                Emit (il.Create (OpCodes.Dup));
+                Emit (il.Create (OpCodes.Call, compilation.GetSystemMethod ("@_verify_write_pointer")));
+            }
+        }
     }
 }

@@ -31,9 +31,7 @@ namespace Iril
             EmitAssertRtn ();
             EmitCalloc ();
             EmitDelete ();
-            EmitFree ();
             EmitFreeException ();
-            EmitMalloc ();
             EmitNew ();
             EmitPersonality ();
             EmitThrow ();
@@ -180,27 +178,6 @@ namespace Iril
             il.Append (il.Create (OpCodes.Ldloc_0));
             il.Append (il.Create (OpCodes.Initblk));
             il.Append (il.Create (OpCodes.Ldloc_1));
-            il.Append (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
-            il.Append (il.Create (OpCodes.Ret));
-            b.Optimize ();
-        }
-
-        void EmitMalloc ()
-        {
-            var m = NewMethod ("@malloc", Types.PointerType.I8Pointer, ("size", IntegerType.I64));
-            var b = m.Body;
-            var il = b.GetILProcessor ();
-            il.Append (il.Create (OpCodes.Ldarg_0));
-            il.Append (il.Create (OpCodes.Call, compilation.sysIntPtrFromInt64));
-            il.Append (il.Create (OpCodes.Call, compilation.sysAllocHGlobal));
-
-            //il.Append (il.Create (OpCodes.Dup));
-            //il.Append (il.Create (OpCodes.Ldc_I4_0));
-            //il.Append (il.Create (OpCodes.Conv_U1));
-            //il.Append (il.Create (OpCodes.Ldarg_0));
-            //il.Append (il.Create (OpCodes.Conv_U4));
-            //il.Append (il.Create (OpCodes.Initblk));
-
             il.Append (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
             il.Append (il.Create (OpCodes.Ret));
             b.Optimize ();
@@ -381,18 +358,6 @@ namespace Iril
         void EmitDelete ()
         {
             var m = NewMethod ("@_ZdlPv", Types.VoidType.Void, ("ptr", Types.PointerType.I8Pointer));
-            var b = m.Body;
-            var il = b.GetILProcessor ();
-            il.Append (il.Create (OpCodes.Ldarg_0));
-            il.Append (il.Create (OpCodes.Call, compilation.sysIntPtrFromPointer));
-            il.Append (il.Create (OpCodes.Call, compilation.sysFreeHGlobal));
-            il.Append (il.Create (OpCodes.Ret));
-            b.Optimize ();
-        }
-
-        void EmitFree ()
-        {
-            var m = NewMethod ("@free", Types.VoidType.Void, ("ptr", Types.PointerType.I8Pointer));
             var b = m.Body;
             var il = b.GetILProcessor ();
             il.Append (il.Create (OpCodes.Ldarg_0));
