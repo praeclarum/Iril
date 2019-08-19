@@ -1014,13 +1014,14 @@ namespace Iril
                     if (compilation.Options.SafeMemory) {
                         var v = new VariableDefinition (compilation.sysBytePtr);
                         body.Variables.Add (v);
-                        Emit (il.Create (OpCodes.Stloc, v));
                         allocas.Add (assignedSymbol, v);
+                        Emit (il.Create (OpCodes.Dup));
+                        Emit (il.Create (OpCodes.Stloc, v));
                         Emit (il.Create (OpCodes.Ldloc, v));
                         EmitAllocaSize (alloca);
+                        Emit (il.Create (OpCodes.Conv_I8));
                         Emit (il.Create (OpCodes.Ldstr, $"{function.Symbol}.alloca"));
                         Emit (il.Create (OpCodes.Call, compilation.GetSystemMethod ("@_register_memory")));
-                        Emit (il.Create (OpCodes.Ldloc, v));
                     }
                     break;
                 case IR.AndInstruction and:

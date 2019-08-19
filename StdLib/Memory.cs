@@ -237,6 +237,7 @@ namespace StdLib
                     var b = ((MemoryBlock)registeredMemory[i]);
                     if (b.Pointer == pointer) {
                         Console.WriteLine ($"UNREGISTER @{insertAt} 0x{(ulong)pointer:x} length {b.Length} for {b.Purpose}");
+                        registeredMemory.RemoveAt (i);
                         return;
                     }
                 }
