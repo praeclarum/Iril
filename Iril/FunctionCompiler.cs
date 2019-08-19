@@ -52,6 +52,8 @@ namespace Iril
 
         readonly SymbolTable<int> localCounts = new SymbolTable<int> ();
 
+        readonly SymbolTable<VariableDefinition> allocas = new SymbolTable<VariableDefinition> ();
+
         public void CompileFunction()
         {
             if (triedToCompile)
@@ -1005,24 +1007,20 @@ namespace Iril
                         }
                     }
                     break;
-                case IR.AllocaInstruction alloca: {
-                        var byteSize = alloca.Type.GetByteSize (function.IRModule);
-                        if (byteSize > 1) {
-                            Emit (il.Create (OpCodes.Ldc_I4, (int)byteSize));
-                        }
-                        if (alloca.NumElements != null) {
-                            EmitTypedValue (alloca.NumElements);
-                            if (byteSize > 1) {
-                                Emit (il.Create (OpCodes.Mul));
-                            }
-                        }
-                        else {
-                            if (byteSize == 1) {
-                                Emit (il.Create (OpCodes.Ldc_I4_1));
-                            }
-                        }
-                        Emit (il.Create (OpCodes.Conv_U));
-                        Emit (il.Create (OpCodes.Localloc));
+                case IR.AllocaInstruction alloca:
+                    EmitAllocaSize (alloca);
+                    Emit (il.Create (OpCodes.Localloc));
+
+                    if (compilation.Options.SafeMemory) {
+                        var v = new VariableDefinition (compilation.sysBytePtr);
+                        body.Variables.Add (v);
+                        Emit (il.Create (OpCodes.Stloc, v));
+                        allocas.Add (assignedSymbol, v);
+                        Emit (il.Create (OpCodes.Ldloc, v));
+                        EmitAllocaSize (alloca);
+                        Emit (il.Create (OpCodes.Ldstr, $"{function.Symbol}.alloca"));
+                        Emit (il.Create (OpCodes.Call, compilation.GetSystemMethod ("@_register_memory")));
+                        Emit (il.Create (OpCodes.Ldloc, v));
                     }
                     break;
                 case IR.AndInstruction and:
@@ -1328,6 +1326,9 @@ namespace Iril
                         Emit (il.Create (OpCodes.Ldstr, ""));
                         Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
                     }
+                    if (compilation.Options.SafeMemory) {
+                        EmitUnregisterAllocas ();
+                    }
                     Emit (il.Create(OpCodes.Ret));
                     break;
                 case IR.SdivInstruction sdiv:
@@ -1594,6 +1595,9 @@ namespace Iril
                     }
                     break;
                 case IR.UnreachableInstruction unreach:
+                    if (compilation.Options.SafeMemory) {
+                        EmitUnregisterAllocas ();
+                    }
                     if (!function.IRDefinition.ReturnType.StructurallyEquals (VoidType.Void)) {
                         EmitZeroValue (function.IRDefinition.ReturnType);
                     }
@@ -1649,6 +1653,34 @@ namespace Iril
                     break;
                 default:
                     throw new NotImplementedException($"{instruction.GetType().Name}: {instruction}");
+            }
+        }
+
+        private void EmitAllocaSize (AllocaInstruction alloca)
+        {
+            var byteSize = alloca.Type.GetByteSize (function.IRModule);
+            if (byteSize > 1) {
+                Emit (il.Create (OpCodes.Ldc_I4, (int)byteSize));
+            }
+            if (alloca.NumElements != null) {
+                EmitTypedValue (alloca.NumElements);
+                if (byteSize > 1) {
+                    Emit (il.Create (OpCodes.Mul));
+                }
+            }
+            else {
+                if (byteSize == 1) {
+                    Emit (il.Create (OpCodes.Ldc_I4_1));
+                }
+            }
+            Emit (il.Create (OpCodes.Conv_U));
+        }
+
+        void EmitUnregisterAllocas ()
+        {
+            foreach (var kv in allocas) {
+                Emit (il.Create (OpCodes.Ldloc, kv.Value));
+                Emit (il.Create (OpCodes.Call, compilation.GetSystemMethod ("@_unregister_memory")));
             }
         }
 

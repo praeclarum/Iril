@@ -158,9 +158,9 @@ namespace StdLib
                     var b = (MemoryBlock)registeredMemory[i];
                     var offset = pointer - b.Pointer;
                     if (offset > b.Length) {
-                        throw new Exception ($"Read Access Violation 0x{(ulong)pointer:x}. Address outside the range of block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}]");
+                        throw new Exception ($"Read Access Violation 0x{(ulong)pointer:x}. Address outside the range of block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}/{b.Length}]");
                     }
-                    Console.WriteLine ($"READ 0x{(ulong)pointer:x} block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}]");
+                    //Console.WriteLine ($"READ 0x{(ulong)pointer:x} block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}/{b.Length}]");
                 }
                 else {
                     throw new Exception ($"Read Access Violation 0x{(ulong)pointer:x}. Could not find allocated block @{i}/{registeredMemory.Count}");
@@ -184,9 +184,9 @@ namespace StdLib
                     var b = (MemoryBlock)registeredMemory[i];
                     var offset = pointer - b.Pointer;
                     if (offset > b.Length) {
-                        throw new Exception ($"Write Access Violation 0x{(ulong)pointer:x}. Address outside the range of block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}]");
+                        throw new Exception ($"Write Access Violation 0x{(ulong)pointer:x}. Address outside the range of block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}/{b.Length}]");
                     }
-                    Console.WriteLine ($"WRITE 0x{(ulong)pointer:x} block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}]");
+                    //Console.WriteLine ($"WRITE 0x{(ulong)pointer:x} block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}/{b.Length}]");
                 }
                 else {
                     throw new Exception ($"Write Access Violation 0x{(ulong)pointer:x}. Could not find allocated block @{i}/{registeredMemory.Count}");
@@ -228,7 +228,20 @@ namespace StdLib
         [DllExport ("@_unregister_memory")]
         public unsafe static void UnregisterMemory (byte* pointer)
         {
-            Console.WriteLine ($"UNREGISTER 0x{(ulong)pointer:x}");
+            if (pointer == null)
+                return;
+            lock (registeredMemory) {
+                var n = registeredMemory.Count;
+                int insertAt = 0;
+                for (var i = 0; i < n; i++) {
+                    var b = ((MemoryBlock)registeredMemory[i]);
+                    if (b.Pointer == pointer) {
+                        Console.WriteLine ($"UNREGISTER @{insertAt} 0x{(ulong)pointer:x} length {b.Length} for {b.Purpose}");
+                        return;
+                    }
+                }
+                throw new Exception ($"Free Access Violation. No block for 0x{(ulong)pointer:x}");
+            }
         }
 
         [DllExport ("@malloc")]
