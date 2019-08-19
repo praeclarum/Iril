@@ -1,8 +1,12 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using size_t = System.UInt64;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Collections;
 
 namespace StdLib
 {
@@ -102,15 +106,27 @@ namespace StdLib
             return (*(byte*)s1 - *(byte*)(s2 - 1));
         }
 
-        //static List<MemoryBlock> registeredMemory = new List<MemoryBlock> ();
+        static ArrayList registeredMemory = new ArrayList ();
 
-        //[DllExport]
-        //unsafe class MemoryBlock
-        //{
-        //    public byte* Pointer;
-        //    public long Length;
-        //    public string Purpose;
-        //}
+        //static unsafe readonly MemoryBlock regHead = new MemoryBlock (null, 0, "Root of All Memory");
+
+        [DllExport]
+        unsafe class MemoryBlock
+        {
+            public byte* Pointer;
+            public long Length;
+            public string Purpose;
+
+            //public MemoryBlock? Less;
+            //public MemoryBlock? Greater;
+
+            public MemoryBlock (byte* pointer, long length, string purpose)
+            {
+                Pointer = pointer;
+                Length = length;
+                Purpose = purpose;
+            }
+        }
 
         [DllExport ("@strncmp")]
         public unsafe static int strncmp (byte* s1, byte* s2, long n)
@@ -131,39 +147,88 @@ namespace StdLib
         [DllExport ("@_verify_read_pointer")]
         public unsafe static void VerifyReadPointer (byte* pointer)
         {
-            Console.WriteLine ("READ " + (IntPtr)pointer);
+            lock (registeredMemory) {
+                var n = registeredMemory.Count;
+                int insertAt = 0;
+                while (insertAt < n && pointer >= ((MemoryBlock)registeredMemory[insertAt]).Pointer) {
+                    insertAt++;
+                }
+                var i = insertAt - 1;
+                if (0 <= i && i < registeredMemory.Count) {
+                    var b = (MemoryBlock)registeredMemory[i];
+                    var offset = pointer - b.Pointer;
+                    if (offset > b.Length) {
+                        throw new Exception ($"Read Access Violation 0x{(ulong)pointer:x}. Address outside the range of block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}]");
+                    }
+                    Console.WriteLine ($"READ 0x{(ulong)pointer:x} block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}]");
+                }
+                else {
+                    throw new Exception ($"Read Access Violation 0x{(ulong)pointer:x}. Could not find allocated block @{i}/{registeredMemory.Count}");
+                }
+            }
+
+            //Console.WriteLine ("READ " + (IntPtr)pointer);
         }
 
         [DllExport ("@_verify_write_pointer")]
         public unsafe static void VerifyWritePointer (byte* pointer)
         {
-            Console.WriteLine ("WRITE " + (IntPtr)pointer);
+            lock (registeredMemory) {
+                var n = registeredMemory.Count;
+                int insertAt = 0;
+                while (insertAt < n && pointer >= ((MemoryBlock)registeredMemory[insertAt]).Pointer) {
+                    insertAt++;
+                }
+                var i = insertAt - 1;
+                if (0 <= i && i < registeredMemory.Count) {
+                    var b = (MemoryBlock)registeredMemory[i];
+                    var offset = pointer - b.Pointer;
+                    if (offset > b.Length) {
+                        throw new Exception ($"Write Access Violation 0x{(ulong)pointer:x}. Address outside the range of block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}]");
+                    }
+                    Console.WriteLine ($"WRITE 0x{(ulong)pointer:x} block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}]");
+                }
+                else {
+                    throw new Exception ($"Write Access Violation 0x{(ulong)pointer:x}. Could not find allocated block @{i}/{registeredMemory.Count}");
+                }
+            }
         }
 
         [DllExport ("@_register_memory")]
         public unsafe static void RegisterMemory (byte* pointer, long size, string purpose)
         {
+            //var b = new MemoryBlock (pointer, size, purpose);
+
             // Save it in the list
-            //lock (registeredMemory) {
-            //    var n = registeredMemory.Count;
-            //    int insertAt = 0;
-            //    while (insertAt < n && pointer > (byte*)registeredMemory[insertAt].Pointer) {
-            //        insertAt++;
+            //lock (regHead) {
+            //    var p = regHead;
+
+            //    if (p.Pointer == pointer) {
+            //        throw new Exception ($"Reallocated memory at {new IntPtr(pointer)}");
             //    }
-            //    registeredMemory.Insert (insertAt, new MemoryBlock {
-            //        Pointer = pointer,
-            //        Length = size,
-            //        Purpose = purpose
-            //    });
-            //    Console.WriteLine ("REGISTER @" + insertAt + " " + (IntPtr)pointer + " length " + size + " for " + purpose);
+            //    else if (pointer > p.Pointer) {
+            //        if (p.Greater == null) {
+
+            //        }
+            //    }
             //}
-            Console.WriteLine ("REGISTER " + (IntPtr)pointer + " length " + size + " for " + purpose);
+
+            lock (registeredMemory) {
+                var n = registeredMemory.Count;
+                int insertAt = 0;
+                while (insertAt < n && pointer >= ((MemoryBlock)registeredMemory[insertAt]).Pointer) {
+                    insertAt++;
+                }
+                registeredMemory.Insert (insertAt, new MemoryBlock (pointer, size, purpose));
+                Console.WriteLine ($"REGISTER @{insertAt} 0x{(ulong)pointer:x} length {size} for {purpose}");
+            }
+            //Console.WriteLine ("REGISTER " + (IntPtr)pointer + " length " + size + " for " + purpose);
         }
 
         [DllExport ("@_unregister_memory")]
         public unsafe static void UnregisterMemory (byte* pointer)
         {
-            Console.WriteLine ("UNREGISTER " + (IntPtr)pointer);
+            Console.WriteLine ($"UNREGISTER 0x{(ulong)pointer:x}");
         }
 
         [DllExport ("@malloc")]

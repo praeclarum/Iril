@@ -1190,7 +1190,7 @@ namespace Iril
 
             MethodReference ImportMethodRef (MethodReference mr)
             {
-                Console.WriteLine ("IMPORT " + mr);
+                //Console.WriteLine ("IMPORT " + mr);
                 var t = ImportTypeRef (mr.DeclaringType);
                 var irt = ImportTypeRef (mr.ReturnType);
                 var iparams = mr.Parameters.Select (x => ImportTypeRef (x.ParameterType)).ToArray ();
@@ -1208,7 +1208,7 @@ namespace Iril
 
             TypeReference ImportTypeRef (TypeReference tr)
             {
-                Console.WriteLine ("ITR " + tr.FullName);
+                //Console.WriteLine ("ITR " + tr.FullName);
                 if (tr == null)
                     return null;
                 if (tr.IsPointer) {
