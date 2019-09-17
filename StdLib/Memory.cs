@@ -256,9 +256,12 @@ namespace StdLib
         }
 
         [DllExport ("@free")]
-        public unsafe static void free (void* pointer)
+        public unsafe static void free (byte* pointer)
         {
             Marshal.FreeHGlobal ((IntPtr)pointer);
+            if (Safe) {
+                UnregisterMemory (pointer);
+            }
         }
 
         public static bool Safe = true;

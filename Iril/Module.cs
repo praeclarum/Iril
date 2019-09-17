@@ -55,11 +55,15 @@ namespace Iril
 
         public override string ToString () => Symbol.ToString ();
 
+        public Module (Symbol moduleSymbol)
+        {
+            Symbol = moduleSymbol;
+        }
+
         public static Module Parse (string llvm, string filename = "")
         {
-            var module = new Module ();
+            var module = new Module (GetSymbolFromFileName (filename));
             module.FilePath = !string.IsNullOrEmpty (filename) ? filename : "";
-            module.Symbol = GetSymbolFromFileName (filename);
             var parser = new Parser (module);
             var lex = new Lexer (llvm);
             try {
@@ -76,11 +80,18 @@ namespace Iril
             return module;
         }
 
+        static int unnamedModuleCount = 0;
+
         static Symbol GetSymbolFromFileName (string rawName)
         {
             var name = System.IO.Path.GetFileNameWithoutExtension (rawName ?? "");
             var lastName = name.Split (new[] { '.', ' ', '\t', '\r', '\n', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault ();
-            return lastName ?? "Module";
+            if (lastName != null)
+                return lastName;
+
+            unnamedModuleCount++;
+            lastName = "Module" + unnamedModuleCount;
+            return lastName;
         }
 
         public void AddGlobalVariable (GlobalVariable g)

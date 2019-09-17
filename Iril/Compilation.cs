@@ -227,11 +227,14 @@ namespace Iril
             };
 
             libraries = Library.StandardLibraries;
+
+
         }
 
         public void Compile ()
         {
             FindSystemTypes ();
+            CreateSyscalls ();
             FindStructures ();
             FindFunctions ();
             //PrintNameTree ();
@@ -617,11 +620,23 @@ namespace Iril
             return symbol.Text.IndexOf (".anon", StringComparison.Ordinal) > 0;
         }
 
+        void CreateSyscalls ()
+        {
+            var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract | TypeAttributes.Sealed;
+            var syscallstd = new TypeDefinition ("", "<CrtImplementationDetails>", tattrs, sysObj);
+            mod.Types.Add (syscallstd);
+            syscalls = new Syscalls (this, syscallstd);
+        }
+
         void FindStructures ()
         {
+            syscalls.FindStructures (Modules);
+
+            var allModules = new[] { syscalls.Module }.Concat (Modules).ToArray ();
+
             var externals = new SymbolTable<NameNode> ();
 
-            foreach (var m in Modules) {
+            foreach (var m in allModules) {
                 foreach (var iskv in m.IdentifiedStructures) {
                     var sym = iskv.Key;
 
@@ -764,13 +779,12 @@ namespace Iril
 
         void EmitGlobalVariables ()
         {
-            //var publicGlobalsType = new TypeDefinition (namespac, "Globals", TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed, sysObj);
-            //mod.Types.Add (publicGlobalsType);
+            var allModules = new[] { syscalls.Module }.Concat (Modules).ToArray ();
 
             //
             // Define globals
             //
-            foreach (var m in Modules) {
+            foreach (var m in allModules) {
 
                 if (m.GlobalVariables.All (x => x.Value.IsExternal) && m.FunctionDefinitions.All (x => x.Value.IsExternal))
                     continue;
@@ -840,15 +854,13 @@ namespace Iril
                 //
                 // Add the initializers to the global list of inits
                 //
-                if (needsInit.Count > 0) {
-                    globalInits.Add (() => EmitGlobalInitializers (m, moduleType, mglobals));
-                }
+                globalInits.Add (() => EmitGlobalInitializers (m, moduleType, mglobals));
             }
 
             //
             // Link external module variables
             //
-            foreach (var m in Modules) {
+            foreach (var m in allModules) {
 
                 if (!m.GlobalVariables.Any (x => x.Value.IsExternal))
                     continue;
@@ -1261,11 +1273,6 @@ namespace Iril
 
         void EmitSyscalls ()
         {
-            var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract | TypeAttributes.Sealed;
-            var syscallstd = new TypeDefinition ("", "<CrtImplementationDetails>", tattrs, sysObj);
-            mod.Types.Add (syscallstd);
-
-            syscalls = new Syscalls (this, syscallstd);
             syscalls.Emit ();
 
             foreach (var iskv in syscalls.Calls) {

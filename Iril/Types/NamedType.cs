@@ -20,9 +20,21 @@ namespace Iril.Types
             return this;
         }
 
-        public override long GetByteSize (Module module) => Resolve (module).GetByteSize (module);
+        public override long GetByteSize (Module module)
+        {
+            var r = Resolve (module);
+            if (ReferenceEquals (r, this))
+                throw new Exception ($"Cannot resolve {this} for its size");
+            return r.GetByteSize (module);
+        }
 
-        public override int GetAlignment (Module module) => Resolve (module).GetAlignment (module);
+        public override int GetAlignment (Module module)
+        {
+            var r = Resolve (module);
+            if (ReferenceEquals (r, this))
+                throw new Exception ($"Cannot resolve {this} for its alignment");
+            return r.GetAlignment (module);
+        }
 
         public override bool StructurallyEquals (LType other) =>
             other is NamedType a

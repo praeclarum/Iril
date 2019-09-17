@@ -12,7 +12,9 @@ namespace Iril
     {
         readonly Compilation compilation;
         readonly TypeDefinition syscallsType;
-        readonly Module module = new Module ();
+        readonly Module module = new Module ("syscalls");
+
+        public Module Module => module;
 
         public readonly SymbolTable<MethodDefinition> Calls =
             new SymbolTable<MethodDefinition> ();
@@ -21,6 +23,29 @@ namespace Iril
         {
             this.compilation = compilation;
             this.syscallsType = syscallsType;
+
+            var ftype = new NamedType ("%struct.__sFILE");
+            var ftypep = ftype.GetPointer ();
+            module.AddGlobalVariable (new IR.GlobalVariable ((GlobalSymbol)"@__stdout", ftype, null, false, false, false));
+            var stdoutpInit = new IR.GlobalValue ((GlobalSymbol)"@__stdout");
+            var stdoutp = new IR.GlobalVariable ((GlobalSymbol)"@__stdoutp", ftypep, stdoutpInit, false, false, false);
+            module.AddGlobalVariable (stdoutp);
+        }
+
+        public void FindStructures (Module[] modules)
+        {
+            AddStructure ("%struct.__sbuf", modules);
+            AddStructure ("%struct.__sFILEX", modules);
+            AddStructure ("%struct.__sFILE", modules);
+        }
+
+        void AddStructure (Symbol structSymbol, Module[] modules)
+        {
+            var it = modules.FirstOrDefault (m => m.IdentifiedStructures.ContainsKey (structSymbol));
+            if (it != null) {
+                var t = it.IdentifiedStructures[structSymbol];
+                module.IdentifiedStructures[structSymbol] = t;
+            }
         }
 
         public void Emit ()

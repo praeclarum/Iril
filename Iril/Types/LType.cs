@@ -13,6 +13,11 @@ namespace Iril.Types
         public abstract int GetStructuralHashCode ();
 
         public abstract int GetAlignment(Module module);
+
+        public PointerType GetPointer (int addressSpace = 0)
+        {
+            return new PointerType (this, addressSpace);
+        }
     }
 
     public class VarArgsType : LType
