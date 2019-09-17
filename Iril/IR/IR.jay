@@ -317,6 +317,7 @@ attribute
     | STRING
     | SYMBOL
     | READONLY
+    | WRITEONLY
     | SYMBOL '(' metadata_value_args ')'
     ;
     
