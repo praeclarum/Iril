@@ -59,7 +59,9 @@ namespace StdLib
             list->gp_offset = fp_offset * 16;
             var overflowOffset = list->gp_offset + gp_offset * 8;
             list->reg_save_area = (byte*)Marshal.AllocHGlobal (overflowOffset + overflow);
-            Memory.RegisterMemory (list->reg_save_area, overflowOffset + overflow, "va_start data");
+            if (Memory.Safe) {
+                Memory.RegisterMemory (list->reg_save_area, overflowOffset + overflow, "va_start");
+            }
             list->overflow_arg_area = list->reg_save_area + overflowOffset;
 
             gp_offset = list->gp_offset;
@@ -122,7 +124,9 @@ namespace StdLib
         {
             var list = (__va_list_tag*)arglist;
             Marshal.FreeHGlobal ((IntPtr)list->reg_save_area);
-            Memory.UnregisterMemory (list->reg_save_area);
+            if (Memory.Safe) {
+                Memory.UnregisterMemory (list->reg_save_area);
+            }
         }
     }
 }

@@ -612,7 +612,7 @@ namespace Iril
                         a = new[] { namespac, "Globals" };
                     }
                     else {
-                        a = new[] { namespac, IR.MangledName.SanitizeIdentifier (nn.Module.Symbol.Text) };
+                        a = new[] { namespac, "Modules", IR.MangledName.SanitizeIdentifier (nn.Module.Symbol.Text) };
                     }
                 }
                 AddNameNode (nn, a);
@@ -758,7 +758,10 @@ namespace Iril
                             mstructs[node.Symbol] = (lst, td);
                         }
                         else {
-                            var tattrs = TypeAttributes.BeforeFieldInit | vis | TypeAttributes.Abstract | TypeAttributes.Sealed;
+                            var tattrs = TypeAttributes.BeforeFieldInit | vis;
+                            if (!options.Reentrant) {
+                                tattrs |= TypeAttributes.Abstract | TypeAttributes.Sealed;
+                            }
                             td = new TypeDefinition (ns, node.Name, tattrs, sysObj);
                         }
 
@@ -910,15 +913,19 @@ namespace Iril
         TypeDefinition GetModuleType (Module m, bool allVarsPrivate)
         {
             var moduleTypeName = new IR.MangledName (m.Symbol).Identifier;
-            var moduleType = mod.Types.FirstOrDefault (x => x.Namespace == namespac && x.Name == moduleTypeName);
+            var ns = namespac + ".Modules";
+            var moduleType = mod.Types.FirstOrDefault (x => x.Namespace == ns && x.Name == moduleTypeName);
             if (moduleType == null) {
                 moduleTypes.TryGetValue (m.Symbol, out moduleType);
             }
             if (moduleType == null) {
+                var tattrs = TypeAttributes.BeforeFieldInit | (allVarsPrivate ? 0 : TypeAttributes.Public);
+                if (!options.Reentrant) {
+                    tattrs |= TypeAttributes.Abstract | TypeAttributes.Sealed;
+                }
                 moduleType = new TypeDefinition (
-                                    namespac, m.Symbol.ToString (),
-                                    TypeAttributes.BeforeFieldInit | TypeAttributes.Abstract | TypeAttributes.Sealed
-                                    | (allVarsPrivate ? 0 : TypeAttributes.Public),
+                                    ns, m.Symbol.ToString (),
+                                    tattrs,
                                     sysObj);
                 mod.Types.Add (moduleType);
             }
@@ -1497,6 +1504,9 @@ namespace Iril
                             if (td == null) {
                                 throw new InvalidOperationException ($"Failed to find nested {node.Name} in {parentType}");
                             }
+                        }
+                        else if (node.Structure != null) {
+                            td = mod.GetType (namesp + "." + node.Name);
                         }
                         else {
                             td = mod.GetType (namesp + "." + node.Name);
@@ -2156,12 +2166,14 @@ namespace Iril
         public readonly Module[] Modules;
         public readonly string AssemblyName;
         public readonly bool SafeMemory;
+        public readonly bool Reentrant;
 
-        public CompilationOptions (IEnumerable<Module> modules, string assemblyName, bool safeMemory = false)
+        public CompilationOptions (IEnumerable<Module> modules, string assemblyName, bool safeMemory = false, bool reentrant = false)
         {
             Modules = modules.ToArray ();
             AssemblyName = assemblyName;
             SafeMemory = safeMemory;
+            Reentrant = reentrant;
         }
     }
 }
