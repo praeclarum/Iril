@@ -2020,8 +2020,12 @@ namespace Iril
                 }
             }
 
-            EmitTypedValue(store.Pointer);
-            EmitVerifyWritePointer ();
+            var isfptr = store.Pointer.Type is Types.PointerType && ((Types.PointerType)store.Pointer.Type).ElementType is FunctionType;
+
+            EmitTypedValue (store.Pointer);
+            if (!isfptr) {
+                EmitVerifyWritePointer ();
+            }
             EmitTypedValue (store.Value);
             EmitStind (store.Value.Type);
         }
@@ -2055,8 +2059,13 @@ namespace Iril
                 }
             }
 
+            var isfptr = load.Type is Types.PointerType && ((Types.PointerType)load.Type).ElementType is FunctionType;
+
             EmitTypedValue(load.Pointer);
-            EmitVerifyReadPointer ();
+
+            if (!isfptr) {
+                EmitVerifyReadPointer ();
+            }
 
             var et = compilation.GetClrType(load.Type, module: module);
             if (load.Type is IntegerType intt)
@@ -2350,7 +2359,7 @@ namespace Iril
                 EmitValue (lv, ltype);
 
                 var site = CreateCallSite (ft);
-                Emit (il.Create (OpCodes.Calli, site));
+                EmitCalli (site);
 
                 returnType = site.ReturnType;
             }
@@ -2556,6 +2565,10 @@ namespace Iril
                                 throw new InvalidOperationException ($"Too few arguments to {function.IRDefinition.Symbol}");
                             }
 
+                            if (compilation.Options.Reentrant) {
+                                EmitContext (function.ILDefinition.DeclaringType, m.ILDefinition.DeclaringType);
+                            }
+
                             for (var i = 0; i < nps; i++) {
                                 var a = call.Arguments[i];
                                 EmitValue (a.Value, a.Type);
@@ -2597,7 +2610,7 @@ namespace Iril
                     EmitVarArgs (call.Arguments, nps);
                 }
                 EmitValue (lv, ltype);
-                Emit (il.Create (OpCodes.Calli, CreateCallSite (ft)));
+                EmitCalli (CreateCallSite (ft));
                 return;
             }
             else if (call.Pointer is IR.InlineAssemblyValue asm) {
@@ -2609,6 +2622,18 @@ namespace Iril
                 return;
             }
             throw new NotSupportedException($"Cannot call `{call.Pointer}`");
+        }
+
+        void EmitCalli (CallSite site)
+        {
+            // Convert the token to an actual function pointer
+            Emit (il.Create (OpCodes.Call, compilation.LoadFunction));
+            Emit (il.Create (OpCodes.Calli, site));
+        }
+
+        void EmitContext (TypeDefinition fromType, TypeDefinition toType)
+        {
+            throw new NotImplementedException ();
         }
 
         void AddLocalDebugInfo (Block block, LocalSymbol local, SymbolTable<object> metadata)

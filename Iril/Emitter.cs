@@ -92,7 +92,11 @@ namespace Iril
                 case IR.GlobalValue g:
                     if (compilation.TryGetFunction(module, g.Symbol, out var ff))
                     {
-                        Emit (il.Create (OpCodes.Ldftn, ff.ILDefinition));
+                        // This doesn't work because the GC seems to move funcitons around :-(
+                        //Emit (il.Create (OpCodes.Ldftn, ff.ILDefinition));
+                        int token = compilation.GetFunctionToken (ff);
+                        Emit (il.Create (OpCodes.Ldc_I4, token));
+                        Emit (OpCodes.Conv_I);
                     }
                     else if (compilation.TryGetGlobal(module.Symbol, g.Symbol, out var globalVariable))
                     {

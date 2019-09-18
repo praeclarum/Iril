@@ -204,6 +204,10 @@ namespace Iril
         readonly CompilationOptions options;
         public CompilationOptions Options => options;
 
+        readonly Dictionary<MethodDefinition, int> functionTokens = new Dictionary<MethodDefinition, int> ();
+
+        public MethodDefinition LoadFunction { get; private set; }
+
         public Compilation (CompilationOptions options)
         {
             this.options = options;
@@ -228,13 +232,12 @@ namespace Iril
             };
 
             libraries = Library.StandardLibraries;
-
-
         }
 
         public void Compile ()
         {
             FindSystemTypes ();
+            DeclareLoadFunction ();
             CreateSyscalls ();
             FindStructures ();
             FindFunctions ();
@@ -247,6 +250,7 @@ namespace Iril
             CreateFunctionDefinitions ();
             EmitGlobalInitializers ();
             CompileFunctions ();
+            EmitLoadFunction ();
             EmitEntrypoint ();
             RemoveUnusedFunctions ();
         }
@@ -435,6 +439,11 @@ namespace Iril
                 }
             }
             throw new Exception ($"Cannot find {name} in {declType}");
+        }
+
+        void DeclareLoadFunction ()
+        {
+            LoadFunction = new MethodDefinition ("LoadFunction", MethodAttributes.HideBySig | MethodAttributes.Static | MethodAttributes.Public, sysBytePtr);
         }
 
         readonly SymbolTable<Mono.Cecil.Cil.Document> fileDocuments = new SymbolTable<Mono.Cecil.Cil.Document> ();
@@ -1369,7 +1378,10 @@ namespace Iril
                     //
                     var mident = node.Name;
                     var dbgMeth = functionDebugs[sym];
-                    var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Static;
+                    var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig;
+                    if (!options.Reentrant) {
+                        mattrs |= MethodAttributes.Static;
+                    }
                     var md = new MethodDefinition (mident, mattrs, GetClrType (f.ReturnType, module: m));
 
                     //
@@ -1456,7 +1468,10 @@ namespace Iril
                         var f = node.FunctionDecl;
                         var mident = node.Name;
 
-                        var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Static;
+                        var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig;
+                        if (!options.Reentrant) {
+                            mattrs |= MethodAttributes.Static;
+                        }
                         var md = new MethodDefinition (mident, mattrs, GetClrType (f.ReturnType, module: m));
 
                         //
@@ -1554,6 +1569,56 @@ namespace Iril
                     CompileMissingFunction (m);
                 }
             }
+        }
+
+        public int GetFunctionToken (DefinedFunction ff)
+        {
+            var key = ff.ILDefinition;
+            if (!functionTokens.TryGetValue (key, out var token)) {
+                // No token of 0
+                token = functionTokens.Count + 1;
+                functionTokens[key] = token;
+            }
+            return token;
+        }
+
+        void EmitLoadFunction ()
+        {
+            var md = LoadFunction;
+
+            var dt = mod.GetType (namespac + ".Globals");
+            dt.Methods.Add (md);
+
+            md.Parameters.Add (new ParameterDefinition ("token", ParameterAttributes.None, sysBytePtr));
+            var body = new MethodBody (md);
+            var il = body.GetILProcessor ();
+
+            il.Append (il.Create (OpCodes.Ldarg_0));
+            il.Append (il.Create (OpCodes.Conv_I4));
+            il.Append (il.Create (OpCodes.Ldc_I4_1));
+            il.Append (il.Create (OpCodes.Sub));
+            il.Append (il.Create (OpCodes.Conv_I));
+
+            var targets = new Mono.Cecil.Cil.Instruction[functionTokens.Count];
+            var code = new List<Mono.Cecil.Cil.Instruction> (functionTokens.Count * 2);
+            foreach (var kv in functionTokens.OrderBy (x => x.Value)) {
+                var index = kv.Value - 1;
+                var ldftn = il.Create (OpCodes.Ldftn, kv.Key);
+                targets[index] = ldftn;
+                code.Add (ldftn);
+                code.Add (il.Create (OpCodes.Ret));
+            }
+
+            il.Append (il.Create (OpCodes.Switch, targets));
+            foreach (var c in code) {
+                il.Append (c);
+            }
+
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Ret));
+
+            body.Optimize ();
+            md.Body = body;
         }
 
         void EmitEntrypoint ()
