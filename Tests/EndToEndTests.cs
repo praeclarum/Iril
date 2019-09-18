@@ -202,7 +202,7 @@ namespace Tests
             hcommon.Free ();
         }
 
-        [Test]
+        [Test, Ignore("The test input code is missing functions")]
         public void Sqlite ()
         {
             var asmFileName = "SQLite.dll";
