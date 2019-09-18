@@ -1815,11 +1815,8 @@ namespace Iril
             }
         }
 
-        public static int RoundUpIntBits (int bits) {
-            if (bits > 128)
-                return 256;
-            if (bits > 64)
-                return 128;
+        public static int RoundUpIntBits (int bits)
+        {
             if (bits > 32)
                 return 64;
             if (bits > 16)

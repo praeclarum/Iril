@@ -1621,29 +1621,63 @@ namespace Iril
                             var fromUpBits = Compilation.RoundUpIntBits (fromBits);
                             if (fromBits == fromUpBits && toBits == toUpBits && fromBits == toBits)
                                 return;
-                            if (fromBits == 1) {
-                                Emit (il.Create (OpCodes.Ldc_I4_M1));
-                                Emit (il.Create (OpCodes.Mul));
-                            }
-                            else if (fromBits == 8) {
+
+                            if (fromUpBits == 8) {
                                 Emit (il.Create (OpCodes.Conv_I1));
                             }
-                            else if (fromBits != fromUpBits) {
-                                compilation.ErrorMessage (module.SourceFilename, $"Cannot sign extend from {fromBits}-bit to {toBits}-bit integers");
-                            }
+
+                            var d = toUpBits - fromBits;
 
                             switch (toUpBits) {
                                 case 8:
-                                    Emit (il.Create (OpCodes.Conv_I1));
+                                    if (d == 0) {
+                                        Emit (il.Create (OpCodes.Conv_I1));
+                                    }
+                                    else {
+                                        Emit (il.Create (OpCodes.Conv_I4));
+                                        Emit (il.Create (OpCodes.Ldc_I4, d + 24));
+                                        Emit (il.Create (OpCodes.Shl));
+                                        Emit (il.Create (OpCodes.Ldc_I4, d + 24));
+                                        Emit (il.Create (OpCodes.Shr));
+                                        Emit (il.Create (OpCodes.Conv_I1));
+                                    }
                                     break;
                                 case 16:
-                                    Emit (il.Create (OpCodes.Conv_I2));
+                                    if (d == 0) {
+                                        Emit (il.Create (OpCodes.Conv_I2));
+                                    }
+                                    else {
+                                        Emit (il.Create (OpCodes.Conv_I4));
+                                        Emit (il.Create (OpCodes.Ldc_I4, d + 16));
+                                        Emit (il.Create (OpCodes.Shl));
+                                        Emit (il.Create (OpCodes.Ldc_I4, d + 16));
+                                        Emit (il.Create (OpCodes.Shr));
+                                        Emit (il.Create (OpCodes.Conv_I2));
+                                    }
                                     break;
                                 case 32:
-                                    Emit (il.Create (OpCodes.Conv_I4));
+                                    if (d == 0) {
+                                        Emit (il.Create (OpCodes.Conv_I4));
+                                    }
+                                    else {
+                                        Emit (il.Create (OpCodes.Conv_I4));
+                                        Emit (il.Create (OpCodes.Ldc_I4, d));
+                                        Emit (il.Create (OpCodes.Shl));
+                                        Emit (il.Create (OpCodes.Ldc_I4, d));
+                                        Emit (il.Create (OpCodes.Shr));
+                                    }
                                     break;
                                 default:
-                                    Emit (il.Create (OpCodes.Conv_I8));
+                                    if (d == 0) {
+                                        Emit (il.Create (OpCodes.Conv_I8));
+                                    }
+                                    else {
+                                        Emit (il.Create (OpCodes.Conv_I8));
+                                        Emit (il.Create (OpCodes.Ldc_I4, d));
+                                        Emit (il.Create (OpCodes.Shl));
+                                        Emit (il.Create (OpCodes.Ldc_I4, d));
+                                        Emit (il.Create (OpCodes.Shr));
+                                    }
                                     break;
                             }
                         }
