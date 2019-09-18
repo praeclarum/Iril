@@ -93,8 +93,6 @@ namespace Iril
             EmitSetjmp ();
             EmitLongjmp ();
             EmitAbort ();
-            EmitVAStart ();
-            EmitVAEnd ();
 
             EmitStaticCtor ();
         }
@@ -1101,35 +1099,6 @@ namespace Iril
             var il = b.GetILProcessor ();
 
             il.Append (il.Create (OpCodes.Ldstr, "Abort"));
-            il.Append (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
-            il.Append (il.Create (OpCodes.Throw));
-
-            b.Optimize ();
-        }
-
-        void EmitVAStart ()
-        {
-            var m = NewMethod ("@llvm.va_start", compilation.sysVoid,
-                               ("arglist", compilation.sysByte.MakePointerType()),
-                               ("arguments", compilation.sysObjArray));
-            var b = m.Body;
-            var il = b.GetILProcessor ();
-
-            il.Append (il.Create (OpCodes.Ldstr, "VAStart"));
-            il.Append (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
-            il.Append (il.Create (OpCodes.Throw));
-
-            b.Optimize ();
-        }
-
-        void EmitVAEnd ()
-        {
-            var m = NewMethod ("@llvm.va_end", compilation.sysVoid,
-                               ("arglist", compilation.sysByte.MakePointerType ()));
-            var b = m.Body;
-            var il = b.GetILProcessor ();
-
-            il.Append (il.Create (OpCodes.Ldstr, "VAEnd"));
             il.Append (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
             il.Append (il.Create (OpCodes.Throw));
 

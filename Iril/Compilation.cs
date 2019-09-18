@@ -134,8 +134,6 @@ namespace Iril
         public MethodDefinition nativeExceptionCtor => nativeException.Value.GetConstructors ().First ();
         public FieldDefinition nativeExceptionData => nativeException.Value.Fields.First ();
 
-        readonly SymbolTable<MethodDefinition> importedMethods = new SymbolTable<MethodDefinition> ();
-
         readonly Dictionary<(int, string), SimdVector> vectorTypes =
             new Dictionary<(int, string), SimdVector> ();
 
@@ -1011,11 +1009,16 @@ namespace Iril
             var assembly = AssemblyDefinition.ReadAssembly (path, parameters);
             var module = assembly.MainModule;
             var itypes = new Dictionary<string, TypeDefinition> ();
+            var importMethodBodies = new List<Action> ();
 
             foreach (var t in module.Types) {
                 if (HasExportAttribute (t, needsArg: false)) {
                     var it = ImportType (t, x => mod.Types.Add (x));
                 }
+            }
+
+            foreach (var b in importMethodBodies) {
+                b ();
             }
 
             bool HasExportAttribute (ICustomAttributeProvider m, bool needsArg)
@@ -1053,14 +1056,14 @@ namespace Iril
                     if (export == null && !m.IsConstructor)
                         continue;
 
-                    var im = ImportTypeMethod (m, it);
+                    var (im, imImport) = ImportTypeMethod (m, it);
                     if (im == null)
                         continue;
 
+                    importMethodBodies.Add (imImport);
+
                     if (export != null) {
                         var symbol = Symbol.Intern (export.ConstructorArguments[0].Value.ToString ());
-
-                        importedMethods[symbol] = im;
 
                         externalMethodDefs[symbol] = new DefinedFunction {
                             Symbol = symbol,
@@ -1077,7 +1080,7 @@ namespace Iril
                 return it;
             }
 
-            MethodDefinition ImportTypeMethod (MethodDefinition methodDefinition, TypeDefinition importType)
+            (MethodDefinition, Action) ImportTypeMethod (MethodDefinition methodDefinition, TypeDefinition importType)
             {
                 var irt = ImportTypeRef (methodDefinition.ReturnType);
                 var im = new MethodDefinition (methodDefinition.Name, methodDefinition.Attributes, irt);
@@ -1086,17 +1089,18 @@ namespace Iril
                     var ip = new ParameterDefinition (p.Name, p.Attributes, ImportTypeRef (p.ParameterType));
                     im.Parameters.Add (ip);
                 }
-                var ib = new MethodBody (im);
-                try {
-                    ImportMethodBody (methodDefinition, im, ib, importType);
-                    im.Body = ib;
-                    return im;
-                }
-                catch (Exception ex) {
-                    ErrorMessage ("", "Failed to import method", ex);
-                    importType.Methods.Remove(im);
-                    return null;
-                }
+                Action importMethodBody = () => {
+                    var ib = new MethodBody (im);
+                    try {
+                        ImportMethodBody (methodDefinition, im, ib, importType);
+                        im.Body = ib;
+                    }
+                    catch (Exception ex) {
+                        ErrorMessage ("", "Failed to import method", ex);
+                        //importType.Methods.Remove (im);
+                    }
+                };
+                return (im, importMethodBody);
             }
 
             void ImportMethodBody (MethodDefinition methodDefinition, MethodDefinition im, MethodBody ib, TypeDefinition importType)
