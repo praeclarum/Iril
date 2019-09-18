@@ -15,6 +15,7 @@ namespace Iril
         readonly Module module = new Module ("syscalls");
 
         public Module Module => module;
+        public TypeDefinition TypeDefinition => syscallsType;
 
         public readonly SymbolTable<MethodDefinition> Calls =
             new SymbolTable<MethodDefinition> ();

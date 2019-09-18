@@ -1072,14 +1072,16 @@ namespace Iril
                     if (export == null && !m.IsConstructor)
                         continue;
 
-                    var (im, imImport) = ImportTypeMethod (m, it);
+                    var symbol = export != null ? Symbol.Intern (export.ConstructorArguments[0].Value.ToString ()) : null;
+
+                    var (im, imImport) = ImportTypeMethod (m, it, symbol);
                     if (im == null)
                         continue;
 
                     importMethodBodies.Add (imImport);
 
                     if (export != null) {
-                        var symbol = Symbol.Intern (export.ConstructorArguments[0].Value.ToString ());
+
 
                         externalMethodDefs[symbol] = new DefinedFunction {
                             Symbol = symbol,
@@ -1096,7 +1098,7 @@ namespace Iril
                 return it;
             }
 
-            (MethodDefinition, Action) ImportTypeMethod (MethodDefinition methodDefinition, TypeDefinition importType)
+            (MethodDefinition, Action) ImportTypeMethod (MethodDefinition methodDefinition, TypeDefinition importType, Symbol symbol)
             {
                 var irt = ImportTypeRef (methodDefinition.ReturnType);
                 var im = new MethodDefinition (methodDefinition.Name, methodDefinition.Attributes, irt);
@@ -1111,9 +1113,12 @@ namespace Iril
                         ImportMethodBody (methodDefinition, im, ib, importType);
                         im.Body = ib;
                     }
-                    catch (Exception ex) {
-                        ErrorMessage ("", "Failed to import method", ex);
-                        //importType.Methods.Remove (im);
+                    catch (Exception) {
+                        //ErrorMessage ("", "Failed to import method", ex);
+                        if (symbol != null) {
+                            externalMethodDefs.Remove (symbol);
+                        }
+                        importType.Methods.Remove (im);
                     }
                 };
                 return (im, importMethodBody);
@@ -1560,12 +1565,12 @@ namespace Iril
                         Messages.AddRange (fc.Messages);
                     }
                     catch (Exception ex) {
-                        ErrorMessage (m.IRModule.SourceFilename, $"Failed to compile function `{IR.MangledName.Demangle (m.Symbol)}` ({m.Symbol}): {ex.Message}", ex);
+                        ErrorMessage (m.IRModule?.SourceFilename, $"Failed to compile function `{IR.MangledName.Demangle (m.Symbol)}` ({m.Symbol}): {ex.Message}", ex);
                         CompileFailedFunction (m, ex);
                     }
                 }
                 else {
-                    ErrorMessage (m.IRModule.SourceFilename, $"Undefined function `{IR.MangledName.Demangle (m.Symbol)}` ({m.Symbol})");
+                    ErrorMessage (m.IRModule?.SourceFilename, $"Undefined function `{IR.MangledName.Demangle (m.Symbol)}` ({m.Symbol})");
                     CompileMissingFunction (m);
                 }
             }
@@ -1586,8 +1591,7 @@ namespace Iril
         {
             var md = LoadFunction;
 
-            var dt = mod.GetType (namespac + ".Globals");
-            dt.Methods.Add (md);
+            syscalls.TypeDefinition.Methods.Add (md);
 
             md.Parameters.Add (new ParameterDefinition ("token", ParameterAttributes.None, sysBytePtr));
             var body = new MethodBody (md);

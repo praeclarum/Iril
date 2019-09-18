@@ -21,9 +21,9 @@ namespace Tests
             var irmods =
                 GetZippedCode ("ddaskr.zip")
                 .Select (x => Iril.Module.Parse (x.Code, x.Name));
-            var compilation = new Compilation (
+            var compilation = new Compilation (new CompilationOptions (
                 irmods,
-                assemblyName: asmFileName);
+                assemblyName: asmFileName));
             compilation.Compile ();
 
             var asmPath = Path.Combine (Path.GetTempPath (), asmFileName);
@@ -84,9 +84,9 @@ namespace Tests
                 "SuiteSparse.SuiteSparse_config.ll",
                 }
                 .Select (x => Iril.Module.Parse (GetCode (x)));
-            var compilation = new Compilation (
+            var compilation = new Compilation (new CompilationOptions (
                 irmods,
-                assemblyName: asmFileName);
+                assemblyName: asmFileName));
             compilation.Compile ();
 
             var asmPath = Path.Combine (Path.GetTempPath (), asmFileName);
@@ -209,9 +209,9 @@ namespace Tests
             var irmods =
                 GetZippedCode ("sqlite3.ll.zip")
                 .Select (x => Iril.Module.Parse (x.Code, x.Name));
-            var compilation = new Compilation (
+            var compilation = new Compilation (new CompilationOptions (
                 irmods,
-                assemblyName: asmFileName);
+                assemblyName: asmFileName));
             compilation.Compile ();
 
             var asmPath = Path.Combine (Path.GetTempPath (), asmFileName);
@@ -308,9 +308,9 @@ namespace Tests
             if (errors.Length > 0) {
                 Assert.Fail ("{1} Parse Errors: {0}", string.Join (", ", errors), errors.Length);
             }
-            var compilation = new Compilation (
+            var compilation = new Compilation (new CompilationOptions (
                 irmods,
-                assemblyName: asmFileName);
+                assemblyName: asmFileName));
             compilation.Compile ();
 
             var asmPath = Path.Combine (Path.GetTempPath (), asmFileName);
