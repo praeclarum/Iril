@@ -1183,6 +1183,15 @@ namespace Iril
                         throw new NotSupportedException ($"Instruction operand {i.Operand} ({i.Operand.GetType().Name}) not supported.");
                     }
                     importedInstructions[i] = ii;
+
+                    if (i.OpCode == OpCodes.Ldc_I4_1 &&
+                        i.Next.OpCode == OpCodes.Stsfld &&
+                        i.Next.Operand is FieldReference sfr &&
+                        sfr.Name == "Safe" &&
+                        !options.SafeMemory) {
+                        ii.OpCode = OpCodes.Ldc_I4_0;
+                    }
+
                     return ii;
                 }
             }
