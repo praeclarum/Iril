@@ -220,7 +220,7 @@ namespace StdLib
                     insertAt++;
                 }
                 registeredMemory.Insert (insertAt, new MemoryBlock (pointer, size, purpose));
-                Console.WriteLine ($"REGISTER @{insertAt} 0x{(ulong)pointer:x} length {size} for {purpose}");
+                //Console.WriteLine ($"REGISTER @{insertAt} 0x{(ulong)pointer:x} length {size} for {purpose}");
             }
             //Console.WriteLine ("REGISTER " + (IntPtr)pointer + " length " + size + " for " + purpose);
         }
@@ -236,7 +236,7 @@ namespace StdLib
                 for (var i = 0; i < n; i++) {
                     var b = ((MemoryBlock)registeredMemory[i]);
                     if (b.Pointer == pointer) {
-                        Console.WriteLine ($"UNREGISTER @{insertAt} 0x{(ulong)pointer:x} length {b.Length} for {b.Purpose}");
+                        //Console.WriteLine ($"UNREGISTER @{insertAt} 0x{(ulong)pointer:x} length {b.Length} for {b.Purpose}");
                         registeredMemory.RemoveAt (i);
                         return;
                     }

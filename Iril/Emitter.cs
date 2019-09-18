@@ -70,7 +70,7 @@ namespace Iril
             EmitValue (value.Value, value.Type);
         }
 
-        protected void EmitValue(IR.Value value, LType type)
+        protected void EmitValue(IR.Value value, LType type, bool? unsigned = null)
         {
             switch (value)
             {
@@ -142,15 +142,33 @@ namespace Iril
                         {
                             case 8:
                                 Emit(il.Create(OpCodes.Ldc_I4, ((int)i.Value) & 0xFF));
+                                if (unsigned.HasValue && !unsigned.Value) {
+                                    Emit (il.Create (OpCodes.Conv_I1));
+                                }
+                                else {
+                                    Emit (il.Create (OpCodes.Conv_U1));
+                                }
                                 break;
                             case 16:
                                 Emit(il.Create(OpCodes.Ldc_I4, ((int)i.Value) & 0xFFFF));
+                                if (unsigned.HasValue && unsigned.Value) {
+                                    Emit (il.Create (OpCodes.Conv_U2));
+                                }
+                                else {
+                                    Emit (il.Create (OpCodes.Conv_I2));
+                                }
                                 break;
                             case 32:
                                 Emit(il.Create(OpCodes.Ldc_I4, (int)i.Value));
+                                if (unsigned.HasValue && unsigned.Value) {
+                                    Emit (il.Create (OpCodes.Conv_U4));
+                                }
                                 break;
                             case 64:
                                 Emit(il.Create(OpCodes.Ldc_I8, (long)i.Value));
+                                if (unsigned.HasValue && unsigned.Value) {
+                                    Emit (il.Create (OpCodes.Conv_U8));
+                                }
                                 break;
                             default:
                                 throw new NotSupportedException($"{((IntegerType)type).Bits}-bit integers");
@@ -177,18 +195,34 @@ namespace Iril
                         switch (upBits) {
                             case 8:
                                 Emit (il.Create (OpCodes.Ldc_I4, (int)maskedValue));
-                                Emit (il.Create (OpCodes.Conv_U1));
+                                if (unsigned.HasValue && !unsigned.Value) {
+                                    Emit (il.Create (OpCodes.Conv_I1));
+                                }
+                                else {
+                                    Emit (il.Create (OpCodes.Conv_U1));
+                                }
                                 break;
                             case 16:
                                 Emit (il.Create (OpCodes.Ldc_I4, (int)maskedValue));
-                                Emit (il.Create (OpCodes.Conv_I2));
+                                if (unsigned.HasValue && unsigned.Value) {
+                                    Emit (il.Create (OpCodes.Conv_U2));
+                                }
+                                else {
+                                    Emit (il.Create (OpCodes.Conv_I2));
+                                }
                                 break;
                             case 32:
                                 Emit (il.Create (OpCodes.Ldc_I4, (int)maskedValue));
+                                if (unsigned.HasValue && unsigned.Value) {
+                                    Emit (il.Create (OpCodes.Conv_U4));
+                                }
                                 break;
                             case 64:
                                 //Console.WriteLine ($"{i.Value} masked = {(long)maskedValue}");
                                 Emit (il.Create (OpCodes.Ldc_I8, (long)maskedValue));
+                                if (unsigned.HasValue && unsigned.Value) {
+                                    Emit (il.Create (OpCodes.Conv_U8));
+                                }
                                 break;
                             default:
                                 throw new NotSupportedException ($"{((IntegerType)type).Bits}-bit integers");
@@ -200,7 +234,7 @@ namespace Iril
                     Emit(il.Create(OpCodes.Conv_U));
                     break;
                 case IR.LocalValue local:
-                    EmitLocalValue(local, type, unsigned: false);
+                    EmitLocalValue(local, type, unsigned: unsigned);
                     break;
                 case IR.NullConstant nll:
                     Emit(il.Create(OpCodes.Ldc_I4_0));
@@ -250,7 +284,7 @@ namespace Iril
             }
         }
 
-        protected virtual void EmitLocalValue(IR.LocalValue local, LType resultType, bool unsigned)
+        protected virtual void EmitLocalValue(IR.LocalValue local, LType resultType, bool? unsigned)
         {
             throw new NotSupportedException();
         }

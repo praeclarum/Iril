@@ -51,13 +51,16 @@ namespace Iril
         public TypeReference sysObjArray;
         TypeReference sysVal;
         TypeReference sysBoolean;
+        TypeReference sysSByte;
         public TypeReference sysByte;
         public TypeReference sysBytePtr;
         public TypeReference sysByteArray;
         TypeReference sysInt16;
+        TypeReference sysUInt16;
         public TypeReference sysInt32;
         public TypeReference sysUInt32;
         TypeReference sysInt64;
+        TypeReference sysUInt64;
         public TypeReference sysIntPtr;
         TypeReference sysSingle;
         TypeReference sysDouble;
@@ -292,12 +295,15 @@ namespace Iril
             sysVoid = Import ("System.Void");
             sysObj = Import ("System.Object");
             sysVal = Import ("System.ValueType");
-            sysByte = Import ("System.Byte");
             sysBoolean = Import ("System.Boolean");
+            sysSByte = Import ("System.SByte");
+            sysByte = Import ("System.Byte");
             sysInt16 = Import ("System.Int16");
+            sysUInt16 = Import ("System.UInt16");
             sysInt32 = Import ("System.Int32");
             sysUInt32 = Import ("System.UInt32");
             sysInt64 = Import ("System.Int64");
+            sysUInt64 = Import ("System.UInt64");
             sysIntPtr = Import ("System.IntPtr");
             sysSingle = Import ("System.Single");
             sysDouble = Import ("System.Double");
@@ -1731,7 +1737,7 @@ namespace Iril
             return 8;
         }
 
-        public TypeReference GetClrType (LType irType, Module module, bool? unsigned = false)
+        public TypeReference GetClrType (LType irType, Module module, bool? unsigned = null)
         {
             if (module == null)
                 throw new ArgumentNullException (nameof (module));
@@ -1745,19 +1751,55 @@ namespace Iril
                             return sysDouble;
                     }
                 case IntegerType intt:
-                    switch (RoundUpIntBits (intt.Bits)) {
-                        case 1:
-                            return sysBoolean;
-                        case 8:
-                            return sysByte;
-                        case 16:
-                            return sysInt16;
-                        case 32:
-                            return sysInt32;
-                        case 64:
-                            return sysInt64;
-                        default:
-                            throw new NotSupportedException ($"{intt.Bits}-bit integers not supported");
+                    if (unsigned.HasValue) {
+                        if (unsigned.Value) {
+                            switch (RoundUpIntBits (intt.Bits)) {
+                                case 1:
+                                    return sysBoolean;
+                                case 8:
+                                    return sysByte;
+                                case 16:
+                                    return sysUInt16;
+                                case 32:
+                                    return sysUInt32;
+                                case 64:
+                                    return sysUInt64;
+                                default:
+                                    throw new NotSupportedException ($"{intt.Bits}-bit unsigned integers not supported");
+                            }
+                        }
+                        else {
+                            switch (RoundUpIntBits (intt.Bits)) {
+                                case 1:
+                                    return sysBoolean;
+                                case 8:
+                                    return sysSByte;
+                                case 16:
+                                    return sysInt16;
+                                case 32:
+                                    return sysInt32;
+                                case 64:
+                                    return sysInt64;
+                                default:
+                                    throw new NotSupportedException ($"{intt.Bits}-bit signed integers not supported");
+                            }
+                        }
+                    }
+                    else {
+                        switch (RoundUpIntBits (intt.Bits)) {
+                            case 1:
+                                return sysBoolean;
+                            case 8:
+                                return sysByte;
+                            case 16:
+                                return sysInt16;
+                            case 32:
+                                return sysInt32;
+                            case 64:
+                                return sysInt64;
+                            default:
+                                throw new NotSupportedException ($"{intt.Bits}-bit integers not supported");
+                        }
                     }
                 case Types.ArrayType art:
                     return GetClrType (art.ElementType, module: module).MakePointerType ();

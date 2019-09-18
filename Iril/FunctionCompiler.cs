@@ -511,7 +511,7 @@ namespace Iril
             foreach (var a in b.Assignments) {
                 EmitBlockAssignment (b, nextBlock, context, a);
             }
-            EmitInstruction (b.TerminatorAssignment.Result, b.Terminator, b, nextBlock, context);
+            EmitInstruction (b.TerminatorAssignment.Result, b.Terminator, b, nextBlock, context, unsigned: null);
 
             context.BlockLastInstr[b.Symbol] = prev;
         }
@@ -521,7 +521,7 @@ namespace Iril
             if (!ShouldInline (a.Result)
                                 && !(a.Instruction is IR.PhiInstruction)) {
 
-                EmitInstruction (a.Result, a.Instruction, b, nextBlock, context);
+                EmitInstruction (a.Result, a.Instruction, b, nextBlock, context, unsigned: null);
 
                 if (a.HasDebugSymbol) {
                     //sqpts.Add ((prev, a.DebugSymbol));
@@ -979,7 +979,7 @@ namespace Iril
             return phiLocals[assignment];
         }
 
-        void EmitInstruction(LocalSymbol assignedSymbol, IR.Instruction instruction, IR.Block block, IR.Block nextBlock, BlocksContext context)
+        void EmitInstruction(LocalSymbol assignedSymbol, IR.Instruction instruction, IR.Block block, IR.Block nextBlock, BlocksContext context, bool? unsigned)
         {
             switch (instruction)
             {
@@ -1036,10 +1036,24 @@ namespace Iril
                         Emit(il.Create(OpCodes.And));
                     }
                     break;
-                case IR.AshrInstruction lshr:
-                    EmitValue(lshr.Op1, lshr.Type);
-                    EmitValue(lshr.Op2, Types.IntegerType.I32);
-                    Emit(il.Create(OpCodes.Shr));
+                case IR.AshrInstruction ashr: {
+                        var shiftType = ashr.Type;
+                        if (ashr.Type is IntegerType intt) {
+                            switch (Compilation.RoundUpIntBits (intt.Bits)) {
+                                case 8:
+                                case 16:
+                                case 32:
+                                    shiftType = IntegerType.I32;
+                                    break;
+                                default:
+                                    shiftType = IntegerType.I64;
+                                    break;
+                            }
+                        }
+                        EmitSext (shiftType, new TypedValue (ashr.Type, ashr.Op1));
+                        EmitValue (ashr.Op2, Types.IntegerType.I32);
+                        Emit (il.Create (OpCodes.Shr));
+                    }
                     break;
                 case IR.BitcastInstruction bitcast:
                     // CLR doesn't need bitcast
@@ -1262,10 +1276,10 @@ namespace Iril
                     }
                     break;
                 case IR.LoadInstruction load:
-                    EmitLoad(load);
+                    EmitLoad(load, unsigned: unsigned);
                     break;
                 case IR.LshrInstruction lshr:
-                    EmitValue(lshr.Op1, lshr.Type);
+                    EmitValue(lshr.Op1, lshr.Type, unsigned: true);
                     EmitValue(lshr.Op2, Types.IntegerType.I32);
                     Emit(il.Create(OpCodes.Shr_Un));
                     break;
@@ -1345,69 +1359,7 @@ namespace Iril
                     }
                     break;
                 case IR.SextInstruction sext:
-                    switch (sext.Type)
-                    {
-                        case Types.IntegerType intt: {
-                                var toBits = intt.Bits;
-                                var toUpBits = Compilation.RoundUpIntBits (toBits);
-                                var fromBits = 32;
-                                var fromUpBits = 32;
-                                EmitTypedValue (sext.Value);
-                                if (sext.Value.Type is Types.IntegerType sintt) {
-                                    fromBits = sintt.Bits;
-                                    fromUpBits = Compilation.RoundUpIntBits (fromBits);
-                                    if (fromBits == 1) {
-                                        Emit (il.Create (OpCodes.Ldc_I4_M1));
-                                        Emit (il.Create (OpCodes.Mul));
-                                    }
-                                    else if (fromBits == 8) {
-                                        Emit (il.Create (OpCodes.Conv_I1));
-                                    }
-                                    else if (fromBits != fromUpBits) {
-                                        compilation.ErrorMessage (module.SourceFilename, $"Cannot sign extend from {fromBits}-bit to {toBits}-bit integers");
-                                    }
-
-                                    switch (toUpBits) {
-                                        case 8:
-                                            Emit (il.Create (OpCodes.Conv_I1));
-                                            break;
-                                        case 16:
-                                            Emit (il.Create (OpCodes.Conv_I2));
-                                            break;
-                                        case 32:
-                                            Emit (il.Create (OpCodes.Conv_I4));
-                                            break;
-                                        default:
-                                            Emit (il.Create (OpCodes.Conv_I8));
-                                            break;
-                                    }
-                                }
-                                else {
-                                    compilation.ErrorMessage (module.SourceFilename, $"Cannot sign extend from type {sext.Value.Type} to {toBits}-bit integers");
-                                }
-                            }
-                            break;
-                        case VectorType vt when vt.ElementType is Types.IntegerType vintt:
-                            switch (vintt.Bits)
-                            {
-                                case 1:
-                                case 8:
-                                    EmitVectorUnop(OpCodes.Conv_I1, sext.Value, vt);
-                                    break;
-                                case 16:
-                                    EmitVectorUnop(OpCodes.Conv_I2, sext.Value, vt);
-                                    break;
-                                case 32:
-                                    EmitVectorUnop(OpCodes.Conv_I4, sext.Value, vt);
-                                    break;
-                                default:
-                                    EmitVectorUnop(OpCodes.Conv_I8, sext.Value, vt);
-                                    break;
-                            }
-                            break;
-                        default:
-                            throw new NotSupportedException($"Cannot sext {sext.Type}");
-                    }
+                    EmitSext (sext.Type, sext.Value);
                     break;
                 case IR.SelectInstruction sel:
                     if (sel.Type is VectorType selV)
@@ -1657,6 +1609,71 @@ namespace Iril
             }
         }
 
+        void EmitSext (LType resultType, TypedValue inputValue)
+        {
+            switch (resultType) {
+                case Types.IntegerType intt: {
+                        var toBits = intt.Bits;
+                        var toUpBits = Compilation.RoundUpIntBits (toBits);
+                        EmitTypedValue (inputValue);
+                        if (inputValue.Type is Types.IntegerType sintt) {
+                            var fromBits = sintt.Bits;
+                            var fromUpBits = Compilation.RoundUpIntBits (fromBits);
+                            if (fromBits == fromUpBits && toBits == toUpBits && fromBits == toBits)
+                                return;
+                            if (fromBits == 1) {
+                                Emit (il.Create (OpCodes.Ldc_I4_M1));
+                                Emit (il.Create (OpCodes.Mul));
+                            }
+                            else if (fromBits == 8) {
+                                Emit (il.Create (OpCodes.Conv_I1));
+                            }
+                            else if (fromBits != fromUpBits) {
+                                compilation.ErrorMessage (module.SourceFilename, $"Cannot sign extend from {fromBits}-bit to {toBits}-bit integers");
+                            }
+
+                            switch (toUpBits) {
+                                case 8:
+                                    Emit (il.Create (OpCodes.Conv_I1));
+                                    break;
+                                case 16:
+                                    Emit (il.Create (OpCodes.Conv_I2));
+                                    break;
+                                case 32:
+                                    Emit (il.Create (OpCodes.Conv_I4));
+                                    break;
+                                default:
+                                    Emit (il.Create (OpCodes.Conv_I8));
+                                    break;
+                            }
+                        }
+                        else {
+                            compilation.ErrorMessage (module.SourceFilename, $"Cannot sign extend from type {inputValue.Type} to {toBits}-bit integers");
+                        }
+                    }
+                    break;
+                case VectorType vt when vt.ElementType is Types.IntegerType vintt:
+                    switch (vintt.Bits) {
+                        case 1:
+                        case 8:
+                            EmitVectorUnop (OpCodes.Conv_I1, inputValue, vt);
+                            break;
+                        case 16:
+                            EmitVectorUnop (OpCodes.Conv_I2, inputValue, vt);
+                            break;
+                        case 32:
+                            EmitVectorUnop (OpCodes.Conv_I4, inputValue, vt);
+                            break;
+                        default:
+                            EmitVectorUnop (OpCodes.Conv_I8, inputValue, vt);
+                            break;
+                    }
+                    break;
+                default:
+                    throw new NotSupportedException ($"Cannot sext {resultType}");
+            }
+        }
+
         private void EmitAllocaSize (AllocaInstruction alloca)
         {
             var byteSize = alloca.Type.GetByteSize (function.IRModule);
@@ -1696,8 +1713,18 @@ namespace Iril
 
         private void EmitIcmp(IcmpInstruction icmp)
         {
-            EmitValue(icmp.Op1, icmp.Type);
-            EmitValue(icmp.Op2, icmp.Type);
+            bool unsigned = true;
+            switch (icmp.Condition) {
+                case IR.IcmpCondition.SignedGreaterThan:
+                case IR.IcmpCondition.SignedGreaterThanOrEqual:
+                case IR.IcmpCondition.SignedLessThan:
+                case IR.IcmpCondition.SignedLessThanOrEqual:
+                    unsigned = false;
+                    break;
+            }
+
+            EmitValue (icmp.Op1, icmp.Type, unsigned: unsigned);
+            EmitValue (icmp.Op2, icmp.Type, unsigned: unsigned);
             if (icmp.Type is VectorType v)
             {
                 EmitVIcmp(icmp, v);
@@ -1892,49 +1919,73 @@ namespace Iril
             }
         }
 
-        protected override void EmitLocalValue(IR.LocalValue local, LType resultType, bool unsigned)
+        protected override void EmitLocalValue(IR.LocalValue local, LType resultType, bool? unsigned)
         {
+            TypeReference vt = null;
             if (locals.TryGetValue(local.Symbol, out var vd))
             {
-                var crt = compilation.GetClrType (resultType, module, unsigned: unsigned);
+                vt = vd.VariableType;
                 Emit(il.Create(OpCodes.Ldloc, vd));
-                if (crt.FullName != vd.VariableType.FullName) {
-                    if (resultType is Types.IntegerType intt) {
-                        switch (Compilation.RoundUpIntBits (intt.Bits)) {
-                            case 8:
-                                Emit (unsigned ? OpCodes.Conv_U1 : OpCodes.Conv_U1);
-                                break;
-                            case 16:
-                                Emit (unsigned ? OpCodes.Conv_U2 : OpCodes.Conv_I2);
-                                break;
-                            case 32:
-                                Emit (unsigned ? OpCodes.Conv_U4 : OpCodes.Conv_I4);
-                                break;
-                            case 64:
-                                Emit (unsigned ? OpCodes.Conv_U8 : OpCodes.Conv_I8);
-                                break;
-                            default:
-                                throw new NotSupportedException ($"Cannot emit integer type `{crt}` for local type `{vd.VariableType}`");
-                        }
-                    }
-                    else if (resultType is Types.PointerType) {
-                        // OK
-                    }
-                    else {
-                        throw new NotSupportedException ($"Cannot emit type `{crt}` for local type `{vd.VariableType}`");
-                    }
-                }
             }
             else
             {
                 if (function.ParamSyms.TryGetValue(local.Symbol, out var pd))
                 {
-                    Emit(il.Create(OpCodes.Ldarg, pd));
+                    vt = pd.ParameterType;
+                    Emit (il.Create(OpCodes.Ldarg, pd));
                 }
                 else
                 {
                     var a = function.IRDefinition.GetAssignment(local);
-                    EmitInstruction(a.Result, a.Instruction, null, null, mainContext);
+                    EmitInstruction(a.Result, a.Instruction, null, null, mainContext, unsigned);
+                }
+            }
+
+            var crt = compilation.GetClrType (resultType, module, unsigned: unsigned);
+            if (vt != null && crt.FullName != vt.FullName) {
+                if (resultType is Types.IntegerType intt) {
+                    if (unsigned.HasValue) {
+                        switch (Compilation.RoundUpIntBits (intt.Bits)) {
+                            case 8:
+                                Emit (unsigned.Value ? OpCodes.Conv_U1 : OpCodes.Conv_I1);
+                                break;
+                            case 16:
+                                Emit (unsigned.Value ? OpCodes.Conv_U2 : OpCodes.Conv_I2);
+                                break;
+                            case 32:
+                                Emit (unsigned.Value ? OpCodes.Conv_U4 : OpCodes.Conv_I4);
+                                break;
+                            case 64:
+                                Emit (unsigned.Value ? OpCodes.Conv_U8 : OpCodes.Conv_I8);
+                                break;
+                            default:
+                                throw new NotSupportedException ($"Cannot emit integer type `{crt}` for local type `{vd.VariableType}`");
+                        }
+                    }
+                    else {
+                        switch (Compilation.RoundUpIntBits (intt.Bits)) {
+                            case 8:
+                                Emit (OpCodes.Conv_U1);
+                                break;
+                            case 16:
+                                Emit (OpCodes.Conv_I2);
+                                break;
+                            case 32:
+                                Emit (OpCodes.Conv_I4);
+                                break;
+                            case 64:
+                                Emit (OpCodes.Conv_I8);
+                                break;
+                            default:
+                                throw new NotSupportedException ($"Cannot emit integer type `{crt}` for local type `{vd.VariableType}`");
+                        }
+                    }
+                }
+                else if (resultType is Types.PointerType) {
+                    // OK
+                }
+                else {
+                    throw new NotSupportedException ($"Cannot emit type `{crt}` for local type `{vd.VariableType}`");
                 }
             }
         }
@@ -1975,7 +2026,7 @@ namespace Iril
             EmitStind (store.Value.Type);
         }
 
-        void EmitLoad(IR.LoadInstruction load)
+        void EmitLoad(IR.LoadInstruction load, bool? unsigned)
         {
             // Shortcut Load Field
             if (load.Pointer.Value is IR.LocalValue pointerLocal
@@ -2013,16 +2064,36 @@ namespace Iril
                 switch (Compilation.RoundUpIntBits (intt.Bits))
                 {
                     case 8:
-                        Emit(il.Create(OpCodes.Ldind_U1));
+                        if (unsigned.HasValue && !unsigned.Value) {
+                            Emit (il.Create (OpCodes.Ldind_I1));
+                        }
+                        else {
+                            Emit (il.Create (OpCodes.Ldind_U1));
+                        }
                         break;
                     case 16:
-                        Emit(il.Create(OpCodes.Ldind_U2));
+                        if (unsigned.HasValue && unsigned.Value) {
+                            Emit (il.Create (OpCodes.Ldind_U2));
+                        }
+                        else {
+                            Emit (il.Create (OpCodes.Ldind_I2));
+                        }
                         break;
                     case 32:
-                        Emit(il.Create(OpCodes.Ldind_U4));
+                        if (unsigned.HasValue && unsigned.Value) {
+                            Emit (il.Create (OpCodes.Ldind_U4));
+                        }
+                        else {
+                            Emit (il.Create (OpCodes.Ldind_I4));
+                        }
                         break;
                     case 64:
-                        Emit(il.Create(OpCodes.Ldind_I8));
+                        if (unsigned.HasValue && unsigned.Value) {
+                            Emit (il.Create (OpCodes.Ldind_I8));
+                        }
+                        else {
+                            Emit (il.Create (OpCodes.Ldind_I8));
+                        }
                         break;
                     default:
                         Emit(il.Create(OpCodes.Ldobj, et));
@@ -2169,6 +2240,7 @@ namespace Iril
                 if (a?.Instruction is IR.IcmpInstruction icmp && !(icmp.Type is VectorType))
                 {
                     var op = OpCodes.Brtrue;
+                    var unsigned = true;
                     switch (icmp.Condition)
                     {
                         case IR.IcmpCondition.Equal:
@@ -2190,20 +2262,24 @@ namespace Iril
                             op = OpCodes.Ble_Un;
                             break;
                         case IR.IcmpCondition.SignedGreaterThan:
+                            unsigned = false;
                             op = OpCodes.Bgt;
                             break;
                         case IR.IcmpCondition.SignedGreaterThanOrEqual:
+                            unsigned = false;
                             op = OpCodes.Bge;
                             break;
                         case IR.IcmpCondition.SignedLessThan:
+                            unsigned = false;
                             op = OpCodes.Blt;
                             break;
                         case IR.IcmpCondition.SignedLessThanOrEqual:
+                            unsigned = false;
                             op = OpCodes.Ble;
                             break;
                     }
-                    EmitValue(icmp.Op1, icmp.Type);
-                    EmitValue(icmp.Op2, icmp.Type);
+                    EmitValue(icmp.Op1, icmp.Type, unsigned: unsigned);
+                    EmitValue(icmp.Op2, icmp.Type, unsigned: unsigned);
                     Emit(il.Create(op, trueTarget));
                     return;
                 }
