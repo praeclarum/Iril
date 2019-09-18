@@ -10,6 +10,8 @@ IR to IL converter.
 dotnet tool install iril-cli -g
 ```
 
+(Or `dotnet tool update iril-cli -g` if you already have it installed.)
+
 ## Use
 
 Given some code in *HelloWorld.c*:
@@ -17,7 +19,8 @@ Given some code in *HelloWorld.c*:
 ```c
 #include <stdio.h>
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     printf("Hello, world!");
 }
 ```
