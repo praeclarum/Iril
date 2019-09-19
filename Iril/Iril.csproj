@@ -22,15 +22,9 @@
   </ItemGroup>
   
   <ItemGroup>
-    <None Remove="Lib\libcxx.zip" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="..\LICENSE.txt" Pack="true" PackagePath="" />
   </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="Lib\libcxx.zip" />
-  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\StdLib\StdLib.csproj" />
   </ItemGroup>
