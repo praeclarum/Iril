@@ -17,6 +17,8 @@ jobs:
       uses: actions/setup-dotnet@v2
       with:
         dotnet-version: 6.0.400
+    - name: Install ILSpy
+      run: dotnet tool install ilspycmd -g
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
