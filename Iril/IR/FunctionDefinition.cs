@@ -28,8 +28,11 @@ namespace Iril.IR
                 if (p.Symbol == LocalSymbol.None) {
                     var s = (LocalSymbol)Iril.Symbol.Intern ('%', implicitLocalCounter);
                     ps.Add (p.WithSymbol (s));
-                    implicitLocalCounter++;
                 }
+                else {
+                    ps.Add (p);
+                }
+                implicitLocalCounter++;
             }
 
             var bs = new List<Block> ();
