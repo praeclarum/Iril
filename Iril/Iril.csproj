@@ -5,20 +5,15 @@
     <LangVersion>latest</LangVersion>
     <PreBuildEvent Condition="$(HOME.StartsWith('/Users/fak'))">cd /Users/fak/Dropbox/Projects/Iril &amp;&amp; make</PreBuildEvent>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+    <LangVersion>8.0</LangVersion>
   </PropertyGroup>
   
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <LangVersion>8.0</LangVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <LangVersion>8.0</LangVersion>
-  </PropertyGroup>
   <ItemGroup>
     <Folder Include="IR\" />
     <Folder Include="Types\" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Mono.Cecil" Version="0.10.0" />
+    <PackageReference Include="Mono.Cecil" Version="0.11.4" />
   </ItemGroup>
   
   <ItemGroup>
