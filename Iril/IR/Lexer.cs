@@ -66,6 +66,7 @@ namespace Iril.IR
             { Symbol.Intern ("ret"), Token.RET },
             { Symbol.Intern ("nocapture"), Token.NOCAPTURE },
             { Symbol.Intern ("noundef"), Token.NOUNDEF },
+            { Symbol.Intern ("immarg"), Token.IMMARG },
             { Symbol.Intern ("writeonly"), Token.WRITEONLY },
             { Symbol.Intern ("readonly"), Token.READONLY },
             { Symbol.Intern ("attributes"), Token.ATTRIBUTES },

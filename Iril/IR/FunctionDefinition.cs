@@ -123,6 +123,7 @@ namespace Iril.IR
         Align8          = 1 << 11,
         Byval           = 1 << 12,
         NoUndef         = 1 << 13,
+        ImmediateArgument = 1 << 14,
     }
 
     public class FunctionDeclaration

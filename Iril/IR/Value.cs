@@ -121,6 +121,20 @@ namespace Iril.IR
         public override IEnumerable<GlobalSymbol> ReferencedGlobals => new GlobalSymbol[] { Symbol };
     }
 
+    public class SymbolValue : Value
+    {
+        public readonly Symbol Symbol;
+
+        public SymbolValue (Symbol symbol)
+        {
+            Symbol = symbol ?? throw new ArgumentNullException (nameof (symbol));
+        }
+
+        public override string ToString () => Symbol.ToString ();
+
+        public override IEnumerable<GlobalSymbol> ReferencedGlobals => Enumerable.Empty<GlobalSymbol> ();
+    }
+
     public class PtrtointValue : ConversionValue
     {
         public PtrtointValue (TypedValue value, LType type) : base (value, type)

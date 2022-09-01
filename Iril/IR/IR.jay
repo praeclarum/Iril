@@ -40,7 +40,7 @@ namespace Iril.IR
 %token FCMP OEQ OGT OGE OLT OLE ONE ORD UEQ UNE UNO
 %token PHI SELECT CALL TAIL VA_ARG ASM SIDEEFFECT
 %token LANDINGPAD CATCH CATCHPAD CLEANUPPAD
-%token NOUNDEF
+%token NOUNDEF IMMARG
 
 %start module
 
@@ -482,25 +482,30 @@ personality_function
         $$ = $2;
     }
     ;
+
+declare_head
+    : DECLARE
+    | DECLARE metadata_kvs
+    ;
     
 function_declaration
-    : DECLARE return_type GLOBAL_SYMBOL parameters
+    : declare_head return_type GLOBAL_SYMBOL parameters
     {
         $$ = new FunctionDeclaration ((LType)$2, (GlobalSymbol)$3, (IEnumerable<Parameter>)$4);
     }
-    | DECLARE return_type GLOBAL_SYMBOL parameters declare_tail
+    | declare_head return_type GLOBAL_SYMBOL parameters declare_tail
     {
         $$ = new FunctionDeclaration ((LType)$2, (GlobalSymbol)$3, (IEnumerable<Parameter>)$4);
     }
-    | DECLARE NOALIAS return_type GLOBAL_SYMBOL parameters declare_tail
+    | declare_head NOALIAS return_type GLOBAL_SYMBOL parameters declare_tail
     {
         $$ = new FunctionDeclaration ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5);
     }
-    | DECLARE parameter_attributes return_type GLOBAL_SYMBOL parameters declare_tail
+    | declare_head parameter_attributes return_type GLOBAL_SYMBOL parameters declare_tail
     {
         $$ = new FunctionDeclaration ((LType)$3, (GlobalSymbol)$4, (IEnumerable<Parameter>)$5);
     }
-    | DECLARE NOALIAS parameter_attributes return_type GLOBAL_SYMBOL parameters declare_tail
+    | declare_head NOALIAS parameter_attributes return_type GLOBAL_SYMBOL parameters declare_tail
     {
         $$ = new FunctionDeclaration ((LType)$4, (GlobalSymbol)$5, (IEnumerable<Parameter>)$6);
     }
@@ -567,6 +572,7 @@ parameter_attribute
     : NONNULL   { $$ = ParameterAttributes.NonNull; }
     | NOCAPTURE { $$ = ParameterAttributes.NoCapture; }
     | NOUNDEF   { $$ = ParameterAttributes.NoUndef; }
+    | IMMARG    { $$ = ParameterAttributes.ImmediateArgument; }
     | READONLY  { $$ = ParameterAttributes.ReadOnly; }
     | WRITEONLY { $$ = ParameterAttributes.WriteOnly; }
     | READNONE  { $$ = ParameterAttributes.ReadNone; }
@@ -574,8 +580,10 @@ parameter_attribute
     | ZEROEXT   { $$ = ParameterAttributes.ZeroExtend; }
     | RETURNED  { $$ = ParameterAttributes.Returned; }
     | SRET      { $$ = ParameterAttributes.StructureReturn; }
+    | SRET '(' type ')' { $$ = ParameterAttributes.StructureReturn; }
     | NOALIAS   { $$ = ParameterAttributes.NoAlias; }
     | BYVAL     { $$ = ParameterAttributes.Byval; }
+    | BYVAL '(' type ')' { $$ = ParameterAttributes.Byval; }
     | DEREFERENCEABLE '(' INTEGER ')'
     {
         $$ = ParameterAttributes.Dereferenceable;
@@ -781,13 +789,24 @@ indices
     ;
     
 blocks
-    : block
+    : lblock
     {
         $$ = NewList ((Block)$1);
     }
-    | blocks block
+    | blocks lblock
     {
         $$ = ListAdd ($1, (Block)$2);
+    }
+    ;
+
+ lblock
+    : INTEGER ':' block
+    {
+        $$ = $3;
+    }
+    | block
+    {
+        $$ = $1;
     }
     ;
 
@@ -869,10 +888,6 @@ function_arg
     {
         $$ = new Argument ((LType)$1, (Value)$3, ParameterAttributes.NonNull);
     }
-    | METADATA type LOCAL_SYMBOL
-    {
-        $$ = new Argument ((LType)$2, new LocalValue ((LocalSymbol)$3), (ParameterAttributes)0);
-    }
     | METADATA type metadata_value
     {
         $$ = new Argument ((LType)$2, (Value)$3, (ParameterAttributes)0);
@@ -893,7 +908,18 @@ function_arg
     
 metadata_value
     : constant 
-    | GLOBAL_SYMBOL { $$ = new GlobalValue ((GlobalSymbol)$1); }
+    | GLOBAL_SYMBOL
+    {
+        $$ = new GlobalValue ((GlobalSymbol)$1);
+    }
+    | LOCAL_SYMBOL
+    {
+        $$ = new LocalValue ((LocalSymbol)$1);
+    }
+    | SYMBOL
+    {
+        $$ = new SymbolValue ((Symbol)$1);
+    }
     | INTTOPTR '(' typed_value TO type ')'
     {
         $$ = new IntToPointerValue ((TypedValue)$3, (LType)$5);
@@ -920,6 +946,8 @@ metadata_value_args
 metadata_value_arg
     : constant
     | SYMBOL
+    | type LOCAL_SYMBOL
+    | type UNDEF
     ;
     
 phi_vals
@@ -1075,6 +1103,10 @@ instruction
         $$ = new BitcastInstruction ((TypedValue)$2, (LType)$4);
     }
     | CALL return_type function_pointer function_args
+    {
+        $$ = new CallInstruction ((LType)$2, (Value)$3, (IEnumerable<Argument>)$4, false);
+    }
+    | CALL return_type inline_assembly function_args attribute_group_refs
     {
         $$ = new CallInstruction ((LType)$2, (Value)$3, (IEnumerable<Argument>)$4, false);
     }
