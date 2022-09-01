@@ -2213,10 +2213,10 @@ namespace Iril
             if (hasEntryPoint) {
                 var text = @"{
     ""runtimeOptions"": {
-        ""tfm"": ""netcoreapp2.1"",
+        ""tfm"": ""net6.0"",
         ""framework"": {
             ""name"": ""Microsoft.NETCore.App"",
-            ""version"": ""2.1.0""
+            ""version"": ""6.0.0""
         }
     }
 }

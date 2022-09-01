@@ -122,6 +122,7 @@ namespace Iril.IR
         NoAlias         = 1 << 10,
         Align8          = 1 << 11,
         Byval           = 1 << 12,
+        NoUndef         = 1 << 13,
     }
 
     public class FunctionDeclaration

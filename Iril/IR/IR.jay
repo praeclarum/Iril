@@ -40,6 +40,7 @@ namespace Iril.IR
 %token FCMP OEQ OGT OGE OLT OLE ONE ORD UEQ UNE UNO
 %token PHI SELECT CALL TAIL VA_ARG ASM SIDEEFFECT
 %token LANDINGPAD CATCH CATCHPAD CLEANUPPAD
+%token NOUNDEF
 
 %start module
 
@@ -532,9 +533,17 @@ parameter
     {
         $$ = new Parameter (LocalSymbol.None, (LType)$1);
     }
+    | type LOCAL_SYMBOL
+    {
+        $$ = new Parameter ((LocalSymbol)$2, (LType)$1);
+    }
     | type parameter_attributes
     {
         $$ = new Parameter (LocalSymbol.None, (LType)$1);
+    }
+    | type parameter_attributes LOCAL_SYMBOL
+    {
+        $$ = new Parameter ((LocalSymbol)$3, (LType)$1);
     }
     | METADATA
     {
@@ -557,6 +566,7 @@ parameter_attributes
 parameter_attribute
     : NONNULL   { $$ = ParameterAttributes.NonNull; }
     | NOCAPTURE { $$ = ParameterAttributes.NoCapture; }
+    | NOUNDEF   { $$ = ParameterAttributes.NoUndef; }
     | READONLY  { $$ = ParameterAttributes.ReadOnly; }
     | WRITEONLY { $$ = ParameterAttributes.WriteOnly; }
     | READNONE  { $$ = ParameterAttributes.ReadNone; }
