@@ -1,14 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
-    <ProjectReference Include="..\Iril\Iril.csproj" />
-  </ItemGroup>
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
     
-    <Version>0.6</Version>
+    <Version>1.0.0</Version>
     <Authors>praeclarum</Authors>
     <Description>Compiles LLVM IR, C, and C++ code to .NET Standard assemblies.</Description>
     <PackageTags>C;C++;LLVM;IR;Compiler;Native;PInvoke</PackageTags>
@@ -19,6 +15,10 @@
     <ToolCommandName>iril</ToolCommandName>
   </PropertyGroup>
   
+  <ItemGroup>
+    <ProjectReference Include="..\Iril\Iril.csproj" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="..\LICENSE.txt" Pack="true" PackagePath="" />
   </ItemGroup>

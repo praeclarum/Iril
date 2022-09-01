@@ -1,4 +1,4 @@
-name: .NET
+name: Build Test and Package
 
 on:
   push:
@@ -13,6 +13,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Update Versions
+      env:
+        VERSION_PREFIX: 0.8
+        VERSION_SUFFIX: ${{github.run_number}}
+      run: |
+        VERSION=$VERSION_PREFIX.$VERSION_SUFFIX
+        sed -i bak "s:<Version>1.0.0</Version>:<Version>$VERSION</Version>:g" Cli/Cli.csproj
+        sed -i bak "s:<Version>1.0.0</Version>:<Version>$VERSION</Version>:g" Iril/Iril.csproj
     - name: Setup .NET
       uses: actions/setup-dotnet@v2
       with:
@@ -29,6 +37,11 @@ jobs:
         dotnet test -c Release --no-build --verbosity normal
     - name: Package
       run: |
+        mkdir PackageOut
         cd Cli
         dotnet pack -c Release
-        cp bin/Release/*.nupkg $BITRISE_DEPLOY_DIR
+        cp bin/Release/*.nupkg ../PackageOut
+    - name: Upload Package
+      uses: actions/upload-artifact@master
+      with:
+        path: PackageOut
