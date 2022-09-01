@@ -1,3 +1,5 @@
+/PackageOut
+
 /*.nupkg
 /y.output
 /*.c
@@ -60,3 +62,5 @@ Thumbs.db
 
 # dotCover
 *.dotCover
+
+.fake
