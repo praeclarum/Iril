@@ -1,0 +1,32 @@
+name: .NET
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: 6.0.400
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build -c Release --no-restore
+    - name: Test
+      run: |
+        cd Tests
+        dotnet test -c Release --no-build --verbosity normal
+    - name: Package
+      run: |
+        cd Cli
+        dotnet pack -c Release
+        cp bin/Release/*.nupkg $BITRISE_DEPLOY_DIR
