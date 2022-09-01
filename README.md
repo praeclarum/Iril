@@ -1,8 +1,8 @@
 # Iril
 
-[![Build Status](https://app.bitrise.io/app/215cbf7fe9a1fad5/status.svg?token=K4l3jgu8fAUWcExrQsRTtQ&branch=master)](https://app.bitrise.io/app/215cbf7fe9a1fad5)
+[![Build Test and Package](https://github.com/praeclarum/Iril/actions/workflows/build.yml/badge.svg)](https://github.com/praeclarum/Iril/actions/workflows/build.yml)
 
-IR to IL converter.
+Iril is an LLVM IR to IL converter. That's a fancy way of saying it can compile native code like C to be crossplatform process-independent .NET.
 
 ## Installation
 
