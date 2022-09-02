@@ -763,7 +763,7 @@ namespace Iril
                             && call.Instruction is CallInstruction calli
                             && calli.Arguments.Length == 1
                             && calli.Pointer is GlobalValue setjmp
-                            && setjmp.Symbol.Text == "@setjmp") {
+                            && (setjmp.Symbol.Text == "@setjmp" || setjmp.Symbol.Text == "@_setjmp")) {
                             // FOUND SETJMP
                             setjmpInfo = new SetjmpInfo {
                                 SetjmpBlock = blockSymbol,
