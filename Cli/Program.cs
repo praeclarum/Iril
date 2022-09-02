@@ -23,6 +23,7 @@ namespace Cli
             var extraArgs = new List<string> ();
             var outName = "";
             var safeMemory = false;
+            var reentrant = false;
             var showHelp = false;
             var showVersion = false;
 
@@ -53,6 +54,10 @@ namespace Cli
                         safeMemory = true;
                         i++;
                     }
+                    else if (a == "--reentrant") {
+                        reentrant = true;
+                        i++;
+                    }
                     else {
                         extraArgs.Add (a);
                         i++;
@@ -79,10 +84,11 @@ namespace Cli
                 Console.WriteLine ($"INPUTS: .c and .ll files");
                 Console.WriteLine ();
                 Console.WriteLine ($"OPTIONS:");
-                Console.WriteLine ($"  -o <asm file>      Path to the assembly .dll to output");
                 Console.WriteLine ($"  -h, -?, --help     Display this help");
-                Console.WriteLine ($"  -v, --version      Display the version");
+                Console.WriteLine ($"  -o <asm file>      Path to the assembly .dll to output");
+                Console.WriteLine ($"  --reentrant        Generate reentrant code");
                 Console.WriteLine ($"  --safe-memory      Verify memory accesses to make code safe from crashes");
+                Console.WriteLine ($"  -v, --version      Display the version");
                 return 0;
             }
 
@@ -137,7 +143,7 @@ namespace Cli
                 // Compile
                 //
                 Info ("Compiling...");
-                var comp = new Compilation (new CompilationOptions (modules, outName, safeMemory: safeMemory));
+                var comp = new Compilation (new CompilationOptions (modules, outName, safeMemory: safeMemory, reentrant: reentrant));
                 comp.Compile ();
 
                 //

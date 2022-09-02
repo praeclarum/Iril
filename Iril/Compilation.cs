@@ -658,7 +658,13 @@ namespace Iril
             {
                 var a = ancestry;
                 if (a.Length == 0) {
-                    if (isExternal) {
+                    if (options.Reentrant) {
+                        a = new[] { namespac, "Globals" };
+                        if (!isExternal) {
+                            nn.Name = IR.MangledName.SanitizeIdentifier (nn.Module.Symbol.Text) + "_" + nn.Name;
+                        }
+                    }
+                    else if (isExternal) {
                         a = new[] { namespac, "Globals" };
                     }
                     else {
@@ -838,6 +844,11 @@ namespace Iril
         {
             var allModules = new[] { syscalls.Module }.Concat (Modules).ToArray ();
 
+            TypeDefinition allDataType = null;
+            if (options.Reentrant) {
+                allDataType = GetAllModulesDataType ();
+            }
+
             //
             // Define globals
             //
@@ -877,7 +888,7 @@ namespace Iril
                 //
                 // Create a data type to store the global variables
                 //
-                var (moduleStruct, _) = CreateStructType ("", "GlobalData", false, globs.Select(x => x.Item2.Type).ToArray(), m);
+                var (moduleStruct, _) = CreateStructType ("", "ModuleData", false, globs.Select(x => x.Item2.Type).ToArray(), m);
                 moduleStruct.Attributes = (moduleStruct.Attributes & ~TypeAttributes.Public) | TypeAttributes.NestedPublic;
                 var n = globs.Count;
                 var gfields = new SymbolTable<(IR.GlobalVariable, FieldDefinition)> ();
@@ -894,10 +905,18 @@ namespace Iril
                 moduleType.NestedTypes.Add (moduleStruct);
 
                 //
-                // Create a static variable to hold a reference to the data
+                // Create a field in the all data type to store the module data
+                //
+                if (allDataType != null) {
+                    var f = new FieldDefinition (moduleTypeName, FieldAttributes.Public, moduleStruct);
+                    allDataType.Fields.Add (f);
+                }
+
+                //
+                // Create a variable to hold a reference to the data
                 //
                 var dataFieldType = moduleStruct.MakePointerType ();
-                var dataField = new FieldDefinition ("Globals", FieldAttributes.Public | FieldAttributes.Static, dataFieldType);
+                var dataField = new FieldDefinition ("Data", FieldAttributes.Public | (options.Reentrant ? 0 : FieldAttributes.Static), dataFieldType);
                 moduleType.Fields.Add (dataField);
 
                 //
@@ -960,6 +979,20 @@ namespace Iril
             }
         }
 
+        TypeDefinition allModulesDataType;
+
+        TypeDefinition GetAllModulesDataType ()
+        {
+            if (allModulesDataType != null)
+                return allModulesDataType;
+            var ns = namespac;
+            var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Sealed | TypeAttributes.SequentialLayout | TypeAttributes.Public;
+            var td = new TypeDefinition (ns, "GlobalData", tattrs, sysVal);
+            mod.Types.Add (td);
+            allModulesDataType = td;
+            return td;
+        }
+
         TypeDefinition GetModuleType (Module m, bool allVarsPrivate)
         {
             var moduleTypeName = new IR.MangledName (m.Symbol).Identifier;
@@ -993,10 +1026,23 @@ namespace Iril
         void EmitGlobalInitializers (Module m, TypeDefinition moduleGlobalsType, ModuleGlobalInfo info)
         {
             try {
-                var mattrs = MethodAttributes.Private | MethodAttributes.Static | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName;
-                var cctor = new MethodDefinition (".cctor", mattrs, sysVoid);
-                moduleGlobalsType.Methods.Add (cctor);
-                var compiler = new GlobalInitializersCompiler (this, m, cctor, info);
+                var mattrs = MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName;
+                var mname = ".ctor";
+                if (options.Reentrant) {
+                    mattrs |= MethodAttributes.Public;
+                }
+                else {
+                    mattrs |= MethodAttributes.Private | MethodAttributes.Static;
+                    mname = ".cctor";
+                }
+                var ctor = new MethodDefinition (mname, mattrs, sysVoid);
+                if (options.Reentrant) {
+                    var globalsType = mod.GetType (namespac + ".Globals");
+                    var pdata = new ParameterDefinition("globals", ParameterAttributes.None, globalsType);
+                    ctor.Parameters.Add (pdata);
+                }
+                moduleGlobalsType.Methods.Add (ctor);
+                var compiler = new GlobalInitializersCompiler (this, m, ctor, info);
                 compiler.Compile ();
             }
             catch (Exception ex) {

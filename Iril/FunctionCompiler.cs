@@ -22,6 +22,7 @@ namespace Iril
         public MethodDefinition ILDefinition;
         public SymbolTable<ParameterDefinition> ParamSyms;
         public int ReferenceCount;
+        public bool IsStatic => ILDefinition.IsStatic;
     }
 
     class FunctionCompiler : Emitter
@@ -2654,7 +2655,7 @@ namespace Iril
                             }
 
                             if (compilation.Options.Reentrant) {
-                                EmitContext (function.ILDefinition.DeclaringType, m.ILDefinition.DeclaringType);
+                                EmitReentrantContext (function.ILDefinition.DeclaringType, m);
                             }
 
                             for (var i = 0; i < nps; i++) {
@@ -2719,9 +2720,17 @@ namespace Iril
             Emit (il.Create (OpCodes.Calli, site));
         }
 
-        void EmitContext (TypeDefinition fromType, TypeDefinition toType)
+        void EmitReentrantContext (TypeDefinition callerType, DefinedFunction m)
         {
-            throw new NotImplementedException ();
+            var calleeType = m.ILDefinition.DeclaringType;
+            if (m.IsStatic)
+                return;
+            if (ReferenceEquals (callerType, calleeType)) {
+                Emit (il.Create (OpCodes.Ldarg_0));
+            }
+            else {
+                throw new NotSupportedException ($"EmitContext with Caller: {callerType} and Callee: {calleeType}");
+            }
         }
 
         void AddLocalDebugInfo (Block block, LocalSymbol local, SymbolTable<object> metadata)
