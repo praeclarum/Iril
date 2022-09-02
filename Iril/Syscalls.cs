@@ -73,7 +73,9 @@ namespace Iril
             EmitFPuts ();
             EmitFWrite ();
             EmitUnixRead ("@\"\\01_read\"");
+            EmitUnixRead ("@read");
             EmitUnixWrite ("@\"\\01_write\"");
+            EmitUnixWrite ("@write");
             EmitRealloc ();
             EmitMemsetPattern (4);
             EmitMemsetPattern (8);
@@ -91,7 +93,8 @@ namespace Iril
             EmitMemset ();
             EmitMemsetChecked ();
             EmitUMulOvf64 ();
-            EmitSetjmp ();
+            EmitSetjmp ("@setjmp");
+            EmitSetjmp ("@_setjmp");
             EmitLongjmp ();
             EmitAbort ();
 
@@ -1032,9 +1035,9 @@ namespace Iril
             b.Optimize ();
         }
 
-        void EmitSetjmp ()
+        void EmitSetjmp (string symbol)
         {
-            var m = NewMethod ("@setjmp", Types.IntegerType.I32,
+            var m = NewMethod (symbol, Types.IntegerType.I32,
                                ("env", Types.PointerType.I32Pointer));
             var b = m.Body;
             var il = b.GetILProcessor ();

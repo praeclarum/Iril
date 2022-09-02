@@ -36,3 +36,7 @@ Run the code using `dotnet`:
 ```sh
 dotnet HelloWorld.dll
 ```
+
+## Links
+
+* [LLVM IR Language Reference](https://llvm.org/docs/LangRef.html)
