@@ -89,6 +89,26 @@ namespace Iril
         public MethodReference sysMathFloorD;
         public MethodReference sysMathSqrtD;
         public MethodReference sysMathPowD;
+        public MethodReference sysMathMinSByte;
+        public MethodReference sysMathMinInt16;
+        public MethodReference sysMathMinInt32;
+        public MethodReference sysMathMinInt64;
+        public MethodReference sysMathMinByte;
+        public MethodReference sysMathMinUInt16;
+        public MethodReference sysMathMinUInt32;
+        public MethodReference sysMathMinUInt64;
+        public MethodReference sysMathMinS;
+        public MethodReference sysMathMinD;
+        public MethodReference sysMathMaxSByte;
+        public MethodReference sysMathMaxInt16;
+        public MethodReference sysMathMaxInt32;
+        public MethodReference sysMathMaxInt64;
+        public MethodReference sysMathMaxByte;
+        public MethodReference sysMathMaxUInt16;
+        public MethodReference sysMathMaxUInt32;
+        public MethodReference sysMathMaxUInt64;
+        public MethodReference sysMathMaxS;
+        public MethodReference sysMathMaxD;
         public MethodReference sysSingleIsNaN;
         public MethodReference sysDoubleIsNaN;
         TypeReference sysEventArgs;
@@ -191,7 +211,8 @@ namespace Iril
                 f.ReferenceCount++;
                 return f.ILDefinition;
             }
-            throw new KeyNotFoundException ($"Failed to find system method `{symbol}`");
+            var methods = String.Join(", ", externalMethodDefs.Select(x => x.Key));
+            throw new KeyNotFoundException ($"Failed to find system method `{symbol}` ({symbol.GetType()}): {methods}");
         }
 
         readonly Lazy<TypeDefinition> dataType;
@@ -360,6 +381,26 @@ namespace Iril
             sysMathFloorD = ImportMethod (sysMath, sysDouble, "Floor", sysDouble);
             sysMathSqrtD = ImportMethod (sysMath, sysDouble, "Sqrt", sysDouble);
             sysMathPowD = ImportMethod (sysMath, sysDouble, "Pow", sysDouble, sysDouble);
+            sysMathMaxSByte = ImportMethod (sysMath, sysSByte, "Max", sysSByte, sysSByte);
+            sysMathMaxInt16 = ImportMethod (sysMath, sysInt16, "Max", sysInt16, sysInt16);
+            sysMathMaxInt32 = ImportMethod (sysMath, sysInt32, "Max", sysInt32, sysInt32);
+            sysMathMaxInt64 = ImportMethod (sysMath, sysInt64, "Max", sysInt64, sysInt64);
+            sysMathMaxByte = ImportMethod (sysMath, sysByte, "Max", sysByte, sysByte);
+            sysMathMaxUInt16 = ImportMethod (sysMath, sysUInt16, "Max", sysUInt16, sysUInt16);
+            sysMathMaxUInt32 = ImportMethod (sysMath, sysUInt32, "Max", sysUInt32, sysUInt32);
+            sysMathMaxUInt64 = ImportMethod (sysMath, sysUInt64, "Max", sysUInt64, sysUInt64);
+            sysMathMaxS = ImportMethod (sysMath, sysSingle, "Max", sysSingle, sysSingle);
+            sysMathMaxD = ImportMethod (sysMath, sysDouble, "Max", sysDouble, sysDouble);
+            sysMathMinSByte = ImportMethod (sysMath, sysSByte, "Min", sysSByte, sysSByte);
+            sysMathMinInt16 = ImportMethod (sysMath, sysInt16, "Min", sysInt16, sysInt16);
+            sysMathMinInt32 = ImportMethod (sysMath, sysInt32, "Min", sysInt32, sysInt32);
+            sysMathMinInt64 = ImportMethod (sysMath, sysInt64, "Min", sysInt64, sysInt64);
+            sysMathMinByte = ImportMethod (sysMath, sysByte, "Min", sysByte, sysByte);
+            sysMathMinUInt16 = ImportMethod (sysMath, sysUInt16, "Min", sysUInt16, sysUInt16);
+            sysMathMinUInt32 = ImportMethod (sysMath, sysUInt32, "Min", sysUInt32, sysUInt32);
+            sysMathMinUInt64 = ImportMethod (sysMath, sysUInt64, "Min", sysUInt64, sysUInt64);
+            sysMathMinS = ImportMethod (sysMath, sysSingle, "Min", sysSingle, sysSingle);
+            sysMathMinD = ImportMethod (sysMath, sysDouble, "Min", sysDouble, sysDouble);
             sysEventArgs = Import ("System.EventArgs");
             sysIAsyncResult = Import ("System.IAsyncResult");
             sysAsyncCallback = Import ("System.AsyncCallback");
@@ -1073,7 +1114,7 @@ namespace Iril
                         continue;
 
                     var symbol = export != null ? Symbol.Intern (export.ConstructorArguments[0].Value.ToString ()) : null;
-
+                    
                     var (im, imImport) = ImportTypeMethod (m, it, symbol);
                     if (im == null)
                         continue;
@@ -1081,8 +1122,6 @@ namespace Iril
                     importMethodBodies.Add (imImport);
 
                     if (export != null) {
-
-
                         externalMethodDefs[symbol] = new DefinedFunction {
                             Symbol = symbol,
                             IRModule = null,
@@ -1090,6 +1129,7 @@ namespace Iril
                             ILDefinition = im,
                             ParamSyms = new SymbolTable<ParameterDefinition> (),
                         };
+                        // Console.WriteLine($"FOUND EXPORT `{symbol}` ({symbol.GetType()})");
                     }
                     else if (im.IsConstructor) {
                         // OK

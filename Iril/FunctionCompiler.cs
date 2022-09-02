@@ -1075,7 +1075,7 @@ namespace Iril
                         //if (cbr.IfFalse.Symbol != nextBlock?.Symbol)
                         var falseDest = GetLabel (cbr.IfFalse, block, context);
                         if (context.IsExceptionHandler && !context.IsProtecting (cbr.IfFalse)) {
-                            Console.WriteLine ("EMIT FARLSE");
+                            // Console.WriteLine ("EMIT FALSE");
                             Emit (il.Create (OpCodes.Leave, falseDest));
                         }
                         else {
@@ -2450,9 +2450,15 @@ namespace Iril
         {
             if (call.Pointer is IR.GlobalValue gv) {
                 switch (gv.Symbol.Text) {
-                    case "@llvm.lifetime.start.p0i8":
-                    case "@llvm.lifetime.end.p0i8":
+                    case "@llvm.ceil.f64":
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathCeilD));
+                        return;
+                    case "@llvm.ceil.v2f64" when call.Arguments[0].Type is VectorType ceilVt:
+                        EmitVectorFunc (call.Arguments[0].Value, ceilVt, compilation.sysMathCeilD);
+                        return;
                     case "@llvm.dbg.declare":
+                    case "@llvm.dbg.label":
                         return;
                     case "@llvm.dbg.value":
                         // call void @llvm.dbg.value(metadata %struct._parser_t* %3, metadata !1020, metadata !DIExpression(DW_OP_deref)), !dbg !1140
@@ -2473,25 +2479,18 @@ namespace Iril
                             }
                         }
                         return;
-                    case "@llvm.ceil.f64":
-                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
-                        Emit (il.Create (OpCodes.Call, compilation.sysMathCeilD));
-                        return;
-                    case "@llvm.ceil.v2f64" when call.Arguments[0].Type is VectorType ceilVt:
-                        EmitVectorFunc (call.Arguments[0].Value, ceilVt, compilation.sysMathCeilD);
-                        return;
                     case "@llvm.fabs.f64":
                         EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
                         Emit (il.Create (OpCodes.Call, compilation.sysMathAbsD));
                         return;
-                    case "@llvm.sqrt.f64":
-                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
-                        Emit (il.Create (OpCodes.Call, compilation.sysMathSqrtD));
-                        return;
-                    case "@llvm.pow.f64":
+                    case "@llvm.fshl.i64":
                         EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
                         EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
-                        Emit (il.Create (OpCodes.Call, compilation.sysMathPowD));
+                        EmitValue (call.Arguments[2].Value, call.Arguments[2].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.GetSystemMethod (gv.Symbol)));
+                        return;
+                    case "@llvm.lifetime.start.p0i8":
+                    case "@llvm.lifetime.end.p0i8":
                         return;
                     case "@llvm.objectsize.i32.p0i8" when call.Arguments.Length >= 3: {
                             var min = 0;
@@ -2519,23 +2518,6 @@ namespace Iril
                             }
                         }
                         return;
-                    // declare void @llvm.memset.p0i8.i32(i8* <dest>, i8 <val>,
-                    //                                    i32<len>, i1<isvolatile>)
-                    case "@llvm.memset.p0i8.i32" when call.Arguments.Length >= 3:
-                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
-                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
-                        EmitValue (call.Arguments[2].Value, call.Arguments[2].Type);
-                        Emit (il.Create (OpCodes.Initblk));
-                        return;
-                    // declare void @llvm.memset.p0i8.i64 (i8 * < dest >, i8<val>,
-                    //                                     i64<len>, i1<isvolatile>)
-                    case "@llvm.memset.p0i8.i64" when call.Arguments.Length >= 3:
-                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
-                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
-                        EmitValue (call.Arguments[2].Value, call.Arguments[2].Type);
-                        Emit (il.Create (OpCodes.Conv_U4));
-                        Emit (il.Create (OpCodes.Initblk));
-                        return;
                     // declare void @llvm.memcpy.p0i8.p0i8.i32(i8* <dest>, i8* <src>,
                     //                                         i32 <len>, i1 <isvolatile>)
                     case "@llvm.memcpy.p0i8.p0i8.i32" when call.Arguments.Length >= 3:
@@ -2555,20 +2537,97 @@ namespace Iril
                         return;
                     // declare void @llvm.memmove.p0i8.p0i8.i64(i8* <dest>, i8* <src>,
                     //                                         i64 <len>, i1 <isvolatile>)
-                    //case "@llvm.memmove.p0i8.p0i8.i64" when call.Arguments.Length >= 3:
-                    //    EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
-                    //    EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
-                    //    EmitValue (call.Arguments[2].Value, call.Arguments[2].Type);
-                    //    Emit (il.Create (OpCodes.Conv_U4));
-                    //    Emit (il.Create (OpCodes.Cpblk));
-                    //    return;
+                    case "@llvm.memmove.p0i8.p0i8.i64" when call.Arguments.Length >= 3:
+                       EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                       EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                       EmitValue (call.Arguments[2].Value, call.Arguments[2].Type);
+                       Emit (il.Create (OpCodes.Call, compilation.GetSystemMethod (gv.Symbol)));
+                       return;
+                    // declare void @llvm.memset.p0i8.i32(i8* <dest>, i8 <val>,
+                    //                                    i32<len>, i1<isvolatile>)
+                    case "@llvm.memset.p0i8.i32" when call.Arguments.Length >= 3:
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        EmitValue (call.Arguments[2].Value, call.Arguments[2].Type);
+                        Emit (il.Create (OpCodes.Initblk));
+                        return;
+                    // declare void @llvm.memset.p0i8.i64 (i8 * < dest >, i8<val>,
+                    //                                     i64<len>, i1<isvolatile>)
+                    case "@llvm.memset.p0i8.i64" when call.Arguments.Length >= 3:
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        EmitValue (call.Arguments[2].Value, call.Arguments[2].Type);
+                        Emit (il.Create (OpCodes.Conv_U4));
+                        Emit (il.Create (OpCodes.Initblk));
+                        return;
+                    case "@llvm.pow.f64":
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathPowD));
+                        return;
+                    case "@llvm.smax.i8":
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathMaxSByte));
+                        return;
+                    case "@llvm.smax.i16":
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathMaxInt16));
+                        return;
+                    case "@llvm.smax.i32":
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathMaxInt32));
+                        return;
+                    case "@llvm.smax.i64":
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathMaxInt64));
+                        return;
+                    case "@llvm.sqrt.f64":
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathSqrtD));
+                        return;
+                    case "@llvm.stackrestore":
+                        compilation.WarningMessage (module.SourceFilename, $"Stack restore is not supported in `{MangledName.Demangle (function.Symbol)}`");
+                        return;
                     case "@llvm.stacksave":
                         compilation.WarningMessage (module.SourceFilename, $"Stack save is not supported in `{MangledName.Demangle (function.Symbol)}`");
                         Emit (il.Create (OpCodes.Ldc_I4_0));
                         Emit (il.Create (OpCodes.Conv_U));
                         return;
-                    case "@llvm.stackrestore":
-                        compilation.WarningMessage (module.SourceFilename, $"Stack restore is not supported in `{MangledName.Demangle (function.Symbol)}`");
+                    case "@llvm.trap":
+                        Emit (il.Create (OpCodes.Ldstr, "Trap"));
+                        Emit (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
+                        Emit (il.Create (OpCodes.Throw));
+                        return;
+                    case "@llvm.umax.i8":
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathMaxByte));
+                        return;
+                    case "@llvm.umax.i16":
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathMaxUInt16));
+                        return;
+                    case "@llvm.umax.i32":
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathMaxUInt32));
+                        return;
+                    case "@llvm.umax.i64":
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathMaxUInt64));
+                        return;
+                    case "@llvm.usub.sat.i64":
+                        EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
+                        EmitValue (call.Arguments[1].Value, call.Arguments[1].Type);
+                        Emit (il.Create (OpCodes.Sub));
+                        Emit (il.Create (OpCodes.Ldc_I8, 0L));
+                        Emit (il.Create (OpCodes.Call, compilation.sysMathMaxInt64));
                         return;
                     case "@llvm.va_start":
                         EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
@@ -2578,11 +2637,6 @@ namespace Iril
                     case "@llvm.va_end":
                         EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
                         Emit (il.Create (OpCodes.Call, compilation.GetSystemMethod (gv.Symbol)));
-                        return;
-                    case "@llvm.trap":
-                        Emit (il.Create (OpCodes.Ldstr, "Trap"));
-                        Emit (il.Create (OpCodes.Newobj, compilation.sysExceptionCtor));
-                        Emit (il.Create (OpCodes.Throw));
                         return;
                     default:
                         if (compilation.TryGetFunction (module, gv.Symbol, out var m)) {

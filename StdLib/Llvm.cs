@@ -128,5 +128,40 @@ namespace StdLib
                 Memory.UnregisterMemory (list->reg_save_area);
             }
         }
+
+        [DllExport ("@llvm.fshl.i64")]
+        public unsafe static ulong fshl_i64(ulong a, ulong b, ulong c)
+        {
+            // Performs a funnel shift left:
+            // The first two values are concatenated as { %a : %b }
+            // (%a is the most significant bits of the wide value),
+            // the combined value is shifted left,
+            // and the most significant bits are extracted
+            // to produce a result that is the same size as the original arguments.
+            var result = a;
+            while (c > 0) {
+                result = (result << 1) | (b >> 63);
+                b <<= 1;
+                c--;
+            }
+            return result;
+        }
+
+        [DllExport ("@llvm.memmove.p0i8.p0i8.i64")]
+        public unsafe static void memmove (byte* dest, byte* src, size_t len)
+        {
+            byte* d = (byte*)dest;
+            byte* s = (byte*)src;
+            byte* r = d;
+            if (s < d) {
+                d += len;
+                s += len;
+                while (len-- != 0)
+                    *--d = *--s;
+            }
+            else
+                while (len-- != 0)
+                    *d++ = *s++;
+        }
     }
 }

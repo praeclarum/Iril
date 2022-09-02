@@ -20,7 +20,7 @@ namespace StdLib
             return memmove (dest, src, len);
         }
 
-        static unsafe void* memmove (void* dest, void* src, size_t len)
+        public static unsafe void* memmove (void* dest, void* src, size_t len)
         {
             byte* d = (byte*)dest;
             byte* s = (byte*)src;
@@ -232,7 +232,6 @@ namespace StdLib
                 return;
             lock (registeredMemory) {
                 var n = registeredMemory.Count;
-                int insertAt = 0;
                 for (var i = 0; i < n; i++) {
                     var b = ((MemoryBlock)registeredMemory[i]);
                     if (b.Pointer == pointer) {
