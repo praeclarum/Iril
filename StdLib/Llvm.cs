@@ -147,6 +147,24 @@ namespace StdLib
             return result;
         }
 
+        [DllExport ("@llvm.fshl.i32")]
+        public unsafe static uint fshl_i32(uint a, uint b, uint c)
+        {
+            // Performs a funnel shift left:
+            // The first two values are concatenated as { %a : %b }
+            // (%a is the most significant bits of the wide value),
+            // the combined value is shifted left,
+            // and the most significant bits are extracted
+            // to produce a result that is the same size as the original arguments.
+            var result = a;
+            while (c > 0) {
+                result = (result << 1) | (b >> 31);
+                b <<= 1;
+                c--;
+            }
+            return result;
+        }
+
         [DllExport ("@llvm.memmove.p0i8.p0i8.i64")]
         public unsafe static void memmove (byte* dest, byte* src, size_t len)
         {
