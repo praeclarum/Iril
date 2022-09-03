@@ -1911,7 +1911,7 @@ namespace Iril
             }
 
             il.Append (il.Create (OpCodes.Switch, targets));
-            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Ldarg_0));
             il.Append (il.Create (OpCodes.Ret));
 
             foreach (var c in code) {
