@@ -2716,6 +2716,9 @@ namespace Iril
         void EmitCalli (CallSite site)
         {
             // Convert the token to an actual function pointer
+            if (compilation.Options.Reentrant) {
+                Emit (il.Create (OpCodes.Ldarg_0));
+            }
             Emit (il.Create (OpCodes.Call, compilation.LoadFunction));
             Emit (il.Create (OpCodes.Calli, site));
         }

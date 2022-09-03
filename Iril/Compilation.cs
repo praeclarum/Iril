@@ -269,6 +269,7 @@ namespace Iril
             EmitNativeExceptions ();
             EmitGlobalVariables ();
             CreateFunctionDefinitions ();
+            EmitGlobalData ();
             EmitGlobalInitializers ();
             CompileFunctions ();
             EmitLoadFunction ();
@@ -484,7 +485,11 @@ namespace Iril
 
         void DeclareLoadFunction ()
         {
-            LoadFunction = new MethodDefinition ("LoadFunction", MethodAttributes.HideBySig | MethodAttributes.Static | MethodAttributes.Public, sysBytePtr);
+            var mattrs = MethodAttributes.HideBySig | MethodAttributes.Public;
+            if (!options.Reentrant) {
+                mattrs |= MethodAttributes.Static;
+            }
+            LoadFunction = new MethodDefinition ("LoadFunction", mattrs, sysBytePtr);
         }
 
         readonly SymbolTable<Mono.Cecil.Cil.Document> fileDocuments = new SymbolTable<Mono.Cecil.Cil.Document> ();
@@ -904,27 +909,29 @@ namespace Iril
                 }
                 moduleType.NestedTypes.Add (moduleStruct);
 
-                //
-                // Create a field in the all data type to store the module data
-                //
                 if (allDataType != null) {
+                    //
+                    // Create a field in the all data type to store the module data
+                    //
                     var f = new FieldDefinition (moduleTypeName, FieldAttributes.Public, moduleStruct);
                     allDataType.Fields.Add (f);
+                    mglobals.AllDataField = f;
                 }
-
-                //
-                // Create a variable to hold a reference to the data
-                //
-                var dataFieldType = moduleStruct.MakePointerType ();
-                var dataField = new FieldDefinition ("Data", FieldAttributes.Public | (options.Reentrant ? 0 : FieldAttributes.Static), dataFieldType);
-                moduleType.Fields.Add (dataField);
+                else {
+                    //
+                    // Create a variable to hold a reference to the data
+                    //
+                    var dataFieldType = moduleStruct.MakePointerType ();
+                    var dataField = new FieldDefinition ("Data", FieldAttributes.Public | (options.Reentrant ? 0 : FieldAttributes.Static), dataFieldType);
+                    moduleType.Fields.Add (dataField);
+                    mglobals.DataField = dataField;
+                }
 
                 //
                 // Remember this data
                 //
                 mglobals.NeedsInit = needsInit;
                 mglobals.DataType = moduleStruct;
-                mglobals.DataField = dataField;
                 mglobals.GlobalFields = gfields;
 
                 //
@@ -1002,10 +1009,7 @@ namespace Iril
                 moduleTypes.TryGetValue (m.Symbol, out moduleType);
             }
             if (moduleType == null) {
-                var tattrs = TypeAttributes.BeforeFieldInit | (allVarsPrivate ? 0 : TypeAttributes.Public);
-                if (!options.Reentrant) {
-                    tattrs |= TypeAttributes.Abstract | TypeAttributes.Sealed;
-                }
+                var tattrs = TypeAttributes.BeforeFieldInit | TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed;
                 moduleType = new TypeDefinition (
                                     ns, m.Symbol.ToString (),
                                     tattrs,
@@ -1014,6 +1018,20 @@ namespace Iril
             }
             moduleTypes[m.Symbol] = moduleType;
             return moduleType;
+        }
+
+        public FieldDefinition GlobalsAllDataField { get; private set; }
+
+        void EmitGlobalData ()
+        {
+            if (!options.Reentrant)
+                return;
+
+            var allDataType = GetAllModulesDataType ();
+            var globals = mod.GetType (namespac + ".Globals");
+            var allDataField = new FieldDefinition ("AllData", FieldAttributes.Public, allDataType.MakePointerType ());
+            GlobalsAllDataField = allDataField;
+            globals.Fields.Add (allDataField);
         }
 
         void EmitGlobalInitializers ()
@@ -1026,13 +1044,13 @@ namespace Iril
         void EmitGlobalInitializers (Module m, TypeDefinition moduleGlobalsType, ModuleGlobalInfo info)
         {
             try {
-                var mattrs = MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName;
-                var mname = ".ctor";
+                var mattrs = MethodAttributes.HideBySig | MethodAttributes.Static;
+                var mname = "InitializeData";
                 if (options.Reentrant) {
                     mattrs |= MethodAttributes.Public;
                 }
                 else {
-                    mattrs |= MethodAttributes.Private | MethodAttributes.Static;
+                    mattrs |= MethodAttributes.Private | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName;
                     mname = ".cctor";
                 }
                 var ctor = new MethodDefinition (mname, mattrs, sysVoid);
@@ -1677,7 +1695,7 @@ namespace Iril
         {
             var md = LoadFunction;
 
-            syscalls.TypeDefinition.Methods.Add (md);
+            mod.GetType (namespac + ".Globals").Methods.Add (md);
 
             md.Parameters.Add (new ParameterDefinition ("token", ParameterAttributes.None, sysBytePtr));
             var body = new MethodBody (md);
@@ -1693,9 +1711,18 @@ namespace Iril
             var code = new List<Mono.Cecil.Cil.Instruction> (functionTokens.Count * 2);
             foreach (var kv in functionTokens.OrderBy (x => x.Value)) {
                 var index = kv.Value - 1;
-                var ldftn = il.Create (OpCodes.Ldftn, kv.Key);
-                targets[index] = ldftn;
-                code.Add (ldftn);
+                if (options.Reentrant) {
+                    var ldo = il.Create (OpCodes.Ldarg_0);
+                    var ldftn = il.Create (OpCodes.Ldvirtftn, kv.Key);
+                    targets[index] = ldo;
+                    code.Add (ldo);
+                    code.Add (ldftn);
+                }
+                else {
+                    var ldftn = il.Create (OpCodes.Ldftn, kv.Key);
+                    targets[index] = ldftn;
+                    code.Add (ldftn);
+                }
                 code.Add (il.Create (OpCodes.Ret));
             }
 

@@ -104,8 +104,20 @@ namespace Iril
                             Emit (il.Create (OpCodes.Ldsflda, globalVariable.Field));
                         }
                         else {
-                            Emit (il.Create (OpCodes.Ldsfld, globalVariable.Module.DataField));
-                            Emit (il.Create (OpCodes.Ldflda, globalVariable.Field));
+                            if (compilation.Options.Reentrant) {
+                                // Load the Globals object
+                                Emit (il.Create (OpCodes.Ldarg_0));
+                                // Load AllData pointer
+                                Emit (il.Create (OpCodes.Ldfld, compilation.GlobalsAllDataField));
+                                // Load pointer to the module data
+                                Emit (il.Create (OpCodes.Ldflda, globalVariable.Module.AllDataField));
+                                // Load pointer to the global variable
+                                Emit (il.Create (OpCodes.Ldflda, globalVariable.Field));
+                            }
+                            else {
+                                Emit (il.Create (OpCodes.Ldsfld, globalVariable.Module.DataField));
+                                Emit (il.Create (OpCodes.Ldflda, globalVariable.Field));
+                            }
                         }
                         Emit (il.Create (OpCodes.Conv_U));
                     }

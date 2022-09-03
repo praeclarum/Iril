@@ -44,6 +44,7 @@ namespace Iril
     {
         public TypeDefinition DataType;
         public FieldDefinition DataField;
+        public FieldDefinition AllDataField;
         public List<(IR.GlobalVariable Global, FieldDefinition Field)> NeedsInit = new List<(GlobalVariable, FieldDefinition)> ();
         public SymbolTable<(IR.GlobalVariable Global, FieldDefinition Field)> GlobalFields = new SymbolTable<(GlobalVariable, FieldDefinition)> ();
         public SymbolTable<(ModuleGlobalInfo Module, IR.GlobalVariable Global, FieldDefinition Field)> ExternalGlobals = new SymbolTable<(ModuleGlobalInfo Module, GlobalVariable Global, FieldDefinition Field)> ();
@@ -68,32 +69,38 @@ namespace Iril
             });
 
             var needsInit = info.NeedsInit;
+            var startPath = new List<(object, LType)> ();
 
-            // Allocate the globals
-            Emit (il.Create (OpCodes.Sizeof, info.DataType));
-            Emit (il.Create (OpCodes.Call, compilation.sysAllocHGlobalInt));
-
-            // Zero init
-            Emit (il.Create (OpCodes.Dup));
-            Emit (il.Create (OpCodes.Ldc_I4_0));
-            Emit (il.Create (OpCodes.Conv_U1));
-            Emit (il.Create (OpCodes.Sizeof, info.DataType));
-            Emit (il.Create (OpCodes.Initblk));
-
-            // Register with the memory manager
-            if (compilation.Options.SafeMemory) {
-                Emit (il.Create (OpCodes.Dup));
-                Emit (il.Create (OpCodes.Sizeof, info.DataType));
-                Emit (il.Create (OpCodes.Conv_I8));
-                Emit (il.Create (OpCodes.Ldstr, IR.MangledName.Demangle (module.Symbol) + ".globals"));
-                Emit (il.Create (OpCodes.Call, compilation.GetSystemMethod ("@_register_memory")));
+            if (compilation.Options.Reentrant) {
+                startPath.Add ((info.AllDataField, default(LType)));
             }
+            else {
+                // Allocate the globals
+                Emit (il.Create (OpCodes.Sizeof, info.DataType));
+                Emit (il.Create (OpCodes.Call, compilation.sysAllocHGlobalInt));
 
-            // Store them for later
-            Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
-            Emit (il.Create (OpCodes.Stsfld, info.DataField));
+                // Zero init
+                Emit (il.Create (OpCodes.Dup));
+                Emit (il.Create (OpCodes.Ldc_I4_0));
+                Emit (il.Create (OpCodes.Conv_U1));
+                Emit (il.Create (OpCodes.Sizeof, info.DataType));
+                Emit (il.Create (OpCodes.Initblk));
 
-            var startPath = new List<(object, LType)> { (info.DataField, default(LType)) };
+                // Register with the memory manager
+                if (compilation.Options.SafeMemory) {
+                    Emit (il.Create (OpCodes.Dup));
+                    Emit (il.Create (OpCodes.Sizeof, info.DataType));
+                    Emit (il.Create (OpCodes.Conv_I8));
+                    Emit (il.Create (OpCodes.Ldstr, IR.MangledName.Demangle (module.Symbol) + ".globals"));
+                    Emit (il.Create (OpCodes.Call, compilation.GetSystemMethod ("@_register_memory")));
+                }
+
+                // Store them for later
+                Emit (il.Create (OpCodes.Call, compilation.sysPointerFromIntPtr));
+                Emit (il.Create (OpCodes.Stsfld, info.DataField));
+
+                startPath.Add ((info.DataField, default(LType)));
+            }
 
             foreach (var (g, f) in needsInit) {
                 try {
@@ -106,7 +113,7 @@ namespace Iril
                     var fp = new Path (startPath);
                     var gf = info.GlobalFields[g.Symbol].Field;
                     fp.Add ((gf, g.Type));
-                    foreach (var p in BuildPaths (fp, g.Initializer)) {                        
+                    foreach (var p in BuildPaths (fp, g.Initializer)) {
                         EmitPath (p);
                     }
                 }
@@ -142,7 +149,7 @@ namespace Iril
                 Emit (il.Create (OpCodes.Call, compilation.sysMarshalCopyArrayToInt));
             }
             else {
-                if (ro is int i) {                    
+                if (ro is int i) {
                     var t = EmitPathPointer (path, ri);
                     Emit (il.Create (OpCodes.Conv_U));
                     Emit (il.Create (OpCodes.Ldc_I4, i));
@@ -176,8 +183,16 @@ namespace Iril
             for (var pi = 0; pi < end; pi++) {
                 var (po, pt) = path[pi];
                 if (pi == 0) {
-                    Emit (il.Create (OpCodes.Ldsfld, info.DataField));
-                    lastType = info.DataField.FieldType;
+                    if (compilation.Options.Reentrant) {
+                        Emit (il.Create (OpCodes.Ldarg_0));
+                        Emit (il.Create (OpCodes.Ldfld, compilation.GlobalsAllDataField));
+                        Emit (il.Create (OpCodes.Ldflda, info.AllDataField));
+                        lastType = info.AllDataField.FieldType;
+                    }
+                    else {
+                        Emit (il.Create (OpCodes.Ldsfld, info.DataField));
+                        lastType = info.DataField.FieldType;
+                    }
                 }
                 else if (po is FieldReference fr) {
                     Emit (il.Create (OpCodes.Ldflda, fr));
