@@ -48,6 +48,7 @@ namespace Iril
         TypeReference sysVoidPtrPtr;
         public TypeReference sysObj;
         public MethodReference sysObjToString;
+        public MethodReference sysObjFinalize;
         public TypeReference sysObjArray;
         TypeReference sysVal;
         TypeReference sysBoolean;
@@ -74,6 +75,9 @@ namespace Iril
         TypeReference sysGCHandleType;
         public MethodReference sysGCHandleAlloc;
         public MethodReference sysGCHandleAddrOfPinnedObject;
+        TypeReference sysGC;
+        MethodReference sysGCSuppressFinalize;
+        TypeReference sysIDisposable;
         TypeReference sysNotImpl;
         MethodReference sysNotImplCtor;
         TypeReference sysNotSupp;
@@ -338,6 +342,7 @@ namespace Iril
             sysVoidPtrPtr = sysVoidPtr.MakePointerType ();
             sysString = Import ("System.String");
             sysObjToString = ImportMethod (sysObj, sysString, "ToString");
+            sysObjFinalize = ImportMethod (sysObj, sysVoid, "Finalize");
             sysChar = Import ("System.Char");
             sysBytePtr = sysByte.MakePointerType ();
             sysByteArray = sysByte.MakeArrayType ();
@@ -347,6 +352,9 @@ namespace Iril
             sysRuntimeFieldHandle = Import ("System.RuntimeFieldHandle");
             sysRuntimeHelpers = Import ("System.Runtime.CompilerServices.RuntimeHelpers");
             sysRuntimeHelpersInitArray = ImportMethod (sysRuntimeHelpers, sysVoid, "InitializeArray", sysArray, sysRuntimeFieldHandle);
+            sysIDisposable = Import ("System.IDisposable");
+            sysGC = Import ("System.GC");
+            sysGCSuppressFinalize = ImportMethod (sysGC, sysVoid, "SuppressFinalize", sysObj);
             sysGCHandle = Import ("System.Runtime.InteropServices.GCHandle");
             sysGCHandleType = Import ("System.Runtime.InteropServices.GCHandleType");
             sysGCHandleAlloc = ImportMethod (sysGCHandle, sysGCHandle, "Alloc", sysObj, sysGCHandleType);
@@ -998,19 +1006,25 @@ namespace Iril
 
         TypeDefinition instanceType;
         FieldDefinition instanceDataField;
+        FieldDefinition instanceDisposedField;
 
         TypeDefinition GetInstanceType ()
         {
             if (instanceType != null)
                 return instanceType;
             var ns = namespac;
-            var tattrs = TypeAttributes.Public | TypeAttributes.AutoClass | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit;
+            var tattrs = TypeAttributes.Public | TypeAttributes.BeforeFieldInit;
             var td = new TypeDefinition (ns, "Instance", tattrs, sysObj);
+            td.Interfaces.Add (new InterfaceImplementation (sysIDisposable));
 
             var allDataType = GetAllModulesDataType ();
             var allDataField = new FieldDefinition ("Data", FieldAttributes.Public, allDataType.MakePointerType ());
             instanceDataField = allDataField;
             td.Fields.Add (allDataField);
+
+            var disposedField = new FieldDefinition ("disposed", FieldAttributes.Private, sysBoolean);
+            instanceDisposedField = disposedField;
+            td.Fields.Add (disposedField);
 
             mod.Types.Add (td);
             instanceType = td;
@@ -1081,50 +1095,160 @@ namespace Iril
             if (!options.Reentrant)
                 return;
 
-            var globalsType = GetInstanceType ();
-            var ctor = new MethodDefinition (".ctor", MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName, sysVoid);
-            var b = new MethodBody (ctor);
-            var localGlobals = new VariableDefinition (GetGlobalDataPointerType ());
-            b.Variables.Add(localGlobals);
-            var il = b.GetILProcessor ();
+            var instanceType = GetInstanceType ();
+            var dataPointerType = GetGlobalDataPointerType ();
 
-            il.Emit (OpCodes.Ldarg_0);
+            EmitInstCtor ();
+            var disposeBool = EmitDisposeBool ();
+            var dispose = EmitDispose ();
+            EmitFinalize ();
+            EmitInstExternals ();
 
-            // Allocate the globals
-            il.Emit (OpCodes.Sizeof, GetAllModulesDataType ());
-            il.Emit (OpCodes.Call, sysAllocHGlobalInt);
+            MethodDefinition EmitFinalize () {
+                var md = new MethodDefinition ("Finalize", MethodAttributes.Family | MethodAttributes.HideBySig | MethodAttributes.Virtual, sysVoid);
+                var b = new MethodBody (md);
+                var il = b.GetILProcessor ();
+                var ret = il.Create (OpCodes.Ret);
+                var tryStart = il.Create (OpCodes.Ldarg_0);
+                il.Append (tryStart);
+                il.Emit (OpCodes.Ldc_I4_0);
+                il.Emit (OpCodes.Callvirt, disposeBool);
+                il.Emit (OpCodes.Leave, ret);
+                var hStart = il.Create (OpCodes.Ldarg_0);
+                il.Append (hStart);
+                il.Emit (OpCodes.Call, sysObjFinalize);
+                il.Emit (OpCodes.Endfinally);
+                il.Append (ret);
+                b.ExceptionHandlers.Add (new ExceptionHandler (ExceptionHandlerType.Finally) {
+                    TryStart = tryStart,
+                    TryEnd = hStart,
+                    HandlerStart = hStart,
+                    HandlerEnd = ret,
+                });
+                b.Optimize ();
+                md.Body = b;
+                instanceType.Methods.Add (md);
+                return md;
+            }
 
-            // Zero init
-            il.Emit (OpCodes.Dup);
-            il.Emit (OpCodes.Ldc_I4_0);
-            il.Emit (OpCodes.Conv_U1);
-            il.Emit (OpCodes.Sizeof, GetAllModulesDataType ());
-            il.Emit (OpCodes.Initblk);
+            MethodDefinition EmitDispose () {
+                var md = new MethodDefinition ("Dispose", MethodAttributes.Public | MethodAttributes.Final | MethodAttributes.HideBySig | MethodAttributes.NewSlot | MethodAttributes.Virtual, sysVoid);
+                var b = new MethodBody (md);
+                var il = b.GetILProcessor ();
+                var ret = il.Create (OpCodes.Ret);
+                il.Emit (OpCodes.Ldarg_0);
+                il.Emit (OpCodes.Ldc_I4_1);
+                il.Emit (OpCodes.Callvirt, disposeBool);
+                il.Emit (OpCodes.Ldarg_0);
+                il.Emit (OpCodes.Call, sysGCSuppressFinalize);
+                il.Append (ret);
+                b.Optimize ();
+                md.Body = b;
+                instanceType.Methods.Add (md);
+                return md;
+            }
 
-            // Register with the memory manager
-            if (options.SafeMemory) {
-                il.Emit (OpCodes.Dup);
+            MethodDefinition EmitDisposeBool () {
+                var md = new MethodDefinition ("Dispose", MethodAttributes.Family | MethodAttributes.HideBySig | MethodAttributes.NewSlot | MethodAttributes.Virtual, sysVoid);
+                var paramDisposing = new ParameterDefinition ("disposing", ParameterAttributes.None, sysBoolean);
+                md.Parameters.Add (paramDisposing);
+                var b = new MethodBody (md);
+                var il = b.GetILProcessor ();
+                var ret = il.Create (OpCodes.Ret);
+                il.Emit (OpCodes.Ldarg_0);
+                il.Emit (OpCodes.Ldfld, instanceDisposedField);
+                il.Emit (OpCodes.Brtrue, ret);
+                il.Emit (OpCodes.Ldarg_0);
+                il.Emit (OpCodes.Ldfld, instanceDataField);
+                il.Emit (OpCodes.Call, sysIntPtrFromPointer);
+                il.Emit (OpCodes.Call, sysFreeHGlobal);
+                il.Emit (OpCodes.Ldarg_0);
+                il.Emit (OpCodes.Ldc_I4_0);
+                il.Emit (OpCodes.Conv_U);
+                il.Emit (OpCodes.Stfld, instanceDataField);
+                il.Emit (OpCodes.Ldarg_0);
+                il.Emit (OpCodes.Ldc_I4_1);
+                il.Emit (OpCodes.Stfld, instanceDisposedField);
+                il.Append (ret);
+                b.Optimize ();
+                md.Body = b;
+                instanceType.Methods.Add (md);
+                return md;
+            }
+
+            void EmitInstExternals () {
+                var externalMethods =
+                    mod.GetType(namespac + ".Globals").Methods
+                    .Where (x => x.IsStatic && x.IsPublic && x.Parameters.Count > 0 && x.Parameters[0].ParameterType.IsPointer && x.Parameters[0].ParameterType == dataPointerType);
+                foreach (var m in externalMethods) {
+                    var mattrs = MethodAttributes.HideBySig | MethodAttributes.Public;
+                    var mname = m.Name;
+                    var md = new MethodDefinition (mname, mattrs, m.ReturnType);
+                    for (int i = 1; i < m.Parameters.Count; i++) {
+                        var p = m.Parameters[i];
+                        var pdef = new ParameterDefinition (p.Name, p.Attributes, p.ParameterType);
+                        md.Parameters.Add (pdef);
+                    }
+                    var b = new MethodBody (md);
+                    var il = b.GetILProcessor ();
+                    il.Emit (OpCodes.Ldarg_0);
+                    il.Emit (OpCodes.Ldfld, instanceDataField);
+                    for (int i = 1; i < m.Parameters.Count; i++) {
+                        il.Emit (OpCodes.Ldarg, i);
+                    }
+                    il.Emit (OpCodes.Call, m);
+                    il.Emit (OpCodes.Ret);
+                    b.Optimize ();
+                    md.Body = b;
+                    instanceType.Methods.Add (md);
+                }
+            }
+
+            void EmitInstCtor () {
+                var ctor = new MethodDefinition (".ctor", MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName, sysVoid);
+                var b = new MethodBody (ctor);
+                var localGlobals = new VariableDefinition (dataPointerType);
+                b.Variables.Add(localGlobals);
+                var il = b.GetILProcessor ();
+
+                il.Emit (OpCodes.Ldarg_0);
+
+                // Allocate the globals
                 il.Emit (OpCodes.Sizeof, GetAllModulesDataType ());
-                il.Emit (OpCodes.Conv_I8);
-                il.Emit (OpCodes.Ldstr, "globals");
-                il.Emit (OpCodes.Call, GetSystemMethod ("@_register_memory"));
-            }
+                il.Emit (OpCodes.Call, sysAllocHGlobalInt);
 
-            // Store them for later
-            il.Emit (OpCodes.Call, sysPointerFromIntPtr);
-            il.Emit (OpCodes.Stloc, localGlobals);
-            il.Emit (OpCodes.Ldloc, localGlobals);
-            il.Emit (OpCodes.Stfld, instanceDataField);
+                // Zero init
+                il.Emit (OpCodes.Dup);
+                il.Emit (OpCodes.Ldc_I4_0);
+                il.Emit (OpCodes.Conv_U1);
+                il.Emit (OpCodes.Sizeof, GetAllModulesDataType ());
+                il.Emit (OpCodes.Initblk);
 
-            // Init the modules
-            foreach (var i in moduleInitMethods) {
+                // Register with the memory manager
+                if (options.SafeMemory) {
+                    il.Emit (OpCodes.Dup);
+                    il.Emit (OpCodes.Sizeof, GetAllModulesDataType ());
+                    il.Emit (OpCodes.Conv_I8);
+                    il.Emit (OpCodes.Ldstr, "globals");
+                    il.Emit (OpCodes.Call, GetSystemMethod ("@_register_memory"));
+                }
+
+                // Store them for later
+                il.Emit (OpCodes.Call, sysPointerFromIntPtr);
+                il.Emit (OpCodes.Stloc, localGlobals);
                 il.Emit (OpCodes.Ldloc, localGlobals);
-                il.Emit (OpCodes.Call, i);
+                il.Emit (OpCodes.Stfld, instanceDataField);
+
+                // Init the modules
+                foreach (var i in moduleInitMethods) {
+                    il.Emit (OpCodes.Ldloc, localGlobals);
+                    il.Emit (OpCodes.Call, i);
+                }
+                il.Emit(OpCodes.Ret);
+                b.Optimize ();
+                ctor.Body = b;
+                instanceType.Methods.Add (ctor);
             }
-            il.Emit(OpCodes.Ret);
-            b.Optimize ();
-            ctor.Body = b;
-            globalsType.Methods.Add (ctor);
         }
 
         TypeDefinition CreateLongjmpException ()
