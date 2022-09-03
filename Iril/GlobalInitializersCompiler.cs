@@ -185,7 +185,6 @@ namespace Iril
                 if (pi == 0) {
                     if (compilation.Options.Reentrant) {
                         Emit (il.Create (OpCodes.Ldarg_0));
-                        Emit (il.Create (OpCodes.Ldfld, compilation.GlobalsAllDataField));
                         Emit (il.Create (OpCodes.Ldflda, info.AllDataField));
                         lastType = info.AllDataField.FieldType;
                     }

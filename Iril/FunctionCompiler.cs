@@ -22,7 +22,6 @@ namespace Iril
         public MethodDefinition ILDefinition;
         public SymbolTable<ParameterDefinition> ParamSyms;
         public int ReferenceCount;
-        public bool IsStatic => ILDefinition.IsStatic;
     }
 
     class FunctionCompiler : Emitter
@@ -289,10 +288,9 @@ namespace Iril
                 Emit (il.Create (OpCodes.Ldstr, $"{function.IRDefinition.Symbol}("));
                 Emit (il.Create (OpCodes.Call, compilation.sysStringConcat));
                 Emit (il.Create (OpCodes.Call, compilation.sysConsoleWrite));
-
                 var head = "";
-                for (var i = 0; i < function.IRDefinition.Parameters.Length; i++) {
-                    var p = function.IRDefinition.Parameters[i];
+                for (var i = 0; i < function.ILDefinition.Parameters.Count; i++) {
+                    var p = function.ILDefinition.Parameters[i];
                     Emit (il.Create (OpCodes.Ldstr, head));
                     Emit (il.Create (OpCodes.Call, compilation.sysConsoleWrite));
                     Emit (il.Create (OpCodes.Ldarg, i));
@@ -300,7 +298,6 @@ namespace Iril
                     Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteObj));
                     head = ", ";
                 }
-
                 Emit (il.Create (OpCodes.Ldstr, $")"));
                 Emit (il.Create (OpCodes.Call, compilation.sysConsoleWriteLine));
             }
@@ -2384,6 +2381,7 @@ namespace Iril
                 if (invoke.Arguments.Length < nps) {
                     throw new InvalidOperationException ($"Too few arguments to {function.IRDefinition.Symbol}");
                 }
+                EmitReentrantContext ();
                 for (var i = 0; i < nps; i++) {
                     var a = invoke.Arguments[i];
                     EmitValue (a.Value, a.Type);
@@ -2391,8 +2389,8 @@ namespace Iril
                 if (hasVarArgs) {
                     EmitVarArgs (invoke.Arguments, nps);
                 }
-                EmitValue (lv, ltype);
 
+                EmitValue (lv, ltype);
                 var site = CreateCallSite (ft);
                 EmitCalli (site);
 
@@ -2423,8 +2421,8 @@ namespace Iril
 
             var pad = landingPads[invoke.ExceptionLabel.Symbol];
 
-            EmitBlocks (pad.Blocks, catchContext);            
-            
+            EmitBlocks (pad.Blocks, catchContext);
+
             var catchLast = prev;
             ehs.Add ((tryPrev.Next, tryLast, catchLast));
         }
@@ -2632,7 +2630,7 @@ namespace Iril
                         return;
                     case "@llvm.va_start":
                         EmitValue (call.Arguments[0].Value, call.Arguments[0].Type);
-                        Emit (il.Create (OpCodes.Ldarg, function.IRDefinition.Parameters.Length - 1));
+                        Emit (il.Create (OpCodes.Ldarg, function.IRDefinition.Parameters.Length + (compilation.Options.Reentrant ? 0 : -1)));
                         Emit (il.Create (OpCodes.Call, compilation.GetSystemMethod(gv.Symbol)));
                         return;
                     case "@llvm.va_end":
@@ -2642,20 +2640,20 @@ namespace Iril
                     default:
                         if (compilation.TryGetFunction (module, gv.Symbol, out var m)) {
 
-                            var ps = m.ILDefinition.Parameters;
-                            var nps = ps.Count;
+                            var ilParams = m.ILDefinition.Parameters;
+                            var nps = ilParams.Count;
                             var hasVarArgs =
                                 nps > 0
-                                && ps[nps - 1].ParameterType.IsArray
-                                && ps[nps - 1].ParameterType.GetElementType ().FullName == "System.Object";
+                                && ilParams[nps - 1].ParameterType.IsArray
+                                && ilParams[nps - 1].ParameterType.GetElementType ().FullName == "System.Object";
                             if (hasVarArgs)
                                 nps--;
+                            if (compilation.Options.Reentrant && nps > 0 && ilParams[0].ParameterType.IsPointer && ilParams[0].ParameterType == compilation.GetGlobalDataPointerType()) {
+                                nps--;
+                                EmitReentrantContext ();
+                            }
                             if (call.Arguments.Length < nps) {
                                 throw new InvalidOperationException ($"Too few arguments to {function.IRDefinition.Symbol}");
-                            }
-
-                            if (compilation.Options.Reentrant) {
-                                EmitReentrantContext (function.ILDefinition.DeclaringType, m);
                             }
 
                             for (var i = 0; i < nps; i++) {
@@ -2691,6 +2689,9 @@ namespace Iril
                 if (call.Arguments.Length < nps) {
                     throw new InvalidOperationException ($"Too few arguments to {function.IRDefinition.Symbol}");
                 }
+                if (compilation.Options.Reentrant) {
+                    Emit (il.Create (OpCodes.Ldarg_0));
+                }
                 for (var i = 0; i < nps; i++) {
                     var a = call.Arguments[i];
                     EmitValue (a.Value, a.Type);
@@ -2713,27 +2714,21 @@ namespace Iril
             throw new NotSupportedException($"Cannot call `{call.Pointer}`");
         }
 
+        /// <summary>
+        /// Emits a call to a function pointer. First calls LoadFunction to get the pointer.
+        /// </summary>
         void EmitCalli (CallSite site)
         {
             // Convert the token to an actual function pointer
-            if (compilation.Options.Reentrant) {
-                Emit (il.Create (OpCodes.Ldarg_0));
-            }
             Emit (il.Create (OpCodes.Call, compilation.LoadFunction));
             Emit (il.Create (OpCodes.Calli, site));
         }
 
-        void EmitReentrantContext (TypeDefinition callerType, DefinedFunction m)
+        void EmitReentrantContext ()
         {
-            var calleeType = m.ILDefinition.DeclaringType;
-            if (m.IsStatic)
+            if (!compilation.Options.Reentrant)
                 return;
-            if (ReferenceEquals (callerType, calleeType)) {
-                Emit (il.Create (OpCodes.Ldarg_0));
-            }
-            else {
-                throw new NotSupportedException ($"EmitContext with Caller: {callerType} and Callee: {calleeType}");
-            }
+            Emit (il.Create (OpCodes.Ldarg_0));
         }
 
         void AddLocalDebugInfo (Block block, LocalSymbol local, SymbolTable<object> metadata)
@@ -2839,6 +2834,10 @@ namespace Iril
         CallSite CreateCallSite(FunctionType ft)
         {
             var c = new CallSite(compilation.GetClrType(ft.ReturnType, module: module));
+            if (compilation.Options.Reentrant) {
+                var pd = new ParameterDefinition(compilation.GetGlobalDataPointerType ());
+                c.Parameters.Add (pd);
+            }
             foreach (var p in ft.ParameterTypes)
             {
                 var pd = new ParameterDefinition(compilation.GetClrType(p, module: module));

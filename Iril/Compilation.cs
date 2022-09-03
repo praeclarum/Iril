@@ -269,8 +269,8 @@ namespace Iril
             EmitNativeExceptions ();
             EmitGlobalVariables ();
             CreateFunctionDefinitions ();
-            EmitGlobalData ();
             EmitGlobalInitializers ();
+            EmitInstance ();
             CompileFunctions ();
             EmitLoadFunction ();
             EmitEntrypoint ();
@@ -485,10 +485,7 @@ namespace Iril
 
         void DeclareLoadFunction ()
         {
-            var mattrs = MethodAttributes.HideBySig | MethodAttributes.Public;
-            if (!options.Reentrant) {
-                mattrs |= MethodAttributes.Static;
-            }
+            var mattrs = MethodAttributes.HideBySig | MethodAttributes.Public | MethodAttributes.Static;
             LoadFunction = new MethodDefinition ("LoadFunction", mattrs, sysBytePtr);
         }
 
@@ -663,13 +660,7 @@ namespace Iril
             {
                 var a = ancestry;
                 if (a.Length == 0) {
-                    if (options.Reentrant) {
-                        a = new[] { namespac, "Globals" };
-                        if (!isExternal) {
-                            nn.Name = IR.MangledName.SanitizeIdentifier (nn.Module.Symbol.Text) + "_" + nn.Name;
-                        }
-                    }
-                    else if (isExternal) {
+                    if (isExternal) {
                         a = new[] { namespac, "Globals" };
                     }
                     else {
@@ -819,10 +810,7 @@ namespace Iril
                             mstructs[node.Symbol] = (lst, td);
                         }
                         else {
-                            var tattrs = TypeAttributes.BeforeFieldInit | vis;
-                            if (!options.Reentrant) {
-                                tattrs |= TypeAttributes.Abstract | TypeAttributes.Sealed;
-                            }
+                            var tattrs = TypeAttributes.BeforeFieldInit | vis | TypeAttributes.Abstract | TypeAttributes.Sealed;
                             td = new TypeDefinition (ns, node.Name, tattrs, sysObj);
                         }
 
@@ -842,7 +830,7 @@ namespace Iril
             }
         }
 
-        readonly List<Action> globalInits = new List<Action> ();
+        readonly List<Func<MethodDefinition>> globalInits = new List<Func<MethodDefinition>> ();
         readonly SymbolTable<TypeDefinition> moduleTypes = new SymbolTable<TypeDefinition> ();
 
         void EmitGlobalVariables ()
@@ -987,7 +975,6 @@ namespace Iril
         }
 
         TypeDefinition allModulesDataType;
-
         TypeDefinition GetAllModulesDataType ()
         {
             if (allModulesDataType != null)
@@ -997,6 +984,36 @@ namespace Iril
             var td = new TypeDefinition (ns, "GlobalData", tattrs, sysVal);
             mod.Types.Add (td);
             allModulesDataType = td;
+            return td;
+        }
+        Mono.Cecil.PointerType globalDataPointerType;
+        public Mono.Cecil.PointerType GetGlobalDataPointerType ()
+        {
+            if (globalDataPointerType != null)
+                return globalDataPointerType;
+            var t = GetAllModulesDataType ().MakePointerType ();
+            globalDataPointerType = t;
+            return t;
+        }
+
+        TypeDefinition instanceType;
+        FieldDefinition instanceDataField;
+
+        TypeDefinition GetInstanceType ()
+        {
+            if (instanceType != null)
+                return instanceType;
+            var ns = namespac;
+            var tattrs = TypeAttributes.Public | TypeAttributes.AutoClass | TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit;
+            var td = new TypeDefinition (ns, "Instance", tattrs, sysObj);
+
+            var allDataType = GetAllModulesDataType ();
+            var allDataField = new FieldDefinition ("Data", FieldAttributes.Public, allDataType.MakePointerType ());
+            instanceDataField = allDataField;
+            td.Fields.Add (allDataField);
+
+            mod.Types.Add (td);
+            instanceType = td;
             return td;
         }
 
@@ -1020,32 +1037,21 @@ namespace Iril
             return moduleType;
         }
 
-        public FieldDefinition GlobalsAllDataField { get; private set; }
-
-        void EmitGlobalData ()
-        {
-            if (!options.Reentrant)
-                return;
-
-            var allDataType = GetAllModulesDataType ();
-            var globals = mod.GetType (namespac + ".Globals");
-            var allDataField = new FieldDefinition ("AllData", FieldAttributes.Public, allDataType.MakePointerType ());
-            GlobalsAllDataField = allDataField;
-            globals.Fields.Add (allDataField);
-        }
+        readonly List<MethodDefinition> moduleInitMethods = new List<MethodDefinition> ();
 
         void EmitGlobalInitializers ()
         {
             foreach (var i in globalInits) {
-                i ();
+                if (i () is MethodDefinition m)
+                    moduleInitMethods.Add (m);
             }
         }
 
-        void EmitGlobalInitializers (Module m, TypeDefinition moduleGlobalsType, ModuleGlobalInfo info)
+        MethodDefinition EmitGlobalInitializers (Module m, TypeDefinition moduleGlobalsType, ModuleGlobalInfo info)
         {
             try {
                 var mattrs = MethodAttributes.HideBySig | MethodAttributes.Static;
-                var mname = "InitializeData";
+                var mname = "Initialize";
                 if (options.Reentrant) {
                     mattrs |= MethodAttributes.Public;
                 }
@@ -1055,17 +1061,70 @@ namespace Iril
                 }
                 var ctor = new MethodDefinition (mname, mattrs, sysVoid);
                 if (options.Reentrant) {
-                    var globalsType = mod.GetType (namespac + ".Globals");
+                    var globalsType = GetGlobalDataPointerType ();
                     var pdata = new ParameterDefinition("globals", ParameterAttributes.None, globalsType);
                     ctor.Parameters.Add (pdata);
                 }
                 moduleGlobalsType.Methods.Add (ctor);
                 var compiler = new GlobalInitializersCompiler (this, m, ctor, info);
                 compiler.Compile ();
+                return ctor;
             }
             catch (Exception ex) {
                 ErrorMessage (m.SourceFilename, "Failed to compile global initializers", ex);
+                return null;
             }
+        }
+
+        void EmitInstance ()
+        {
+            if (!options.Reentrant)
+                return;
+
+            var globalsType = GetInstanceType ();
+            var ctor = new MethodDefinition (".ctor", MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName, sysVoid);
+            var b = new MethodBody (ctor);
+            var localGlobals = new VariableDefinition (GetGlobalDataPointerType ());
+            b.Variables.Add(localGlobals);
+            var il = b.GetILProcessor ();
+
+            il.Emit (OpCodes.Ldarg_0);
+
+            // Allocate the globals
+            il.Emit (OpCodes.Sizeof, GetAllModulesDataType ());
+            il.Emit (OpCodes.Call, sysAllocHGlobalInt);
+
+            // Zero init
+            il.Emit (OpCodes.Dup);
+            il.Emit (OpCodes.Ldc_I4_0);
+            il.Emit (OpCodes.Conv_U1);
+            il.Emit (OpCodes.Sizeof, GetAllModulesDataType ());
+            il.Emit (OpCodes.Initblk);
+
+            // Register with the memory manager
+            if (options.SafeMemory) {
+                il.Emit (OpCodes.Dup);
+                il.Emit (OpCodes.Sizeof, GetAllModulesDataType ());
+                il.Emit (OpCodes.Conv_I8);
+                il.Emit (OpCodes.Ldstr, "globals");
+                il.Emit (OpCodes.Call, GetSystemMethod ("@_register_memory"));
+            }
+
+            // Store them for later
+            il.Emit (OpCodes.Call, sysPointerFromIntPtr);
+            il.Emit (OpCodes.Stloc, localGlobals);
+            il.Emit (OpCodes.Ldloc, localGlobals);
+            il.Emit (OpCodes.Stfld, instanceDataField);
+
+            // Init the modules
+            foreach (var i in moduleInitMethods) {
+                il.Emit (OpCodes.Ldloc, localGlobals);
+                il.Emit (OpCodes.Call, i);
+            }
+            il.Emit(OpCodes.Ret);
+            b.Optimize ();
+            ctor.Body = b;
+            globalsType.Methods.Add (ctor);
         }
 
         TypeDefinition CreateLongjmpException ()
@@ -1487,11 +1546,16 @@ namespace Iril
                     //
                     var mident = node.Name;
                     var dbgMeth = functionDebugs[sym];
-                    var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig;
-                    if (!options.Reentrant) {
-                        mattrs |= MethodAttributes.Static;
-                    }
+                    var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Static;
                     var md = new MethodDefinition (mident, mattrs, GetClrType (f.ReturnType, module: m));
+
+                    //
+                    // Create global data parameter
+                    //
+                    if (options.Reentrant) {
+                        var globals = new ParameterDefinition ("globals", ParameterAttributes.None, GetGlobalDataPointerType ());
+                        md.Parameters.Add (globals);
+                    }
 
                     //
                     // Create parameters
@@ -1577,11 +1641,16 @@ namespace Iril
                         var f = node.FunctionDecl;
                         var mident = node.Name;
 
-                        var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig;
-                        if (!options.Reentrant) {
-                            mattrs |= MethodAttributes.Static;
-                        }
+                        var mattrs = MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.Static;
                         var md = new MethodDefinition (mident, mattrs, GetClrType (f.ReturnType, module: m));
+
+                        //
+                        // Create global data parameter
+                        //
+                        if (options.Reentrant) {
+                            var globals = new ParameterDefinition ("globals", ParameterAttributes.None, GetGlobalDataPointerType ());
+                            md.Parameters.Add (globals);
+                        }
 
                         //
                         // Create parameters
@@ -1711,28 +1780,19 @@ namespace Iril
             var code = new List<Mono.Cecil.Cil.Instruction> (functionTokens.Count * 2);
             foreach (var kv in functionTokens.OrderBy (x => x.Value)) {
                 var index = kv.Value - 1;
-                if (options.Reentrant) {
-                    var ldo = il.Create (OpCodes.Ldarg_0);
-                    var ldftn = il.Create (OpCodes.Ldvirtftn, kv.Key);
-                    targets[index] = ldo;
-                    code.Add (ldo);
-                    code.Add (ldftn);
-                }
-                else {
-                    var ldftn = il.Create (OpCodes.Ldftn, kv.Key);
-                    targets[index] = ldftn;
-                    code.Add (ldftn);
-                }
+                var ldftn = il.Create (OpCodes.Ldftn, kv.Key);
+                targets[index] = ldftn;
+                code.Add (ldftn);
                 code.Add (il.Create (OpCodes.Ret));
             }
 
             il.Append (il.Create (OpCodes.Switch, targets));
+            il.Append (il.Create (OpCodes.Ldc_I4_0));
+            il.Append (il.Create (OpCodes.Ret));
+
             foreach (var c in code) {
                 il.Append (c);
             }
-
-            il.Append (il.Create (OpCodes.Ldc_I4_0));
-            il.Append (il.Create (OpCodes.Ret));
 
             body.Optimize ();
             md.Body = body;

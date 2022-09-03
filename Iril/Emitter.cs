@@ -12,7 +12,7 @@ namespace Iril
 {
     abstract class Emitter
     {
-        public const int ShouldTrace = 0;
+        public const int ShouldTrace = 1;
 
         // Input
         protected readonly Compilation compilation;
@@ -105,10 +105,8 @@ namespace Iril
                         }
                         else {
                             if (compilation.Options.Reentrant) {
-                                // Load the Globals object
+                                // Load the Globals data pointer
                                 Emit (il.Create (OpCodes.Ldarg_0));
-                                // Load AllData pointer
-                                Emit (il.Create (OpCodes.Ldfld, compilation.GlobalsAllDataField));
                                 // Load pointer to the module data
                                 Emit (il.Create (OpCodes.Ldflda, globalVariable.Module.AllDataField));
                                 // Load pointer to the global variable
@@ -718,6 +716,17 @@ namespace Iril
             }
             else {
                 Emit (il.Create (OpCodes.Box, compilation.GetClrType (type, module: this.module)));
+            }
+        }
+
+        protected void EmitBox (TypeReference type)
+        {
+            if (type.IsPointer) {
+                Emit (il.Create (OpCodes.Call, compilation.sysIntPtrFromPointer));
+                Emit (il.Create (OpCodes.Box, compilation.sysIntPtr));
+            }
+            else if (type.IsValueType) {
+                Emit (il.Create (OpCodes.Box, type));
             }
         }
 
