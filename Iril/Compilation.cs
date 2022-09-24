@@ -269,11 +269,11 @@ namespace Iril
             FindSystemTypes ();
             DeclareLoadFunction ();
             CreateSyscalls ();
-            ImportAssemblies ();
             FindStructures ();
             FindFunctions ();
             //PrintNameTree ();
             CompileStructures ();
+            ImportAssemblies ();
             EmitSyscalls ();
             EmitNativeExceptions ();
             EmitGlobalVariables ();
@@ -623,14 +623,6 @@ namespace Iril
                     var f = iskv.Value;
 
                     //
-                    // Prefer StdLib functions
-                    //
-                    if (externalMethodDefs.ContainsKey (sym)) {
-                        // Console.WriteLine($"Skipping {sym} because it is an external method");
-                        continue;
-                    }
-
-                    //
                     // Load debug info
                     //
                     var dbgMeth = new SymbolTable<object> ();
@@ -668,10 +660,6 @@ namespace Iril
                         continue;
                     if (functionNodes.ContainsKey (sym))
                         continue;
-                    if (externalMethodDefs.ContainsKey (sym)) {
-                        // Console.WriteLine($"Skipping {sym} decl because it is an external method");
-                        continue;
-                    }
 
                     var f = iskv.Value;
                     var mname = new IR.MangledName (sym);
