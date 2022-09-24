@@ -2668,7 +2668,9 @@ namespace Iril
 
                             return;
                         }
-                        break;
+                        else {
+                            throw new Exception($"Cannot call undefined function `{call.Pointer}`.");
+                        }
                 }
             }
             else if (call.Pointer is IR.LocalValue lv) {
@@ -2711,7 +2713,7 @@ namespace Iril
                 }
                 return;
             }
-            throw new NotSupportedException($"Cannot call `{call.Pointer}`");
+            throw new NotSupportedException($"Cannot call `{call.Pointer}`. It is not a function pointer, it is a `{call.Pointer.GetType()}`");
         }
 
         /// <summary>
