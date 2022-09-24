@@ -48,10 +48,20 @@ namespace Iril.IR
         public override bool IsIdempotent (FunctionDefinition function) => Op1.IsIdempotent (function) && Op2.IsIdempotent (function);
     }
 
-    public class AddInstruction : BinaryInstruction
+    public abstract class AtomicBinaryInstruction : BinaryInstruction
     {
-        public AddInstruction (LType type, Value op1, Value op2)
+        public readonly bool IsAtomic;
+        public AtomicBinaryInstruction (LType type, Value op1, Value op2, bool isAtomic)
             : base (type, op1, op2)
+        {
+            IsAtomic = isAtomic;
+        }
+    }
+
+    public class AddInstruction : AtomicBinaryInstruction
+    {
+        public AddInstruction (LType type, Value op1, Value op2, bool isAtomic)
+            : base (type, op1, op2, isAtomic: isAtomic)
         {
         }
     }
@@ -618,12 +628,14 @@ namespace Iril.IR
         public readonly LType Type;
         public readonly TypedValue Pointer;
         public readonly bool IsVolatile;
+        public readonly bool IsAtomic;
 
-        public LoadInstruction (LType type, TypedValue pointer, bool isVolatile)
+        public LoadInstruction (LType type, TypedValue pointer, bool isVolatile, bool isAtomic)
         {
             Type = type;
             Pointer = pointer;
             IsVolatile = isVolatile;
+            IsAtomic = isAtomic;
         }
 
         public override IEnumerable<LocalSymbol> ReferencedLocals => Pointer.ReferencedLocals;
@@ -862,10 +874,10 @@ namespace Iril.IR
         public override LType ResultType (Module module) => VoidType.Void;
     }
 
-    public class SubInstruction : BinaryInstruction
+    public class SubInstruction : AtomicBinaryInstruction
     {
-        public SubInstruction (LType type, Value op1, Value op2)
-            : base (type, op1, op2)
+        public SubInstruction (LType type, Value op1, Value op2, bool isAtomic)
+            : base (type, op1, op2, isAtomic: isAtomic)
         {
         }
     }

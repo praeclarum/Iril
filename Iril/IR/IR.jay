@@ -41,6 +41,7 @@ namespace Iril.IR
 %token PHI SELECT CALL TAIL VA_ARG ASM SIDEEFFECT
 %token LANDINGPAD CATCH CATCHPAD CLEANUPPAD
 %token NOUNDEF IMMARG
+%token ATOMIC MONOTONIC
 
 %start module
 
@@ -117,7 +118,7 @@ module_part
     ;
     
 global_variable
-    : GLOBAL_SYMBOL '=' linkage global_kind type nonglobal_value
+    : GLOBAL_SYMBOL '=' linkage global_kind type value
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, (Value)$6, isPrivate: false, isExternal: false, isConstant: (bool)$4);
     }
@@ -125,35 +126,35 @@ global_variable
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, null, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$3);
     }
-    | GLOBAL_SYMBOL '=' linkage global_kind type nonglobal_value ',' SECTION STRING
+    | GLOBAL_SYMBOL '=' linkage global_kind type value ',' SECTION STRING
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, (Value)$6, isPrivate: false, isExternal: false, isConstant: (bool)$4);
     }
-    | GLOBAL_SYMBOL '=' global_kind type nonglobal_value ',' ALIGN INTEGER metadata_kvs
+    | GLOBAL_SYMBOL '=' global_kind type value ',' ALIGN INTEGER metadata_kvs
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$4, (Value)$5, isPrivate: false, isExternal: false, isConstant: (bool)$3);
     }
-    | GLOBAL_SYMBOL '=' function_addr global_kind type nonglobal_value ',' ALIGN INTEGER metadata_kvs
+    | GLOBAL_SYMBOL '=' function_addr global_kind type value ',' ALIGN INTEGER metadata_kvs
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, (Value)$6, isPrivate: false, isExternal: false, isConstant: (bool)$4);
     }
-    | GLOBAL_SYMBOL '=' visibility_style function_addr global_kind type nonglobal_value ',' ALIGN INTEGER
+    | GLOBAL_SYMBOL '=' visibility_style function_addr global_kind type value ',' ALIGN INTEGER
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: false, isExternal: false, isConstant: (bool)$5);
     }
-    | GLOBAL_SYMBOL '=' visibility_style global_kind type nonglobal_value ',' ALIGN INTEGER metadata_kvs
+    | GLOBAL_SYMBOL '=' visibility_style global_kind type value ',' ALIGN INTEGER metadata_kvs
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, (Value)$6, isPrivate: false, isExternal: false, isConstant: (bool)$4);
     }
-    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type nonglobal_value ',' ALIGN INTEGER
+    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type value ',' ALIGN INTEGER
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: (bool)$3, isExternal: false, isConstant: (bool)$5);
     }
-    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type nonglobal_value
+    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type value
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: (bool)$3, isExternal: false, isConstant: (bool)$5);
     }
-    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type nonglobal_value ',' ALIGN INTEGER metadata_kvs
+    | GLOBAL_SYMBOL '=' visibility function_addr global_kind type value ',' ALIGN INTEGER metadata_kvs
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: (bool)$3, isExternal: false, isConstant: (bool)$5);
     }
@@ -161,19 +162,19 @@ global_variable
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, null, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$5);
     }
-    | GLOBAL_SYMBOL '=' linkage function_addr global_kind type nonglobal_value ',' ALIGN INTEGER
+    | GLOBAL_SYMBOL '=' linkage function_addr global_kind type value ',' ALIGN INTEGER
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$5);
     }
-    | GLOBAL_SYMBOL '=' linkage function_addr global_kind type nonglobal_value ',' ALIGN INTEGER metadata_kvs
+    | GLOBAL_SYMBOL '=' linkage function_addr global_kind type value ',' ALIGN INTEGER metadata_kvs
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$5);
     }
-    | GLOBAL_SYMBOL '=' linkage global_kind type nonglobal_value ',' ALIGN INTEGER
+    | GLOBAL_SYMBOL '=' linkage global_kind type value ',' ALIGN INTEGER
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, (Value)$6, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$4);
     }
-    | GLOBAL_SYMBOL '=' linkage global_kind type nonglobal_value ',' ALIGN INTEGER metadata_kvs
+    | GLOBAL_SYMBOL '=' linkage global_kind type value ',' ALIGN INTEGER metadata_kvs
     {
         $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$5, (Value)$6, isPrivate: false, isExternal: (bool)$3, isConstant: (bool)$4);
     }
@@ -947,6 +948,7 @@ metadata_value_arg
     : constant
     | SYMBOL
     | type LOCAL_SYMBOL
+    | type SYMBOL
     | type UNDEF
     ;
     
@@ -1072,11 +1074,15 @@ invoke_instruction
 instruction
     : ADD type value ',' value
     {
-        $$ = new AddInstruction ((LType)$2, (Value)$3, (Value)$5);
+        $$ = new AddInstruction ((LType)$2, (Value)$3, (Value)$5, isAtomic: false);
     }
     | ADD wrappings type value ',' value
     {
-        $$ = new AddInstruction ((LType)$3, (Value)$4, (Value)$6);
+        $$ = new AddInstruction ((LType)$3, (Value)$4, (Value)$6, isAtomic: false);
+    }
+    | ATOMICRMW ADD type value ',' type value SEQ_CST ',' ALIGN INTEGER
+    {
+        $$ = new AddInstruction ((LType)$3, (Value)$4, (Value)$7, isAtomic: true);
     }
     | ALLOCA type ',' ALIGN INTEGER
     {
@@ -1256,11 +1262,23 @@ instruction
     }
     | LOAD type ',' typed_pointer_value ',' ALIGN INTEGER
     {
-        $$ = new LoadInstruction ((LType)$2, (TypedValue)$4, isVolatile: false);
+        $$ = new LoadInstruction ((LType)$2, (TypedValue)$4, isVolatile: false, isAtomic: false);
+    }
+    | LOAD ATOMIC type ',' typed_pointer_value ',' ALIGN INTEGER
+    {
+        $$ = new LoadInstruction ((LType)$3, (TypedValue)$5, isVolatile: false, isAtomic: true);
     }
     | LOAD VOLATILE type ',' typed_pointer_value ',' ALIGN INTEGER
     {
-        $$ = new LoadInstruction ((LType)$3, (TypedValue)$5, isVolatile: true);
+        $$ = new LoadInstruction ((LType)$3, (TypedValue)$5, isVolatile: true, isAtomic: false);
+    }
+    | LOAD ATOMIC VOLATILE type ',' typed_pointer_value ',' ALIGN INTEGER
+    {
+        $$ = new LoadInstruction ((LType)$4, (TypedValue)$6, isVolatile: true, isAtomic: true);
+    }
+    | LOAD ATOMIC VOLATILE type ',' typed_pointer_value MONOTONIC ',' ALIGN INTEGER
+    {
+        $$ = new LoadInstruction ((LType)$4, (TypedValue)$6, isVolatile: true, isAtomic: true);
     }
     | LSHR type value ',' value
     {
@@ -1336,11 +1354,15 @@ instruction
     }
     | SUB type value ',' value
     {
-        $$ = new SubInstruction ((LType)$2, (Value)$3, (Value)$5);
+        $$ = new SubInstruction ((LType)$2, (Value)$3, (Value)$5, isAtomic: false);
     }
     | SUB wrappings type value ',' value
     {
-        $$ = new SubInstruction ((LType)$3, (Value)$4, (Value)$6);
+        $$ = new SubInstruction ((LType)$3, (Value)$4, (Value)$6, isAtomic: false);
+    }
+    | ATOMICRMW SUB type value ',' type value SEQ_CST ',' ALIGN INTEGER
+    {
+        $$ = new SubInstruction ((LType)$3, (Value)$4, (Value)$7, isAtomic: true);
     }
     | TRUNC typed_value TO type
     {
