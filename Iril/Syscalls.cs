@@ -112,6 +112,8 @@ namespace Iril
         public string[] GetDependencies (Symbol symbol)
         {
             switch (symbol.Text) {
+                case "@fprintf":
+                    return printfDeps;
                 case "@printf":
                     return printfDeps;
                 case "@vprintf":
@@ -254,7 +256,7 @@ namespace Iril
             var m = NewMethod ("@vfprintf", Types.IntegerType.I32, ("stream", Types.PointerType.I8Pointer), ("format", Types.PointerType.I8Pointer), ("arguments", VarArgsType.VarArgs));
             var b = m.Body;
             var il = b.GetILProcessor ();
-            var p = new VariableDefinition (compilation.GetClrType (Types.PointerType.I8Pointer, module: this.module));
+            var p = new VariableDefinition (compilation.sysBytePtr);
             var i = new VariableDefinition (compilation.sysInt32);
             b.Variables.Add (p);
             b.Variables.Add (i);
