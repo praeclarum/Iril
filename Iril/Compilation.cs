@@ -88,6 +88,11 @@ namespace Iril
         public MethodReference sysParamsAttrCtor;
         public MethodReference sysExceptionCtor;
         public MethodReference sysExceptionCtorVoid;
+        public TypeReference sysInterlocked;
+        public MethodReference sysInterlockedIncrement32;
+        public MethodReference sysInterlockedIncrement64;
+        public MethodReference sysInterlockedDecrement32;
+        public MethodReference sysInterlockedDecrement64;
         public MethodReference sysMathAbsD;
         public MethodReference sysMathCeilD;
         public MethodReference sysMathFloorD;
@@ -384,6 +389,11 @@ namespace Iril
             sysNotImplCtor = ImportMethod (sysNotImpl, sysVoid, ".ctor");
             sysNotSupp = Import ("System.NotSupportedException");
             sysNotSuppCtor = ImportMethod (sysNotSupp, sysVoid, ".ctor", sysString);
+            sysInterlocked = Import ("System.Threading.Interlocked");
+            sysInterlockedIncrement32 = ImportMethod (sysInterlocked, sysInt32, "Increment", sysInt32.MakeByReferenceType ());
+            sysInterlockedIncrement64 = ImportMethod (sysInterlocked, sysInt64, "Increment", sysInt64.MakeByReferenceType ());
+            sysInterlockedDecrement32 = ImportMethod (sysInterlocked, sysInt32, "Decrement", sysInt32.MakeByReferenceType ());
+            sysInterlockedDecrement64 = ImportMethod (sysInterlocked, sysInt64, "Decrement", sysInt64.MakeByReferenceType ());
             sysMath = Import ("System.Math");
             sysMathAbsD = ImportMethod (sysMath, sysDouble, "Abs", sysDouble);
             sysMathCeilD = ImportMethod (sysMath, sysDouble, "Ceiling", sysDouble);

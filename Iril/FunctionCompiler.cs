@@ -990,6 +990,9 @@ namespace Iril
                     {
                         EmitVectorOp(OpCodes.Add, add.Op1, add.Op2, (Types.VectorType)add.Type);
                     }
+                    else if (add.IsAtomic) {
+                        EmitAtomicOp(OpCodes.Add, add.Op1, add.Op2, add.Type);
+                    }
                     else
                     {
                         EmitValue(add.Op1, add.Type);
@@ -1463,6 +1466,9 @@ namespace Iril
                     if (sub.Type is Types.VectorType)
                     {
                         EmitVectorOp(OpCodes.Sub, sub.Op1, sub.Op2, (Types.VectorType)sub.Type);
+                    }
+                    else if (sub.IsAtomic) {
+                        EmitAtomicOp(OpCodes.Sub, sub.Op1, sub.Op2, sub.Type);
                     }
                     else
                     {
@@ -2242,6 +2248,26 @@ namespace Iril
                     break;
                 default:
                     throw new NotSupportedException($"Cannot perform vector unop {op.Code} {type}");
+            }
+        }
+
+        void EmitAtomicOp(OpCode op, IR.Value op1, IR.Value op2, LType type1)
+        {
+            if ((op == OpCodes.Add || op == OpCodes.Sub) &&
+                op2 is IR.Constant c2 && c2.Int32Value == 1 &&
+                type1 is Types.PointerType ptype && ptype.ElementType is Types.IntegerType itype && (itype.Bits == 32 || itype.Bits == 64)) {
+                var method = compilation.sysInterlockedIncrement32;
+                if (itype.Bits == 64) {
+                    method = op == OpCodes.Add ? compilation.sysInterlockedIncrement64 : compilation.sysInterlockedDecrement64;
+                }
+                else {
+                    method = op == OpCodes.Add ? compilation.sysInterlockedIncrement32 : compilation.sysInterlockedDecrement32;
+                }
+                EmitValue(op1, type1);
+                Emit(il.Create(OpCodes.Call, method));
+            }
+            else {
+                throw new NotSupportedException($"Cannot perform atomic op {op.Code} with {op1}: {type1} and {op2}");
             }
         }
 
