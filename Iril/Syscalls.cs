@@ -70,7 +70,10 @@ namespace Iril
             EmitPutchar ();
             EmitFputc ();
             EmitPuts ();
-            EmitFPuts ();
+            EmitFDOpen ("@\"\\01_fdopen\"");
+            EmitFClose ("@fclose");
+            EmitFPuts ("@fputs");
+            EmitFPuts ("@\"\\01_fputs\"");
             EmitFWrite ();
             EmitUnixRead ("@\"\\01_read\"");
             EmitUnixRead ("@read");
@@ -883,9 +886,38 @@ namespace Iril
             md.Body = b;
         }
 
-        void EmitFPuts ()
+        void EmitFDOpen (string symbol)
         {
-            var m = NewMethod ("@fputs", Types.IntegerType.I32,
+            var m = NewMethod (symbol, Types.PointerType.I8Pointer,
+                               ("fildes", Types.IntegerType.I32),
+                               ("mode", Types.PointerType.I8Pointer));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+
+            il.Append (il.Create (OpCodes.Ldstr, "fdopen not supported"));
+            il.Append (il.Create (OpCodes.Newobj, compilation.sysNotSuppCtor));
+            il.Append (il.Create (OpCodes.Throw));
+
+            b.Optimize ();
+        }
+
+        void EmitFClose (string symbol)
+        {
+            var m = NewMethod (symbol, Types.IntegerType.I32,
+                               ("stream", Types.PointerType.I8Pointer));
+            var b = m.Body;
+            var il = b.GetILProcessor ();
+
+            il.Append (il.Create (OpCodes.Ldstr, "fclose not supported"));
+            il.Append (il.Create (OpCodes.Newobj, compilation.sysNotSuppCtor));
+            il.Append (il.Create (OpCodes.Throw));
+
+            b.Optimize ();
+        }
+
+        void EmitFPuts (string symbol)
+        {
+            var m = NewMethod (symbol, Types.IntegerType.I32,
                                ("s", Types.PointerType.I8Pointer),
                                ("stream", Types.PointerType.I8Pointer));
             var v0 = new VariableDefinition (compilation.sysBytePtr);

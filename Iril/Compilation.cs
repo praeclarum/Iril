@@ -264,11 +264,11 @@ namespace Iril
             FindSystemTypes ();
             DeclareLoadFunction ();
             CreateSyscalls ();
+            ImportAssemblies ();
             FindStructures ();
             FindFunctions ();
             //PrintNameTree ();
             CompileStructures ();
-            ImportAssemblies ();
             EmitSyscalls ();
             EmitNativeExceptions ();
             EmitGlobalVariables ();
@@ -613,6 +613,14 @@ namespace Iril
                     var f = iskv.Value;
 
                     //
+                    // Prefer StdLib functions
+                    //
+                    if (externalMethodDefs.ContainsKey (sym)) {
+                        // Console.WriteLine($"Skipping {sym} because it is an external method");
+                        continue;
+                    }
+
+                    //
                     // Load debug info
                     //
                     var dbgMeth = new SymbolTable<object> ();
@@ -644,12 +652,17 @@ namespace Iril
             //
             foreach (var m in Modules) {
                 foreach (var iskv in m.FunctionDeclarations) {
-                    if (iskv.Key.Text.StartsWith ("@llvm.", StringComparison.Ordinal))
-                        continue;
-                    if (functionNodes.ContainsKey (iskv.Key))
-                        continue;
-
                     var sym = iskv.Key;
+
+                    if (sym.Text.StartsWith ("@llvm.", StringComparison.Ordinal))
+                        continue;
+                    if (functionNodes.ContainsKey (sym))
+                        continue;
+                    if (externalMethodDefs.ContainsKey (sym)) {
+                        // Console.WriteLine($"Skipping {sym} decl because it is an external method");
+                        continue;
+                    }
+
                     var f = iskv.Value;
                     var mname = new IR.MangledName (sym);
                     var nn = new NameNode {
@@ -1369,7 +1382,7 @@ namespace Iril
                     importMethodBodies.Add (imImport);
 
                     if (export != null) {
-                        externalMethodDefs[symbol] = new DefinedFunction {
+                        externalMethodDefs[symbol] = new DefinedFunction ("Imported") {
                             Symbol = symbol,
                             IRModule = null,
                             IRDefinition = null,
@@ -1400,8 +1413,8 @@ namespace Iril
                         ImportMethodBody (methodDefinition, im, ib, importType);
                         im.Body = ib;
                     }
-                    catch (Exception) {
-                        //ErrorMessage ("", "Failed to import method", ex);
+                    catch (Exception ex) {
+                        ErrorMessage ("", $"Failed to import function {symbol}: {ex.Message}", ex);
                         if (symbol != null) {
                             externalMethodDefs.Remove (symbol);
                         }
@@ -1609,7 +1622,7 @@ namespace Iril
                     continue;
                 }
 
-                externalMethodDefs[symbol] = new DefinedFunction {
+                externalMethodDefs[symbol] = new DefinedFunction ("Syscall") {
                     Symbol = symbol,
                     IRModule = null,
                     IRDefinition = null,
@@ -1737,7 +1750,7 @@ namespace Iril
                     declaringType.Methods.Add (md);
                     //Console.WriteLine ("EMIT " + md);
 
-                    var def = new DefinedFunction {
+                    var def = new DefinedFunction ("Definition") {
                         Symbol = sym,
                         IRModule = m,
                         IRDefinition = f,
@@ -1791,7 +1804,7 @@ namespace Iril
 
                         declaringType.Methods.Add (md);
 
-                        externalMethodDefs[sym] = new DefinedFunction {
+                        externalMethodDefs[sym] = new DefinedFunction ("Declaration") {
                             Symbol = sym,
                             IRModule = node.Module,
                             IRDeclaration = f,
@@ -1867,7 +1880,8 @@ namespace Iril
                     }
                 }
                 else {
-                    ErrorMessage (m.IRModule?.SourceFilename, $"Undefined function `{IR.MangledName.Demangle (m.Symbol)}` ({m.Symbol})");
+                    var paramTypes = string.Join (", ", m.ILDefinition.Parameters.Select (x => x.ParameterType.ToString()));
+                    ErrorMessage (m.IRModule?.SourceFilename, $"Undefined function `{m.ILDefinition.ReturnType} {IR.MangledName.Demangle (m.Symbol)}({paramTypes})` ({m.Symbol}) from {m.Origin}");
                     CompileMissingFunction (m);
                 }
             }
@@ -1979,7 +1993,7 @@ namespace Iril
             foreach (var s in syscalls.Calls) {
                 if (externalMethodDefs.TryGetValue (s.Key, out var f)) {
                     if (f.ReferenceCount == 0) {
-                        //Console.WriteLine ($"REM {s.Key}, {s.Value}, {s.Value?.DeclaringType}");
+                        // Console.WriteLine ($"REM {s.Key}, {s.Value}, {s.Value?.DeclaringType}");
                         s.Value.DeclaringType?.Methods.Remove (s.Value);
                     }
                 }

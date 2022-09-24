@@ -15,6 +15,7 @@ namespace Iril
 {
     public class DefinedFunction
     {
+        public string Origin { get; }
         public Symbol Symbol;
         public Iril.Module IRModule;
         public IR.FunctionDeclaration IRDeclaration;
@@ -22,6 +23,9 @@ namespace Iril
         public MethodDefinition ILDefinition;
         public SymbolTable<ParameterDefinition> ParamSyms;
         public int ReferenceCount;
+        public DefinedFunction(string origin) {
+            Origin = origin;
+        }
     }
 
     class FunctionCompiler : Emitter

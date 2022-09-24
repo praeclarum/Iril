@@ -18,6 +18,8 @@ namespace StdLib
         [DllExport ("@llvm.va_start")]
         public unsafe static void va_start (byte* arglist, object[] arguments)
         {
+            throw new NotSupportedException ("Cannot import type reference StdLib.__va_list_tag");
+            /*
             // Get required size
             var list = (__va_list_tag*)arglist;
             int gp_offset = 0;
@@ -117,16 +119,18 @@ namespace StdLib
                     fp_offset += num_fp * 16;
                 }
             }
+            */
         }
 
         [DllExport ("@llvm.va_end")]
         public unsafe static void va_end (byte* arglist)
         {
-            var list = (__va_list_tag*)arglist;
-            Marshal.FreeHGlobal ((IntPtr)list->reg_save_area);
-            if (Memory.Safe) {
-                Memory.UnregisterMemory (list->reg_save_area);
-            }
+            throw new NotSupportedException ("Cannot import type reference StdLib.__va_list_tag");
+            // var list = (__va_list_tag*)arglist;
+            // Marshal.FreeHGlobal ((IntPtr)list->reg_save_area);
+            // if (Memory.Safe) {
+            //     Memory.UnregisterMemory (list->reg_save_area);
+            // }
         }
 
         [DllExport ("@llvm.fshl.i64")]
