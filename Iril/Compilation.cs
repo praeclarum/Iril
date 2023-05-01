@@ -1,4 +1,6 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -236,7 +238,10 @@ namespace Iril
 
         readonly Dictionary<MethodDefinition, int> functionTokens = new Dictionary<MethodDefinition, int> ();
 
-        public MethodDefinition LoadFunction { get; private set; }
+        /// <summary>
+        /// LoadFunction is responible for translating from a token (byte*) into a function pointer.
+        /// </summary>
+        public MethodDefinition? LoadFunction { get; private set; }
 
         public Compilation (CompilationOptions options)
         {
@@ -1899,8 +1904,14 @@ namespace Iril
         void EmitLoadFunction ()
         {
             var md = LoadFunction;
+            if (md is null) return;
 
-            mod.GetType (namespac + ".Globals").Methods.Add (md);
+            if (mod.GetType (namespac + ".Globals") is {} globalsType) {
+                globalsType.Methods.Add (md);
+            }
+            else {
+                syscalls.TypeDefinition.Methods.Add (md);
+            }
 
             md.Parameters.Add (new ParameterDefinition ("token", ParameterAttributes.None, sysBytePtr));
             var body = new MethodBody (md);
