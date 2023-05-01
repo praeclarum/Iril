@@ -459,6 +459,9 @@ namespace Iril.IR
                         throw new Exception ($"Cannot get element {i.Value} at compile time");
                     }
                 }
+                else if (rt is VectorType vt) {
+                    t = vt.ElementType;
+                }
                 else {
                     throw new Exception ("Cannot get element type of " + t);
                 }

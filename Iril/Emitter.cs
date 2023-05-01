@@ -432,6 +432,22 @@ namespace Iril
                     }
                     t = artt.ElementType;
                 }
+                else if (t is Types.VectorType vt) {
+                    var esize = vt.ElementType.GetByteSize(module);
+                    if (index.Value is Constant ic) {
+                        var offset = (long)esize * ic.Int32Value;
+                        EmitPointerOffset (offset);
+                    }
+                    else {
+                        EmitValue (index.Value, index.Type);
+                        if (esize != 1) {
+                            EmitValue (new IR.IntegerConstant (esize), index.Type);
+                            Emit (il.Create (OpCodes.Mul));
+                        }
+                        Emit (il.Create (OpCodes.Conv_U));
+                        Emit (il.Create (OpCodes.Add));
+                    }
+                }
                 else
                 {
                     throw new InvalidOperationException("Cannot get pointer to element of " + t);
