@@ -1613,7 +1613,7 @@ namespace Iril
                     }
                     break;
                 default:
-                    throw new NotImplementedException($"{instruction.GetType().Name}: {instruction}");
+                    throw new NotSupportedException($"{instruction.GetType().Name}: {instruction} is not supported");
             }
         }
 

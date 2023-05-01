@@ -2551,13 +2551,15 @@ namespace Iril
         public readonly string AssemblyName;
         public readonly bool SafeMemory;
         public readonly bool Reentrant;
+        public readonly bool HalfToSingle;
 
-        public CompilationOptions (IEnumerable<Module> modules, string assemblyName, bool safeMemory = false, bool reentrant = false)
+        public CompilationOptions (IEnumerable<Module> modules, string assemblyName, bool safeMemory = false, bool reentrant = false, bool halfToSingle = true)
         {
             Modules = modules.ToArray ();
             AssemblyName = assemblyName;
             SafeMemory = safeMemory;
             Reentrant = reentrant;
+            HalfToSingle = halfToSingle;
         }
     }
 }

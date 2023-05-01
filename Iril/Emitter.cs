@@ -140,11 +140,19 @@ namespace Iril
                         ba[0] = (byte)((i.Value >> 0) & 0xFF);
                         switch (fltt.Bits)
                         {
-                            // case 16:
-                            //     var ha = new Half[1];
-                            //     Buffer.BlockCopy(ba, 0, ha, 0, 2);
-                            //     Emit(il.Create(OpCodes.Ldc_R2, ha[0]));
-                            //     break;
+                            case 16:
+                                var ha = (Half)0.0f;
+                                Span<Half> h = System.Runtime.InteropServices.MemoryMarshal.CreateSpan (ref ha, 1);
+                                Span<byte> b = System.Runtime.InteropServices.MemoryMarshal.Cast<Half, byte> (h);
+                                b[0] = ba[0];
+                                b[1] = ba[1];
+                                if (this.compilation.Options.HalfToSingle) {
+                                    Emit(il.Create(OpCodes.Ldc_R4, (float)ha));
+                                }
+                                else {
+                                    throw new NotSupportedException ("16-bit floats written in hex are not supported");
+                                }
+                                break;
                             case 32:
                                 var sa = new float[1];
                                 Buffer.BlockCopy(ba, 0, sa, 0, 4);
