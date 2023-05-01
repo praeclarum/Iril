@@ -1,6 +1,4 @@
-﻿#nullable enable
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -241,7 +239,7 @@ namespace Iril
         /// <summary>
         /// LoadFunction is responible for translating from a token (byte*) into a function pointer.
         /// </summary>
-        public MethodDefinition? LoadFunction { get; private set; }
+        public MethodDefinition LoadFunction { get; private set; }
 
         public Compilation (CompilationOptions options)
         {
