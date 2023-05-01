@@ -130,7 +130,6 @@ namespace Iril
                     if (type is FloatType fltt)
                     {
                         var ba = new byte[8];
-                        var da = new double[1];
                         ba[7] = (byte)((i.Value >> 56) & 0xFF);
                         ba[6] = (byte)((i.Value >> 48) & 0xFF);
                         ba[5] = (byte)((i.Value >> 40) & 0xFF);
@@ -139,17 +138,25 @@ namespace Iril
                         ba[2] = (byte)((i.Value >> 16) & 0xFF);
                         ba[1] = (byte)((i.Value >> 8) & 0xFF);
                         ba[0] = (byte)((i.Value >> 0) & 0xFF);
-                        Buffer.BlockCopy(ba, 0, da, 0, 8);
                         switch (fltt.Bits)
                         {
+                            // case 16:
+                            //     var ha = new Half[1];
+                            //     Buffer.BlockCopy(ba, 0, ha, 0, 2);
+                            //     Emit(il.Create(OpCodes.Ldc_R2, ha[0]));
+                            //     break;
                             case 32:
-                                Emit(il.Create(OpCodes.Ldc_R4, (float)da[0]));
+                                var sa = new float[1];
+                                Buffer.BlockCopy(ba, 0, sa, 0, 4);
+                                Emit(il.Create(OpCodes.Ldc_R4, sa[0]));
                                 break;
                             case 64:
+                                var da = new double[1];
+                                Buffer.BlockCopy(ba, 0, da, 0, 8);
                                 Emit(il.Create(OpCodes.Ldc_R8, da[0]));
                                 break;
                             default:
-                                throw new NotSupportedException($"{((IntegerType)type).Bits}-bit float integers");
+                                throw new NotSupportedException($"{fltt.Bits}-bit floats written in hex are not supported");
                         }
                     }
                     else
