@@ -158,12 +158,12 @@ namespace StdLib
                     var b = (MemoryBlock)registeredMemory[i];
                     var offset = pointer - b.Pointer;
                     if (offset > b.Length) {
-                        throw new Exception ($"Read Access Violation 0x{(ulong)pointer:x}. Address outside the range of block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}/{b.Length}]");
+                        throw new Exception ("Read Access Violation 0x" + ((ulong)pointer).ToString("x") + ". Address outside the range of block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}/{b.Length}]");
                     }
                     //Console.WriteLine ($"READ 0x{(ulong)pointer:x} block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}/{b.Length}]");
                 }
                 else {
-                    throw new Exception ($"Read Access Violation 0x{(ulong)pointer:x}. Could not find allocated block @{i}/{registeredMemory.Count}");
+                    throw new Exception ("Read Access Violation 0x" + ((ulong)pointer).ToString("x") + ". Could not find allocated block @{i}/{registeredMemory.Count}");
                 }
             }
 
@@ -184,12 +184,12 @@ namespace StdLib
                     var b = (MemoryBlock)registeredMemory[i];
                     var offset = pointer - b.Pointer;
                     if (offset > b.Length) {
-                        throw new Exception ($"Write Access Violation 0x{(ulong)pointer:x}. Address outside the range of block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}/{b.Length}]");
+                        throw new Exception ("Write Access Violation 0x" + ((ulong)pointer).ToString("x") + ". Address outside the range of block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}/{b.Length}]");
                     }
                     //Console.WriteLine ($"WRITE 0x{(ulong)pointer:x} block @{i}/{registeredMemory.Count} {b.Purpose}[{(IntPtr)offset}/{b.Length}]");
                 }
                 else {
-                    throw new Exception ($"Write Access Violation 0x{(ulong)pointer:x}. Could not find allocated block @{i}/{registeredMemory.Count}");
+                    throw new Exception ($"Write Access Violation 0x" + ((ulong)pointer).ToString("x") + ". Could not find allocated block @{i}/{registeredMemory.Count}");
                 }
             }
         }
@@ -240,7 +240,7 @@ namespace StdLib
                         return;
                     }
                 }
-                throw new Exception ($"Free Access Violation. No block for 0x{(ulong)pointer:x}");
+                throw new Exception ("Free Access Violation. No block for 0x" + ((ulong)pointer).ToString("x"));
             }
         }
 
