@@ -133,7 +133,11 @@ global_variable
     }
     | GLOBAL_SYMBOL '=' linkage function_addr global_kind type value ',' SECTION STRING
     {
-        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: false, isExternal: false, isConstant: (bool)$4);
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: false, isExternal: false, isConstant: (bool)$5);
+    }
+    | GLOBAL_SYMBOL '=' linkage function_addr global_kind type value ',' SECTION STRING ',' ALIGN INTEGER
+    {
+        $$ = new GlobalVariable ((GlobalSymbol)$1, (LType)$6, (Value)$7, isPrivate: false, isExternal: false, isConstant: (bool)$5);
     }
     | GLOBAL_SYMBOL '=' global_kind type value ',' ALIGN INTEGER metadata_kvs
     {
@@ -374,11 +378,11 @@ type
     {
         $$ = new FunctionType ((LType)$1, (List<LType>)$3);
     }
-    | type addrspace '*'
+    | type optional_addrspace '*'
     {
         $$ = new PointerType ((LType)$1, 0);
     }
-    | type addrspace '*' ALIGN INTEGER
+    | type optional_addrspace '*' ALIGN INTEGER
     {
         $$ = new PointerType ((LType)$1, 0);
     }
@@ -397,6 +401,10 @@ type
     ;
 
 addrspace
+    : ADDRSPACE '(' INTEGER ')'
+    ;
+    
+optional_addrspace
     : /* empty */
     | ADDRSPACE '(' INTEGER ')'
     ;
@@ -439,10 +447,12 @@ define_tail
     | function_addr attribute_group_refs ALIGN INTEGER
     | function_addr attribute_group_refs personality_function
     | function_addr attribute_group_refs ALIGN INTEGER personality_function
+    | function_addr attribute_group_refs SECTION STRING
     | attribute_group_refs
     | attribute_group_refs ALIGN INTEGER
     | attribute_group_refs personality_function
     | attribute_group_refs ALIGN INTEGER personality_function
+    | attribute_group_refs SECTION STRING
     ;
     
 define_header
@@ -611,8 +621,10 @@ function_addr_type
     ;
     
 function_addr
-    : function_addr_type addrspace
-    | function_addr_type addrspace EXTERNALLY_INITIALIZED
+    : function_addr_type optional_addrspace
+    | function_addr_type optional_addrspace EXTERNALLY_INITIALIZED
+    | optional_addrspace EXTERNALLY_INITIALIZED
+    | addrspace
     ;
 
 runtime_preemption_specifier
@@ -1085,6 +1097,16 @@ invoke_instruction
     }
     ;
     
+optional_fast
+    : /* empty */
+    {
+        $$ = false;
+    }
+    | FAST
+    {
+        $$ = true;
+    }
+    ;
     
 instruction
     : ADD type value ',' value
@@ -1163,6 +1185,10 @@ instruction
     {
         $$ = new CallInstruction ((LType)$3, (Value)$4, (IEnumerable<Argument>)$5, true);
     }
+    | TAIL CALL FAST return_type function_pointer function_args attribute_group_refs
+    {
+        $$ = new CallInstruction ((LType)$4, (Value)$5, (IEnumerable<Argument>)$6, true);
+    }
     | TAIL CALL parameter_attribute return_type function_pointer function_args
     {
         $$ = new CallInstruction ((LType)$4, (Value)$5, (IEnumerable<Argument>)$6, true);
@@ -1203,25 +1229,25 @@ instruction
     {
         $$ = new ExtractValueInstruction ((TypedValue)$2, (List<Value>)$4);
     }
-    | FADD type value ',' value
+    | FADD optional_fast type value ',' value
     {
-        $$ = new FaddInstruction ((LType)$2, (Value)$3, (Value)$5);
+        $$ = new FaddInstruction ((LType)$3, (Value)$4, (Value)$6);
     }
-    | FCMP fcmp_condition type value ',' value
+    | FCMP optional_fast fcmp_condition type value ',' value
     {
-        $$ = new FcmpInstruction ((FcmpCondition)$2, (LType)$3, (Value)$4, (Value)$6);
+        $$ = new FcmpInstruction ((FcmpCondition)$3, (LType)$4, (Value)$5, (Value)$7);
     }
-    | FDIV type value ',' value
+    | FDIV optional_fast type value ',' value
     {
-        $$ = new FdivInstruction ((LType)$2, (Value)$3, (Value)$5);
+        $$ = new FdivInstruction ((LType)$3, (Value)$4, (Value)$6);
     }
     | FENCE atomic_constraint
     {
         $$ = new FenceInstruction ((AtomicConstraint)$2);
     }
-    | FMUL type value ',' value
+    | FMUL optional_fast type value ',' value
     {
-        $$ = new FmulInstruction ((LType)$2, (Value)$3, (Value)$5);
+        $$ = new FmulInstruction ((LType)$3, (Value)$4, (Value)$6);
     }
     | FPEXT typed_value TO type
     {
@@ -1239,9 +1265,9 @@ instruction
     {
         $$ = new FptruncInstruction ((TypedValue)$2, (LType)$4);
     }
-    | FSUB type value ',' value
+    | FSUB optional_fast type value ',' value
     {
-        $$ = new FsubInstruction ((LType)$2, (Value)$3, (Value)$5);
+        $$ = new FsubInstruction ((LType)$3, (Value)$4, (Value)$6);
     }
     | GETELEMENTPTR type ',' typed_value ',' element_indices
     {
@@ -1331,9 +1357,9 @@ instruction
     {
         $$ = new SdivInstruction ((LType)$3, (Value)$4, (Value)$6);
     }
-    | SELECT type value ',' typed_value ',' typed_value
+    | SELECT optional_fast type value ',' typed_value ',' typed_value
     {
-        $$ = new SelectInstruction ((LType)$2, (Value)$3, (TypedValue)$5, (TypedValue)$7);
+        $$ = new SelectInstruction ((LType)$3, (Value)$4, (TypedValue)$6, (TypedValue)$8);
     }
     | SEXT typed_value TO type
     {
