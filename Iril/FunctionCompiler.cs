@@ -1105,10 +1105,15 @@ namespace Iril
                 case IR.ExtractElementInstruction ee:
                     {
                         EmitTypedValue(ee.Value);
-                        var index = ((IR.Constant)ee.Index.Value).Int32Value;
-                        var v = GetVectorType((VectorType)ee.Value.Type);
-                        var field = v.ElementFields[index];
-                        Emit(il.Create(OpCodes.Ldfld, field));
+                        if (ee.Index.Value is IR.Constant c) {
+                            var index = c.Int32Value;
+                            var v = GetVectorType((VectorType)ee.Value.Type);
+                            var field = v.ElementFields[index];
+                            Emit(il.Create(OpCodes.Ldfld, field));
+                        }
+                        else {
+                            throw new NotSupportedException ($"Cannot ExtractElement with non-constant index {ee.Index.Value} ({ee.Index.Value.GetType ()})");
+                        }
                     }
                     break;
                 case IR.ExtractValueInstruction ee:
