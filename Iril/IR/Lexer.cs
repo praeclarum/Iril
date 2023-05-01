@@ -40,6 +40,7 @@ namespace Iril.IR
             { Symbol.Intern ("unnamed_addr"), Token.UNNAMED_ADDR },
             { Symbol.Intern ("local_unnamed_addr"), Token.LOCAL_UNNAMED_ADDR },
             { Symbol.Intern ("addrspace"), Token.ADDRSPACE },
+            { Symbol.Intern ("addrspacecast"), Token.ADDRSPACECAST },
             { Symbol.Intern ("fast"), Token.FAST },
             { Symbol.Intern ("icmp"), Token.ICMP },
             { Symbol.Intern ("eq"), Token.EQ },

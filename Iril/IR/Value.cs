@@ -15,6 +15,14 @@ namespace Iril.IR
         public virtual bool IsIdempotent (FunctionDefinition function) => false;
     }
 
+    public class AddrSpaceCastValue : ConversionValue
+    {
+        public AddrSpaceCastValue (TypedValue value, LType type)
+            : base (value, type)
+        {
+        }
+    }
+
     public class ArrayConstant : Value
     {
         public readonly TypedValue[] Elements;

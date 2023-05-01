@@ -721,6 +721,10 @@ nonglobal_value
     {
         $$ = new StructureConstant ((List<TypedValue>)$3);
     }
+    | ADDRSPACECAST '(' typed_value TO type ')'
+    {
+        $$ = new AddrSpaceCastValue ((TypedValue)$3, (LType)$5);
+    }
     ;
     
 pointer_value
