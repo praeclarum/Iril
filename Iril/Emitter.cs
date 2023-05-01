@@ -82,9 +82,11 @@ namespace Iril
                     Emit(il.Create(b.IsTrue ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0));
                     break;
                 case IR.FloatConstant flt:
-                    Emit(il.Create(
-                        ((FloatType)type).Bits == 32 ? OpCodes.Ldc_R4 : OpCodes.Ldc_R8,
-                        flt.Value));
+                    Emit(((FloatType)type).Bits switch {
+                        32 => il.Create(OpCodes.Ldc_R4, (float)flt.Value),
+                        64 => il.Create(OpCodes.Ldc_R8, flt.Value),
+                        var x => throw new NotSupportedException($"Unsupported float type: {type} ({x}-bit)")
+                    });
                     break;
                 case IR.GetElementPointerValue gep:
                     EmitGetElementPointer (gep.Pointer, gep.Indices);
